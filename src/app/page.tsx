@@ -54,7 +54,8 @@ function Hero() {
             <span className="h-1.5 w-1.5 rounded-full bg-clic" /> Pour les commerces de quartier
           </p>
           <h1 className="rise rise-2 mt-6 font-display text-[2.9rem] font-semibold leading-[1.02] tracking-tight sm:text-6xl md:text-[4.4rem]">
-            Le beau site que votre commerce <em className="font-medium italic text-clic">mérite</em>.
+            L&apos;élégance d&apos;une agence.{" "}
+            <span className="block text-ink/40">La simplicité d&apos;un <em className="font-medium italic text-clic">clic</em>.</span>
           </h1>
           <p className="rise rise-3 mt-6 max-w-lg text-lg leading-relaxed text-muted">
             Décrivez votre commerce, notre IA crée un site élégant en quelques minutes. Vous avez déjà un site ? Elle le rend
