@@ -62,7 +62,7 @@ function Hero() {
             plus beau. Ensuite, vous le modifiez simplement en écrivant.
           </p>
           <div className="rise rise-3 mt-9 flex flex-col gap-3 sm:flex-row">
-            <Link href="/inscription" className="rounded-full bg-clic px-7 py-4 text-center font-medium text-white shadow-[0_10px_30px_-10px_rgba(232,87,42,.7)] transition hover:bg-clic-dark">
+            <Link href="/inscription" className="rounded-full bg-clic px-7 py-4 text-center font-medium text-white shadow-[0_10px_30px_-10px_rgba(255,91,31,.6)] transition hover:bg-clic-dark">
               Créer mon site gratuitement
             </Link>
             <a href="#comment" className="rounded-full border border-ink/15 px-7 py-4 text-center font-medium transition hover:border-ink">
@@ -189,7 +189,7 @@ function TwoWays() {
                 <p className="font-medium text-clic">Après</p>
                 <div className="mt-3 space-y-1.5">
                   <div className="h-2 w-2/3 rounded bg-ink" />
-                  <div className="h-10 rounded bg-[linear-gradient(135deg,#e8572a,#3e1f12)]" />
+                  <div className="h-10 rounded bg-[linear-gradient(135deg,#ff5b1f,#3e1f12)]" />
                   <div className="h-2 w-1/3 rounded-full bg-clic" />
                 </div>
               </div>
@@ -249,16 +249,16 @@ function Pricing() {
     "Sans engagement, résiliable à tout moment",
   ];
   return (
-    <section id="tarif" className="scroll-mt-20 bg-ink text-cream">
+    <section id="tarif" className="scroll-mt-20 border-y border-line bg-sand">
       <div className="mx-auto grid max-w-6xl items-center gap-14 px-5 py-24 md:grid-cols-2">
         <div>
           <p className="text-sm font-medium uppercase tracking-[0.18em] text-clic">Tarif</p>
           <h2 className="mt-3 font-display text-4xl font-semibold tracking-tight sm:text-5xl">Un seul prix, tout compris.</h2>
-          <p className="mt-5 max-w-md text-lg leading-relaxed text-cream/70">
+          <p className="mt-5 max-w-md text-lg leading-relaxed text-muted">
             Créez votre site et regardez-le gratuitement. Vous ne payez que le jour où vous décidez de le mettre en ligne.
           </p>
         </div>
-        <div className="rounded-[2rem] bg-cream p-8 text-ink sm:p-10">
+        <div className="rounded-[2rem] border border-line bg-card p-8 text-ink shadow-[0_40px_80px_-40px_rgba(255,91,31,.35)] sm:p-10">
           <p className="font-medium">Abonnement SiteClic</p>
           <p className="mt-4 flex items-baseline gap-2">
             <span className="font-display text-6xl font-semibold">29 €</span>
