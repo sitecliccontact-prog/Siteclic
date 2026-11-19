@@ -15,7 +15,7 @@ npm install
 cp .env.example .env.local   # puis remplir les clés Supabase
 npm run dev                  # ouvrir http://localhost:3000
 ```
-Sans clés Supabase, l'appli s'affiche quand même : les comptes sont simplement désactivés.
+Les codes publics Supabase sont déjà intégrés (src/lib/supabase/config.ts).
 
 ## Outils
 Next.js · Tailwind CSS · Supabase · (bientôt) API Claude · Stripe · Vercel
