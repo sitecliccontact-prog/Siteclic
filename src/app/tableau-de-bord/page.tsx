@@ -9,12 +9,12 @@ import { SignOutButton } from "./SignOutButton";
 export const metadata: Metadata = { title: "Mes sites · SiteClic" };
 
 export default async function Dashboard() {
-  let shopName = "votre commerce";
+  let shopName = "";
   if (supabaseReady) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect("/connexion");
-    shopName = (user.user_metadata?.shop_name as string) || shopName;
+    shopName = (user.user_metadata?.shop_name as string) || "";
   }
 
   return (
@@ -27,7 +27,7 @@ export default async function Dashboard() {
       <section className="mx-auto mt-12 max-w-5xl rise">
         <p className="text-sm font-medium uppercase tracking-[0.18em] text-clic">Mes sites</p>
         <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
-          Bonjour, {shopName} 👋
+          Bonjour{shopName ? `, ${shopName}` : ""} 👋
         </h1>
         <p className="mt-3 max-w-xl text-muted">Que voulez-vous faire aujourd&apos;hui ?</p>
 
@@ -56,7 +56,7 @@ export default async function Dashboard() {
 function ActionCard({ title, text, badge, primary }: { title: string; text: string; badge: string; primary?: boolean }) {
   return (
     <div className={`relative rounded-3xl border p-7 ${primary ? "border-ink bg-ink text-cream" : "border-line bg-white"}`}>
-      <span className={`absolute right-5 top-5 rounded-full px-3 py-1 text-xs font-medium ${primary ? "bg-cream/10 text-cream" : "bg-sand text-muted"}`}>
+      <span className={`mb-5 inline-block rounded-full px-3 py-1 text-xs font-medium ${primary ? "bg-cream/10 text-cream" : "bg-sand text-muted"}`}>
         {badge}
       </span>
       <h2 className="font-display text-2xl font-semibold">{title}</h2>
