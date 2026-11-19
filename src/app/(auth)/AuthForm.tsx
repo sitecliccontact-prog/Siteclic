@@ -94,7 +94,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
 }
 
 const inputCls =
-  "w-full rounded-2xl border border-line bg-white px-4 py-3.5 text-base outline-none transition placeholder:text-muted/60 focus:border-ink focus:ring-4 focus:ring-ink/5";
+  "w-full rounded-2xl border border-line bg-card px-4 py-3.5 text-base outline-none transition placeholder:text-muted/60 focus:border-ink focus:ring-4 focus:ring-ink/5";
 
 function Field({ label, htmlFor, hint, children }: { label: string; htmlFor: string; hint?: string; children: React.ReactNode }) {
   return (

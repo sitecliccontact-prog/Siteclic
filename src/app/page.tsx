@@ -50,7 +50,7 @@ function Hero() {
     <section className="grain relative">
       <div className="mx-auto grid max-w-6xl items-center gap-14 px-5 pb-20 pt-14 md:grid-cols-[1.1fr_1fr] md:pt-24">
         <div>
-          <p className="rise inline-flex items-center gap-2 rounded-full border border-line bg-white/70 px-3 py-1 text-xs font-medium text-muted">
+          <p className="rise inline-flex items-center gap-2 rounded-full border border-line bg-card/70 px-3 py-1 text-xs font-medium text-muted">
             <span className="h-1.5 w-1.5 rounded-full bg-clic" /> Pour les commerces de quartier
           </p>
           <h1 className="rise rise-2 mt-6 font-display text-[2.9rem] font-semibold leading-[1.02] tracking-tight sm:text-6xl md:text-[4.4rem]">
@@ -81,7 +81,7 @@ function PhoneMockup() {
   return (
     <div className="relative mx-auto w-full max-w-[340px] rise rise-2">
       <div className="absolute -inset-10 -z-10 rounded-full bg-clic/15 blur-3xl" />
-      <div className="rounded-[2.6rem] bg-ink p-2.5 shadow-[0_40px_80px_-30px_rgba(18,19,26,.55)]">
+      <div className="rounded-[2.6rem] bg-[#0a0a0b] p-2.5 shadow-[0_40px_80px_-30px_rgba(18,19,26,.55)]">
         <div className="overflow-hidden rounded-[2.1rem] bg-[#fbf6ee]">
           {/* Site généré (exemple fictif) */}
           <div className="flex items-center justify-between px-5 pt-5 text-[11px] text-[#3b2a20]">
@@ -107,7 +107,7 @@ function PhoneMockup() {
         </div>
       </div>
       {/* Bulle de discussion */}
-      <div className="absolute -left-4 bottom-32 w-56 rounded-2xl rounded-bl-md border border-line bg-white p-3.5 text-[13px] shadow-xl sm:-left-16">
+      <div className="absolute -left-4 bottom-32 w-56 rounded-2xl rounded-bl-md border border-line bg-card p-3.5 text-[13px] shadow-xl sm:-left-16">
         « On ferme à 19h le samedi »
       </div>
       <div className="absolute -right-2 -bottom-6 flex items-center gap-2 rounded-2xl rounded-br-md bg-ink px-3.5 py-3 text-[13px] text-cream shadow-xl sm:-right-10">
@@ -121,7 +121,7 @@ function PhoneMockup() {
 /* ---------- Métiers ---------- */
 function Trades() {
   return (
-    <section className="border-y border-line bg-white/60">
+    <section className="border-y border-line bg-card/60">
       <div className="mx-auto flex max-w-6xl flex-wrap justify-center gap-x-8 gap-y-3 px-5 py-6 text-sm text-muted">
         {trades.map((t) => (
           <span key={t} className="font-display text-base italic">{t}</span>
@@ -143,7 +143,7 @@ function HowItWorks() {
       <SectionTitle eyebrow="Comment ça marche" title="Trois étapes, aucune technique." />
       <div className="mt-14 grid gap-5 md:grid-cols-3">
         {steps.map((s) => (
-          <div key={s.n} className="rounded-3xl border border-line bg-white p-8">
+          <div key={s.n} className="rounded-3xl border border-line bg-card p-8">
             <p className="font-display text-5xl font-light text-clic">{s.n}</p>
             <h3 className="mt-6 font-display text-2xl font-semibold">{s.t}</h3>
             <p className="mt-3 leading-relaxed text-muted">{s.d}</p>
@@ -169,7 +169,7 @@ function TwoWays() {
               si vous le mettez en ligne.
             </p>
           </div>
-          <div className="rounded-3xl border border-line bg-white p-9">
+          <div className="rounded-3xl border border-line bg-card p-9">
             <p className="text-sm font-medium uppercase tracking-[0.18em] text-clic">Votre site a vieilli ?</p>
             <h3 className="mt-4 font-display text-3xl font-semibold">Offrez-lui une seconde vie</h3>
             <p className="mt-3 leading-relaxed text-muted">
@@ -218,7 +218,7 @@ function EditByWriting() {
             c&apos;est fait en quelques secondes.
           </p>
         </div>
-        <div className="space-y-4 rounded-[2rem] border border-line bg-white p-5 shadow-[0_30px_60px_-35px_rgba(18,19,26,.35)] sm:p-7">
+        <div className="space-y-4 rounded-[2rem] border border-line bg-card p-5 shadow-[0_30px_60px_-35px_rgba(18,19,26,.35)] sm:p-7">
           {examples.map(([q, a]) => (
             <div key={q} className="space-y-2">
               <div className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-ink px-4 py-3 text-[15px] text-cream">{q}</div>
@@ -311,7 +311,7 @@ function Faq() {
 function FinalCta() {
   return (
     <section className="px-5 pb-24">
-      <div className="grain mx-auto max-w-6xl rounded-[2.5rem] border border-line bg-white px-6 py-16 text-center sm:py-20">
+      <div className="grain mx-auto max-w-6xl rounded-[2.5rem] border border-line bg-card px-6 py-16 text-center sm:py-20">
         <h2 className="mx-auto max-w-2xl font-display text-4xl font-semibold tracking-tight sm:text-5xl">
           Votre commerce mérite d&apos;être vu.
         </h2>

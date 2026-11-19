@@ -55,7 +55,7 @@ export default async function Dashboard() {
 
 function ActionCard({ title, text, badge, primary }: { title: string; text: string; badge: string; primary?: boolean }) {
   return (
-    <div className={`relative rounded-3xl border p-7 ${primary ? "border-ink bg-ink text-cream" : "border-line bg-white"}`}>
+    <div className={`relative rounded-3xl border p-7 ${primary ? "border-ink bg-ink text-cream" : "border-line bg-card"}`}>
       <span className={`mb-5 inline-block rounded-full px-3 py-1 text-xs font-medium ${primary ? "bg-cream/10 text-cream" : "bg-sand text-muted"}`}>
         {badge}
       </span>
