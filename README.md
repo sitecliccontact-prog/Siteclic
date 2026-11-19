@@ -19,3 +19,10 @@ Les codes publics Supabase sont déjà intégrés (src/lib/supabase/config.ts).
 
 ## Outils
 Next.js · Tailwind CSS · Supabase · (bientôt) API Claude · Stripe · Vercel
+
+## Base de données
+Le fichier `supabase/schema.sql` crée la table des sites. À coller une fois dans Supabase > SQL Editor.
+
+## IA
+La création de site utilise l'API Claude. Ajouter la clé secrète `ANTHROPIC_API_KEY` dans Vercel
+(Settings > Environment Variables). Ne jamais la mettre dans le code.

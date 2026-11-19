@@ -1,0 +1,33 @@
+import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
+import { SiteRenderer } from "@/components/site/SiteRenderer";
+import { SAMPLE_SITES } from "@/lib/site/samples";
+import { SiteContentSchema, type SiteContent } from "@/lib/site/schema";
+import { createClient } from "@/lib/supabase/server";
+import { PreviewShell } from "./PreviewShell";
+
+export const metadata: Metadata = { title: "Aperçu de votre site · SiteClic", robots: { index: false } };
+
+export default async function PreviewPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  let content: SiteContent | null = null;
+
+  // Exemples de démonstration, uniquement en développement.
+  if (id.startsWith("exemple-") && process.env.NODE_ENV !== "production") {
+    content = SAMPLE_SITES[id.replace("exemple-", "")] ?? null;
+  } else {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) redirect("/connexion");
+    const { data } = await supabase.from("sites").select("content").eq("id", id).maybeSingle();
+    const parsed = SiteContentSchema.safeParse(data?.content);
+    content = parsed.success ? parsed.data : null;
+  }
+  if (!content) notFound();
+
+  return (
+    <PreviewShell>
+      <SiteRenderer content={content} />
+    </PreviewShell>
+  );
+}
