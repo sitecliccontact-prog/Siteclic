@@ -1,13 +1,18 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-// Lien reçu par e-mail pour confirmer l'inscription.
+// Lien reçu par e-mail : confirmation d'inscription ou nouveau mot de passe.
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const nextParam = searchParams.get("next") ?? "";
+  const next = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/tableau-de-bord";
   if (code) {
     const supabase = await createClient();
-    await supabase.auth.exchangeCodeForSession(code);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error && next === "/nouveau-mot-de-passe") {
+      return NextResponse.redirect(`${origin}/mot-de-passe-oublie?lien=expire`);
+    }
   }
-  return NextResponse.redirect(`${origin}/tableau-de-bord`);
+  return NextResponse.redirect(`${origin}${next}`);
 }

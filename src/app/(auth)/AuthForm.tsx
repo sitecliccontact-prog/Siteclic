@@ -68,13 +68,14 @@ export function AuthForm({ mode }: { mode: Mode }) {
         <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
           placeholder="vous@exemple.fr" autoComplete="email" inputMode="email" className={inputCls} />
       </Field>
-      <Field label="Mot de passe" htmlFor="password" hint={isSignup ? "8 caractères minimum" : undefined}>
+      <Field label="Mot de passe" htmlFor="password"
+        hint={isSignup ? "8 caractères minimum" : <Link href="/mot-de-passe-oublie" className="text-clic underline-offset-4 hover:underline">Mot de passe oublié ?</Link>}>
         <input id="password" type="password" required minLength={8} value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete={isSignup ? "new-password" : "current-password"} className={inputCls} />
       </Field>
 
-      {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+      {error && <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</p>}
       {info && <p role="status" className="rounded-xl bg-sand px-4 py-3 text-sm text-ink">{info}</p>}
 
       <button type="submit" disabled={loading}
@@ -93,10 +94,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
   );
 }
 
-const inputCls =
+export const inputCls =
   "w-full rounded-2xl border border-line bg-card px-4 py-3.5 text-base outline-none transition placeholder:text-muted/60 focus:border-ink focus:ring-4 focus:ring-ink/5";
 
-function Field({ label, htmlFor, hint, children }: { label: string; htmlFor: string; hint?: string; children: React.ReactNode }) {
+export function Field({ label, htmlFor, hint, children }: { label: string; htmlFor: string; hint?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
       <label htmlFor={htmlFor} className="mb-1.5 flex items-baseline justify-between text-sm font-medium">
