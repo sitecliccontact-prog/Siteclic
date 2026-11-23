@@ -15,6 +15,10 @@ create table if not exists public.sites (
 
 alter table public.sites enable row level security;
 
+-- Les nouveaux projets Supabase ne donnent plus ces droits automatiquement.
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on table public.sites to authenticated;
+
 -- Chaque client ne voit et ne modifie que ses propres sites.
 drop policy if exists "sites_select_own" on public.sites;
 create policy "sites_select_own" on public.sites for select using (auth.uid() = user_id);
