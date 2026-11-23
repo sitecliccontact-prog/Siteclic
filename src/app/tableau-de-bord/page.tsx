@@ -66,9 +66,9 @@ export default async function Dashboard() {
             primary
           />
           <ActionCard
+            href="/tableau-de-bord/importer"
             title="Importer mon site actuel"
             text="Collez l'adresse de votre site, l'IA en fait une version plus belle et plus moderne."
-            badge="Bientôt"
           />
         </div>
 

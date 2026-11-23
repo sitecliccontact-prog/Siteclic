@@ -47,6 +47,7 @@ const restaurant: SiteContent = {
   ],
   contact: { address: "12 rue des Tanneurs, 13100 Aix-en-Provence", phone: "04 42 00 00 00", email: "" },
   closing: { title: "On vous garde une table ?", text: "La salle compte vingt-quatre couverts. Pensez à réserver, surtout le vendredi et le samedi soir." },
+  photos: [],
   seo: { title: "Le Petit Provençal, restaurant à Aix-en-Provence", description: "Cuisine provençale de marché, faite maison, rue des Tanneurs à Aix-en-Provence." },
 };
 
@@ -81,6 +82,7 @@ const coiffeur: SiteContent = {
   hours: [{ days: "Mardi – Vendredi", time: "9h30 – 19h" }, { days: "Samedi", time: "9h – 17h" }],
   contact: { address: "4 quai de la Fosse, 44000 Nantes", phone: "02 40 00 00 00", email: "bonjour@maisonrivage.fr" },
   closing: { title: "Votre prochaine coupe commence ici", text: "Réservez par téléphone, du mardi au samedi." },
+  photos: [],
   seo: { title: "Maison Rivage, salon de coiffure à Nantes", description: "Coupes, couleurs végétales et soins sur mesure, quai de la Fosse à Nantes." },
 };
 

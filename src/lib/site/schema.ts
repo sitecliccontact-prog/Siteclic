@@ -54,6 +54,9 @@ export const SiteContentSchema = z.object({
     title: z.string().describe("Phrase d'invitation finale, courte"),
     text: z.string(),
   }),
+  photos: z
+    .array(z.string())
+    .describe("Adresses d'images à afficher (la première en grand). Uniquement des adresses fournies dans les informations ; tableau vide sinon."),
   seo: z.object({
     title: z.string().describe("Titre pour Google, 50 à 60 caractères"),
     description: z.string().describe("Description pour Google, 140 à 160 caractères"),
@@ -77,3 +80,10 @@ export const BriefSchema = z.object({
 });
 
 export type Brief = z.infer<typeof BriefSchema>;
+
+/** Lit un contenu enregistré (les anciens sites n'ont pas encore de photos). */
+export function parseStoredContent(raw: unknown): SiteContent | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = SiteContentSchema.safeParse({ photos: [], ...(raw as object) });
+  return r.success ? r.data : null;
+}

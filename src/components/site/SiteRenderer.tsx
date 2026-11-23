@@ -15,6 +15,9 @@ export function SiteRenderer({ content }: { content: SiteContent }) {
   } as CSSProperties;
 
   const { brand, hero, about, highlights, offer, hours, contact, closing } = content;
+  const photos = (content.photos ?? []).filter((u) => /^https?:\/\//.test(u));
+  const heroPhoto = photos[0];
+  const gallery = photos.slice(1, 7);
   const phoneHref = contact.phone ? `tel:${contact.phone.replace(/[^\d+]/g, "")}` : undefined;
   const ctaHref = phoneHref ?? "#infos";
   const mapsHref = contact.address
@@ -51,11 +54,20 @@ export function SiteRenderer({ content }: { content: SiteContent }) {
               {hasOffer && <a href="#offre" className="s-btn s-btn-ghost">Découvrir {lowerFirst(shortTitle(offer.title))}</a>}
             </div>
           </div>
-          <div className="s-mark" aria-hidden>
-            <span className="s-display">{initial}</span>
-            <i />
-            <p>{brand.tagline}</p>
-          </div>
+          {heroPhoto ? (
+            <div className="s-mark s-photo">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={heroPhoto} alt="" referrerPolicy="no-referrer" />
+              <i />
+              <p>{brand.tagline}</p>
+            </div>
+          ) : (
+            <div className="s-mark" aria-hidden>
+              <span className="s-display">{initial}</span>
+              <i />
+              <p>{brand.tagline}</p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -69,6 +81,18 @@ export function SiteRenderer({ content }: { content: SiteContent }) {
                 <h3 className="s-display">{h.title}</h3>
                 <p>{h.text}</p>
               </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Galerie */}
+      {gallery.length > 0 && (
+        <section className="s-gallery">
+          <div className="s-wrap s-gallery-grid">
+            {gallery.map((src, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={i} src={src} alt="" loading="lazy" referrerPolicy="no-referrer" />
             ))}
           </div>
         </section>
@@ -194,6 +218,16 @@ const SITE_CSS = `
 .site .s-mark span{position:absolute;inset:0 0 22% 0;display:grid;place-items:center;font-size:clamp(200px,22vw,340px);line-height:1;color:var(--accent)}
 .site .s-mark i{display:block;width:48px;height:2px;background:var(--accent);margin-bottom:16px;position:relative}
 .site .s-mark p{position:relative;font-family:var(--display),serif;font-size:clamp(22px,2.4vw,30px);line-height:1.15;margin:0;max-width:16ch;font-style:italic}
+.site .s-photo{padding:0;justify-content:flex-end}
+.site .s-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.site .s-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.6),transparent 55%)}
+.site .s-photo i,.site .s-photo p{z-index:1;margin-left:32px;color:#fff}
+.site .s-photo p{margin-bottom:32px}
+.site .s-photo i{background:#fff}
+.site .s-gallery{padding:clamp(40px,6vw,72px) 0 0}
+.site .s-gallery-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:820px){.site .s-gallery-grid{grid-template-columns:repeat(3,1fr);gap:16px}}
+.site .s-gallery-grid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:20px;display:block}
 .site .s-highlights{border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .site .s-grid3{display:grid;gap:0}
 @media(min-width:820px){.site .s-grid3{grid-template-columns:repeat(3,1fr)}}

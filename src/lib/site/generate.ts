@@ -1,24 +1,46 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
+import { z } from "zod";
 import { SiteContentSchema, type Brief, type SiteContent } from "./schema";
+import type { ImportedSite } from "./importer";
 
-const SYSTEM = `Tu es directeur de création dans une agence web parisienne haut de gamme. Tu écris le contenu du site d'un commerce de proximité (restaurant, boulangerie, coiffeur, fleuriste…) à partir des réponses de son propriétaire.
-
-Le site doit ressembler au travail d'une vraie agence, jamais à un texte généré par une machine :
+const WRITING_RULES = `Le site doit ressembler au travail d'une vraie agence, jamais à un texte généré par une machine :
 - Ton concret, chaleureux, précis. Phrases courtes. Pas de superlatifs creux (« exceptionnel », « inoubliable », « passion », « savoir-faire unique », « au cœur de »), pas d'emojis, pas de points d'exclamation en série.
-- Utilise les détails réels donnés par le client (produits, quartier, histoire) plutôt que des généralités.
-- N'invente jamais de faits vérifiables : pas de prix, d'horaires, d'adresse, de téléphone, de récompenses, d'avis clients ou de chiffres que le client n'a pas donnés. Si une information manque, laisse le champ vide ("") plutôt que de l'inventer.
-- Tu peux reformuler et mettre en valeur ce que le client a écrit, corriger l'orthographe et regrouper les horaires proprement.
+- Utilise les détails réels du commerce (produits, quartier, histoire) plutôt que des généralités.
+- N'invente jamais de faits vérifiables : pas de prix, d'horaires, d'adresse, de téléphone, de récompenses, d'avis clients ou de chiffres absents des informations. Si une information manque, laisse le champ vide ("") plutôt que de l'inventer.
 - Écris en français, vouvoiement pour s'adresser aux visiteurs.
 
-Choix du thème visuel :
+Thèmes visuels possibles :
 - bistrot : vert profond et crème, typographie classique. Restaurants traditionnels, bistrots, caves, épiceries fines.
 - atelier : blanc et noir, très graphique et moderne. Coiffeurs, barbiers, boutiques de créateurs, concept stores.
 - terracotta : tons chauds ocre et sable. Boulangeries, pâtisseries, cuisine du sud, cafés chaleureux.
 - minuit : bleu nuit et or, élégant et feutré. Restaurants gastronomiques, bars à cocktails, instituts de beauté haut de gamme.
-- jardin : vert sauge et ivoire, doux et naturel. Fleuristes, bien-être, salons de thé, produits bio.
-Tiens compte de l'ambiance souhaitée par le client.`;
+- jardin : vert sauge et ivoire, doux et naturel. Fleuristes, bien-être, salons de thé, produits bio.`;
+
+export class GenerationError extends Error {}
+
+async function ask<T extends z.ZodType>(schema: T, system: string, user: string): Promise<z.infer<T>> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new GenerationError("La clé de l'IA n'est pas encore configurée.");
+  }
+  const client = new Anthropic();
+  const response = await client.beta.messages.parse({
+    model: "claude-opus-5-5",
+    max_tokens: 16000,
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    output_config: { effort: "medium", format: betaZodOutputFormat(schema) },
+    system,
+    messages: [{ role: "user", content: user }],
+  });
+  if (response.stop_reason === "refusal" || !response.parsed_output) {
+    throw new GenerationError("L'IA n'a pas pu traiter cette demande. Reformulez et réessayez.");
+  }
+  return response.parsed_output as z.infer<T>;
+}
+
+/* ---------- Étape 2 : créer un site à partir du questionnaire ---------- */
 
 function briefToText(b: Brief) {
   const lines = [
@@ -36,31 +58,54 @@ function briefToText(b: Brief) {
   return lines.filter(Boolean).join("\n\n");
 }
 
-export class GenerationError extends Error {}
-
 export async function generateSiteContent(brief: Brief): Promise<SiteContent> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new GenerationError("La clé de l'IA n'est pas encore configurée.");
-  }
-  const client = new Anthropic();
+  const content = await ask(
+    SiteContentSchema,
+    `Tu es directeur de création dans une agence web haut de gamme. Tu écris le contenu du site d'un commerce de proximité à partir des réponses de son propriétaire.\n\n${WRITING_RULES}\n\nTu peux reformuler et mettre en valeur ce que le client a écrit, corriger l'orthographe et regrouper les horaires proprement. Tiens compte de l'ambiance souhaitée. Aucune photo n'est fournie : photos doit être un tableau vide.`,
+    `Voici les réponses du propriétaire. Écris le contenu complet de son site.\n\n<reponses>\n${briefToText(brief)}\n</reponses>`,
+  );
+  return { ...content, photos: [] };
+}
 
-  const response = await client.beta.messages.parse({
-    model: "claude-opus-5-5",
-    max_tokens: 16000,
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    output_config: { effort: "medium", format: betaZodOutputFormat(SiteContentSchema) },
-    system: SYSTEM,
-    messages: [
-      {
-        role: "user",
-        content: `Voici les réponses du propriétaire. Écris le contenu complet de son site.\n\n<reponses>\n${briefToText(brief)}\n</reponses>`,
-      },
-    ],
-  });
+/* ---------- Étape 3 : améliorer un site existant ---------- */
 
-  if (response.stop_reason === "refusal" || !response.parsed_output) {
-    throw new GenerationError("L'IA n'a pas pu créer ce site. Réessayez en reformulant vos réponses.");
-  }
-  return response.parsed_output;
+export async function generateFromImport(site: ImportedSite): Promise<SiteContent> {
+  const pages = site.pages.map((p) => `<page url="${p.url}">\n${p.text}\n</page>`).join("\n\n");
+  const images = site.images.map((u, i) => `${i + 1}. ${u}`).join("\n");
+  const content = await ask(
+    SiteContentSchema,
+    `Tu es directeur de création dans une agence web haut de gamme. Un commerçant te confie son site actuel, vieillissant. Tu en fais une version moderne et élégante, en gardant fidèlement ses informations réelles.\n\n${WRITING_RULES}\n\nRègles pour la reprise :
+- Reprends exactement les faits du site actuel : nom, adresse, téléphone, e-mail, horaires, produits, services et prix. Ne change aucun prix ni horaire.
+- Réécris les textes pour qu'ils soient plus clairs et plus engageants, sans rien inventer.
+- Ignore les mentions légales, cookies, menus de navigation et textes techniques.
+- Photos : choisis dans la liste fournie 1 à 7 vraies photos du commerce, de ses produits ou de son lieu (la plus belle en premier). Exclus logos, icônes, bannières, boutons, cartes et images de réseaux sociaux. Recopie les adresses exactement. Tableau vide si aucune ne convient.`,
+    `Voici le contenu du site actuel (${site.url}).\n\nTitre : ${site.title}\nDescription : ${site.description}\n\n${pages}\n\nImages trouvées sur le site :\n${images || "(aucune)"}`,
+  );
+  const allowed = new Set(site.images);
+  return { ...content, photos: content.photos.filter((u) => allowed.has(u)).slice(0, 7) };
+}
+
+/* ---------- Étape 4 : modifier un site en écrivant à l'IA ---------- */
+
+const EditSchema = z.object({
+  reply: z.string().describe("Réponse courte au commerçant (1 à 2 phrases, vouvoiement) qui dit ce qui a été changé, ou pourquoi ce n'est pas possible"),
+  content: SiteContentSchema,
+});
+
+export async function editSiteContent(current: SiteContent, instruction: string) {
+  const result = await ask(
+    EditSchema,
+    `Tu es l'assistant de SiteClic. Un commerçant te demande de modifier son site. Tu reçois le contenu actuel du site en JSON et sa demande.\n\nRègles :
+- Applique uniquement la demande. Recopie tout le reste à l'identique, mot pour mot.
+- Si la demande donne une nouvelle information (horaires, prix, plat, téléphone…), mets-la à jour partout où elle apparaît.
+- Si la demande est floue ou impossible (par exemple ajouter une photo, ce qui se fait avec le bouton « Photos »), ne change rien et explique-le gentiment dans reply.
+- Pour photos : garde exactement les mêmes adresses, sauf si le commerçant demande d'en retirer ou d'en changer l'ordre.
+- Pour changer l'ambiance ou les couleurs, choisis le thème le plus proche parmi : bistrot, atelier, terracotta, minuit, jardin.\n\n${WRITING_RULES}`,
+    `<site_actuel>\n${JSON.stringify(current)}\n</site_actuel>\n\n<demande>\n${instruction}\n</demande>`,
+  );
+  const allowed = new Set(current.photos);
+  return {
+    reply: result.reply,
+    content: { ...result.content, photos: result.content.photos.filter((u) => allowed.has(u)) },
+  };
 }

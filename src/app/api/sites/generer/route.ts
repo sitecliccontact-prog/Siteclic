@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { BriefSchema } from "@/lib/site/schema";
 import { generateSiteContent, GenerationError } from "@/lib/site/generate";
 import { createClient } from "@/lib/supabase/server";
+import { dailyLimitReached } from "@/lib/site/limits";
 
 export const maxDuration = 300; // la création peut prendre jusqu'à une minute ou deux
 
@@ -16,13 +17,7 @@ export async function POST(request: Request) {
   }
   const brief = parsed.data;
 
-  // Limite simple : 5 créations par jour et par compte, pour maîtriser les coûts.
-  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-  const { count } = await supabase
-    .from("sites")
-    .select("id", { count: "exact", head: true })
-    .gte("created_at", since);
-  if ((count ?? 0) >= 5) {
+  if (await dailyLimitReached(supabase)) {
     return NextResponse.json(
       { error: "Vous avez déjà créé 5 sites aujourd'hui. Revenez demain, ou modifiez un site existant." },
       { status: 429 },

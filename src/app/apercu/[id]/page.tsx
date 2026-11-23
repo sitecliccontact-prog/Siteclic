@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { SiteRenderer } from "@/components/site/SiteRenderer";
 import { SAMPLE_SITES } from "@/lib/site/samples";
-import { SiteContentSchema, type SiteContent } from "@/lib/site/schema";
+import { parseStoredContent, type SiteContent } from "@/lib/site/schema";
 import { createClient } from "@/lib/supabase/server";
 import { PreviewShell } from "./PreviewShell";
 
@@ -20,8 +20,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ id: st
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect("/connexion");
     const { data } = await supabase.from("sites").select("content").eq("id", id).maybeSingle();
-    const parsed = SiteContentSchema.safeParse(data?.content);
-    content = parsed.success ? parsed.data : null;
+    content = parseStoredContent(data?.content);
   }
   if (!content) notFound();
 

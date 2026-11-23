@@ -168,10 +168,10 @@ export function Wizard({ defaultName }: { defaultName: string }) {
   );
 }
 
-function Generating() {
+export function Generating({ steps = LOADING }: { steps?: string[] }) {
   const [i, setI] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setI((n) => Math.min(n + 1, LOADING.length - 1)), 9000);
+    const t = setInterval(() => setI((n) => Math.min(n + 1, steps.length - 1)), 9000);
     return () => clearInterval(t);
   }, []);
   return (
@@ -182,7 +182,7 @@ function Generating() {
         <div className="absolute inset-7 rounded-full bg-clic" />
       </div>
       <h2 className="mt-10 font-display text-3xl font-extrabold tracking-tight">Votre site prend forme</h2>
-      <p key={i} className="rise mt-3 text-muted">{LOADING[i]}</p>
+      <p key={i} className="rise mt-3 text-muted">{steps[i]}</p>
       <p className="mt-8 text-sm text-muted/70">Cela prend environ une minute. Ne fermez pas cette page.</p>
     </div>
   );
