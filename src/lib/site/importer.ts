@@ -48,7 +48,7 @@ function isPrivateIp(ip: string) {
 }
 
 /** Refuse les adresses internes (sécurité : on ne va chercher que des sites publics). */
-async function assertPublicHost(url: URL) {
+export async function assertPublicHost(url: URL) {
   const host = url.hostname.replace(/^\[|\]$/g, "");
   if (isIP(host) || /^(localhost|.*\.local|.*\.internal)$/i.test(host)) {
     throw new ImportError("Cette adresse n'est pas acceptée.");

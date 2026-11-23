@@ -4,6 +4,7 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { SiteContentSchema, type Brief, type SiteContent } from "./schema";
 import type { ImportedSite } from "./importer";
+import type { PreparedPhoto } from "./import-photos";
 
 const WRITING_RULES = `Le site doit ressembler au travail d'une vraie agence, jamais à un texte généré par une machine :
 - Ton concret, chaleureux, précis. Phrases courtes. Pas de superlatifs creux (« exceptionnel », « inoubliable », « passion », « savoir-faire unique », « au cœur de »), pas d'emojis, pas de points d'exclamation en série.
@@ -11,18 +12,34 @@ const WRITING_RULES = `Le site doit ressembler au travail d'une vraie agence, ja
 - N'invente jamais de faits vérifiables : pas de prix, d'horaires, d'adresse, de téléphone, de récompenses, d'avis clients ou de chiffres absents des informations. Si une information manque, laisse le champ vide ("") plutôt que de l'inventer.
 - Écris en français, vouvoiement pour s'adresser aux visiteurs.
 
+Exigences de qualité (le site doit être digne d'une agence parisienne) :
+- Titre d'accueil (hero.title) : 4 à 9 mots, une idée forte et propre à CE commerce, jamais une formule passe-partout (« Bienvenue chez… », « Une expérience unique », « L'art de… »).
+- Sous-titre : 1 à 2 phrases concrètes (ce qu'on y trouve, où, pour qui).
+- eyebrow : « Métier · Ville » en peu de mots.
+- about.title : une phrase courte et incarnée ; about.paragraphs : 2 ou 3 paragraphes, le premier est une phrase d'accroche marquante (il s'affiche en grand), les suivants donnent des détails vrais.
+- highlights : 3 ou 4 points forts courts et spécifiques (titre de 1 à 3 mots, texte d'une phrase). Pas de banalités (« Accueil chaleureux », « Qualité »).
+- Offre : regroupe en catégories claires ; noms des produits tels quels, descriptions courtes et appétissantes seulement si l'information existe.
+- Horaires : lignes regroupées et lisibles (« Mardi – Samedi » / « 12h – 14h · 19h – 22h »), « Fermé » pour les jours de fermeture.
+- closing : une invitation courte et naturelle, adaptée au métier (réserver, passer, appeler).
+- cta : 2 à 3 mots, verbe d'action adapté (« Réserver une table », « Prendre rendez-vous », « Nous appeler »).
+- seo : titre « Nom – métier à Ville » et description utile de 140 à 160 caractères.
+
 Thèmes visuels possibles :
 - bistrot : vert profond et crème, typographie classique. Restaurants traditionnels, bistrots, caves, épiceries fines.
 - atelier : blanc et noir, très graphique et moderne. Coiffeurs, barbiers, boutiques de créateurs, concept stores.
 - terracotta : tons chauds ocre et sable. Boulangeries, pâtisseries, cuisine du sud, cafés chaleureux.
 - minuit : bleu nuit et or, élégant et feutré. Restaurants gastronomiques, bars à cocktails, instituts de beauté haut de gamme.
-- jardin : vert sauge et ivoire, doux et naturel. Fleuristes, bien-être, salons de thé, produits bio.`;
+- jardin : vert sauge et ivoire, doux et naturel. Fleuristes, bien-être, salons de thé, produits bio.
+
+Choisis le thème qui correspond le mieux à l'identité du commerce et, s'il y a des photos, à leurs couleurs et à leur ambiance (un thème qui s'accorde avec les photos, pas qui les contredit).`;
 
 export class GenerationError extends Error {}
 
 type UserContent = string | Anthropic.Beta.Messages.BetaContentBlockParam[];
 
-export async function ask<T extends z.ZodType>(schema: T, system: string, user: UserContent): Promise<z.infer<T>> {
+type Effort = "low" | "medium" | "high";
+
+export async function ask<T extends z.ZodType>(schema: T, system: string, user: UserContent, effort: Effort = "medium"): Promise<z.infer<T>> {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new GenerationError("La clé de l'IA n'est pas encore configurée.");
   }
@@ -32,7 +49,7 @@ export async function ask<T extends z.ZodType>(schema: T, system: string, user: 
     max_tokens: 16000,
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
-    output_config: { effort: "medium", format: betaZodOutputFormat(schema) },
+    output_config: { effort, format: betaZodOutputFormat(schema) },
     system,
     messages: [{ role: "user", content: user }],
   });
@@ -65,15 +82,24 @@ export async function generateSiteContent(brief: Brief): Promise<SiteContent> {
     SiteContentSchema,
     `Tu es directeur de création dans une agence web haut de gamme. Tu écris le contenu du site d'un commerce de proximité à partir des réponses de son propriétaire.\n\n${WRITING_RULES}\n\nTu peux reformuler et mettre en valeur ce que le client a écrit, corriger l'orthographe et regrouper les horaires proprement. Tiens compte de l'ambiance souhaitée. Aucune photo n'est fournie : photos doit être un tableau vide.`,
     `Voici les réponses du propriétaire. Écris le contenu complet de son site.\n\n<reponses>\n${briefToText(brief)}\n</reponses>`,
+    "high",
   );
   return { ...content, photos: [] };
 }
 
 /* ---------- Étape 3 : améliorer un site existant ---------- */
 
-export async function generateFromImport(site: ImportedSite): Promise<SiteContent> {
+export async function generateFromImport(site: ImportedSite, photos: PreparedPhoto[]): Promise<SiteContent> {
   const pages = site.pages.map((p) => `<page url="${p.url}">\n${p.text}\n</page>`).join("\n\n");
-  const images = site.images.map((u, i) => `${i + 1}. ${u}`).join("\n");
+  const blocks: Anthropic.Beta.Messages.BetaContentBlockParam[] = [];
+  photos.forEach((p, i) => {
+    blocks.push({ type: "text", text: `Photo n°${i + 1} (${p.width}×${p.height}) : ${p.url}` });
+    blocks.push({ type: "image", source: { type: "base64", media_type: "image/webp", data: p.data.toString("base64") } });
+  });
+  blocks.push({
+    type: "text",
+    text: `Voici le contenu du site actuel (${site.url}).\n\nTitre : ${site.title}\nDescription : ${site.description}\n\n${pages}\n\n${photos.length ? `Les ${photos.length} photos ci-dessus viennent de ce site.` : "Aucune photo exploitable n'a été trouvée."}`,
+  });
   const content = await ask(
     SiteContentSchema,
     `Tu es directeur de création dans une agence web haut de gamme. Un commerçant te confie son site actuel, vieillissant. Tu en fais une version moderne et élégante, en gardant fidèlement ses informations réelles.\n\n${WRITING_RULES}\n\nRègles pour la reprise :
@@ -81,11 +107,12 @@ export async function generateFromImport(site: ImportedSite): Promise<SiteConten
 - Réécris les textes pour qu'ils soient plus clairs et plus engageants, sans rien inventer.
 - Ignore les mentions légales, cookies, menus de navigation et textes techniques.
 - Si la page appartient à une chaîne ou une enseigne à plusieurs adresses, ne décris que CE commerce-ci (son adresse, ses horaires, son téléphone) et ignore les autres boutiques.
-- Photos : choisis dans la liste fournie 1 à 7 vraies photos du commerce, de ses produits ou de son lieu (la plus belle en premier). Exclus logos, icônes, bannières, boutons, cartes et images de réseaux sociaux. Recopie les adresses exactement. Tableau vide si aucune ne convient.`,
-    `Voici le contenu du site actuel (${site.url}).\n\nTitre : ${site.title}\nDescription : ${site.description}\n\n${pages}\n\nImages trouvées sur le site :\n${images || "(aucune)"}`,
+- Photos : regarde chaque photo. Garde seulement les belles photos du lieu, des produits, des plats ou de l'équipe, nettes et bien cadrées. Exclus toute image qui contient du texte, des prix, des chiffres, un logo, une affiche, une promotion, un menu photographié, un plan, une capture d'écran ou un montage, ainsi que les images floues ou sombres. Mets en premier la plus belle photo d'ambiance au format paysage (elle s'affiche en très grand en haut du site), puis 2 à 6 autres variées. Recopie les adresses exactement. Tableau vide si aucune ne convient.`,
+    blocks,
+    "high",
   );
-  const allowed = new Set(site.images);
-  return { ...content, photos: content.photos.filter((u) => allowed.has(u)).slice(0, 7) };
+  const allowed = new Set(photos.map((p) => p.url));
+  return { ...content, photos: [...new Set(content.photos.filter((u) => allowed.has(u)))].slice(0, 7) };
 }
 
 /* ---------- Étape 4 : modifier un site en écrivant à l'IA ---------- */

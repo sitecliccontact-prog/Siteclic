@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { explainError, generateFromImport } from "@/lib/site/generate";
 import { importSite, ImportError } from "@/lib/site/importer";
+import { preparePhotos, type PreparedPhoto } from "@/lib/site/import-photos";
 import { requireSubscription } from "@/lib/billing/guard";
 import { createClient } from "@/lib/supabase/server";
 import { creationBlocked } from "@/lib/site/limits";
@@ -27,7 +28,9 @@ export async function POST(request: Request) {
 
   try {
     const imported = await importSite(parsed.data.url);
-    const content = await generateFromImport(imported);
+    const photos = await preparePhotos(imported.images);
+    const content = await generateFromImport(imported, photos);
+    content.photos = await rehost(supabase, user.id, content.photos, photos);
     const { data, error } = await supabase
       .from("sites")
       .insert({
@@ -45,4 +48,27 @@ export async function POST(request: Request) {
     const message = err instanceof ImportError ? err.message : explainError(err, "L'import a échoué. Réessayez dans un instant.");
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+/** Copie les photos choisies chez nous : elles restent nettes, rapides et ne disparaissent pas si l'ancien site change. */
+async function rehost(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  chosen: string[],
+  prepared: PreparedPhoto[],
+): Promise<string[]> {
+  const stamp = Date.now().toString(36);
+  return Promise.all(
+    chosen.map(async (url, i) => {
+      const photo = prepared.find((p) => p.url === url);
+      if (!photo) return url;
+      const path = `${userId}/import-${stamp}/${i + 1}.webp`;
+      const { error } = await supabase.storage.from("photos").upload(path, photo.data, { contentType: "image/webp", cacheControl: "31536000" });
+      if (error) {
+        console.error("Copie de photo impossible", error.message);
+        return url;
+      }
+      return supabase.storage.from("photos").getPublicUrl(path).data.publicUrl;
+    }),
+  );
 }
