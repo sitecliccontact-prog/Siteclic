@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { PublishButton, type PublishState } from "@/components/PublishButton";
 import { SiteRenderer } from "@/components/site/SiteRenderer";
+import { MAX_PHOTOS, uploadPhoto } from "@/lib/site/photos";
 import type { SiteContent, ThemeName } from "@/lib/site/schema";
 
 type Tab = "ia" | "main" | "apercu";
-type Msg = { from: "moi" | "ia"; text: string; subscribe?: boolean };
+type Msg = { from: "moi" | "ia"; text: string; subscribe?: boolean; image?: string };
 type SaveState = "ok" | "saving" | "error";
 
 const SUGGESTIONS = [
@@ -75,6 +76,16 @@ export function Editor({ id, initial, publish }: { id: string; initial: SiteCont
     setHistory((h) => [...h.slice(-19), content]);
   }
 
+  // Ajoute des photos envoyées par le client et les enregistre tout de suite.
+  async function addPhotos(urls: string[]) {
+    remember(true);
+    const next = structuredClone(content);
+    next.photos = [...next.photos, ...urls].slice(0, MAX_PHOTOS);
+    setContent(next);
+    queueSave(next);
+    await flush();
+  }
+
   function undo() {
     const prev = history.at(-1);
     if (!prev) return;
@@ -123,9 +134,10 @@ export function Editor({ id, initial, publish }: { id: string; initial: SiteCont
             ))}
           </div>
           {tab === "main" ? (
-            <ManualPanel content={content} edit={(fn) => { remember(); edit(fn); }} />
+            <ManualPanel id={id} content={content} edit={(fn) => { remember(); edit(fn); }} addPhotos={addPhotos} />
           ) : (
-            <AiPanel id={id} onResult={(c) => { remember(true); setContent(c); setChanged(true); }} />
+            <AiPanel id={id} photoCount={content.photos.length} beforeSend={flush} addPhotos={addPhotos}
+              onResult={(c) => { remember(true); setContent(c); setChanged(true); }} />
           )}
         </aside>
 
@@ -144,7 +156,15 @@ export function Editor({ id, initial, publish }: { id: string; initial: SiteCont
 
 /* ---------- Écrire à l'IA ---------- */
 
-function AiPanel({ id, onResult }: { id: string; onResult: (c: SiteContent) => void }) {
+type AiProps = {
+  id: string;
+  photoCount: number;
+  onResult: (c: SiteContent) => void;
+  beforeSend: () => Promise<void>;
+  addPhotos: (urls: string[]) => Promise<void>;
+};
+
+function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
   const [msgs, setMsgs] = useState<Msg[]>([
     { from: "ia", text: "Bonjour ! Dites-moi ce que vous voulez changer sur votre site, comme dans un message. Par exemple : « On ferme à 19h le samedi »." },
   ]);
@@ -155,16 +175,45 @@ function AiPanel({ id, onResult }: { id: string; onResult: (c: SiteContent) => v
     end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [msgs, busy]);
 
+  const [lastPhoto, setLastPhoto] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  async function attach(files: FileList | null) {
+    if (!files?.length || busy) return;
+    if (photoCount >= MAX_PHOTOS) {
+      setMsgs((m) => [...m, { from: "ia", text: `Votre site a déjà ${MAX_PHOTOS} photos. Retirez-en une dans « Modifier moi-même » pour en ajouter une autre.` }]);
+      return;
+    }
+    const file = files[0];
+    setBusy(true);
+    try {
+      const url = await uploadPhoto(file, id);
+      await addPhotos([url]);
+      setLastPhoto(url);
+      setMsgs((m) => [...m,
+        { from: "moi", text: "", image: url },
+        { from: "ia", text: "Photo ajoutée à votre site. Où voulez-vous la mettre ? Par exemple : « Mets-la en grand en haut du site »." },
+      ]);
+    } catch (e) {
+      setMsgs((m) => [...m, { from: "ia", text: e instanceof Error ? e.message : "L'envoi de la photo a échoué." }]);
+    } finally {
+      setBusy(false);
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  }
+
   async function send(instruction: string) {
     if (!instruction.trim() || busy) return;
     setMsgs((m) => [...m, { from: "moi", text: instruction }]);
     setText("");
     setBusy(true);
     try {
+      await beforeSend();
+      const full = lastPhoto ? `${instruction}\n\n(Si je parle de « cette photo » ou « la photo », il s'agit de la dernière photo ajoutée : ${lastPhoto})` : instruction;
       const res = await fetch(`/api/sites/${id}/ia`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ instruction }),
+        body: JSON.stringify({ instruction: full }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 402) {
@@ -186,7 +235,11 @@ function AiPanel({ id, onResult }: { id: string; onResult: (c: SiteContent) => v
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
         {msgs.map((m, i) => (
           <div key={i}
-            className={`w-fit max-w-[88%] rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${m.from === "moi" ? "ml-auto rounded-br-md bg-clic text-white" : "rounded-bl-md bg-card"}`}>
+            className={`w-fit max-w-[88%] rounded-2xl text-[15px] leading-relaxed ${m.image ? "ml-auto overflow-hidden p-1" : `px-4 py-3 ${m.from === "moi" ? "ml-auto rounded-br-md bg-clic text-white" : "rounded-bl-md bg-card"}`}`}>
+            {m.image && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={m.image} alt="" className="max-h-56 rounded-xl object-cover" />
+            )}
             {m.text}
             {m.subscribe && (
               <Link href={`/abonnement?retour=/tableau-de-bord/sites/${id}`}
@@ -215,6 +268,13 @@ function AiPanel({ id, onResult }: { id: string; onResult: (c: SiteContent) => v
           ))}
         </div>
         <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="flex items-end gap-2">
+          <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={(e) => attach(e.target.files)} />
+          <button type="button" onClick={() => fileInput.current?.click()} disabled={busy} aria-label="Ajouter une photo" title="Ajouter une photo"
+            className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full border border-line text-muted transition hover:border-ink/40 hover:text-ink disabled:opacity-30">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" />
+            </svg>
+          </button>
           <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder="Que voulez-vous changer ?"
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(text); } }}
             className="min-h-[52px] flex-1 resize-none rounded-2xl border border-line bg-card px-4 py-3 text-[15px] outline-none focus:border-ink/60" />
@@ -230,7 +290,36 @@ function AiPanel({ id, onResult }: { id: string; onResult: (c: SiteContent) => v
 
 /* ---------- Modifier moi-même ---------- */
 
-function ManualPanel({ content: c, edit }: { content: SiteContent; edit: (fn: (d: SiteContent) => void) => void }) {
+type ManualProps = {
+  id: string;
+  content: SiteContent;
+  edit: (fn: (d: SiteContent) => void) => void;
+  addPhotos: (urls: string[]) => Promise<void>;
+};
+
+function ManualPanel({ id, content: c, edit, addPhotos }: ManualProps) {
+  const [upload, setUpload] = useState<{ done: number; total: number } | null>(null);
+  const [photoError, setPhotoError] = useState("");
+
+  async function addFiles(files: FileList | null) {
+    if (!files?.length || upload) return;
+    const list = Array.from(files).slice(0, Math.max(0, MAX_PHOTOS - c.photos.length));
+    if (!list.length) return setPhotoError(`${MAX_PHOTOS} photos au maximum. Retirez-en une pour en ajouter une autre.`);
+    setPhotoError("");
+    const urls: string[] = [];
+    setUpload({ done: 0, total: list.length });
+    for (const f of list) {
+      try {
+        urls.push(await uploadPhoto(f, id));
+      } catch (e) {
+        setPhotoError(e instanceof Error ? e.message : "L'envoi d'une photo a échoué.");
+      }
+      setUpload({ done: urls.length, total: list.length });
+    }
+    if (urls.length) await addPhotos(urls);
+    setUpload(null);
+  }
+
   return (
     <div className="flex-1 space-y-2 overflow-y-auto p-4 pb-16">
       <Block title="Style" open>
@@ -257,28 +346,42 @@ function ManualPanel({ content: c, edit }: { content: SiteContent; edit: (fn: (d
         <Field label="Texte du bouton" value={c.hero.cta} onChange={(v) => edit((d) => { d.hero.cta = v; })} />
       </Block>
 
-      <Block title="Photos">
-        {c.photos.length === 0 ? (
-          <p className="text-sm text-muted">Aucune photo pour l&apos;instant. L&apos;ajout de vos propres photos arrive bientôt.</p>
-        ) : (
-          <div className="grid grid-cols-3 gap-2">
-            {c.photos.map((src, i) => (
-              <div key={src} className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt="" referrerPolicy="no-referrer" className="aspect-square w-full rounded-xl object-cover" />
-                {i === 0 && <span className="absolute left-1.5 top-1.5 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-white">En grand</span>}
-                <div className="absolute bottom-1.5 right-1.5 flex gap-1">
-                  {i > 0 && (
-                    <button title="Mettre en premier" onClick={() => edit((d) => { d.photos.splice(i, 1); d.photos.unshift(src); })}
-                      className="rounded-full bg-black/60 px-2 py-0.5 text-[11px] text-white">★</button>
-                  )}
-                  <button title="Retirer" onClick={() => edit((d) => { d.photos.splice(i, 1); })}
-                    className="rounded-full bg-black/60 px-2 py-0.5 text-[11px] text-white">✕</button>
-                </div>
+      <Block title="Photos" open>
+        <div className="grid grid-cols-3 gap-2">
+          {c.photos.map((src, i) => (
+            <div key={src} className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt="" referrerPolicy="no-referrer" className="aspect-square w-full rounded-xl object-cover" />
+              {i === 0 && <span className="absolute left-1.5 top-1.5 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-white">En grand</span>}
+              <div className="absolute bottom-1.5 right-1.5 flex gap-1">
+                {i > 0 && (
+                  <button title="Mettre en grand" onClick={() => edit((d) => { d.photos.splice(i, 1); d.photos.unshift(src); })}
+                    className="rounded-full bg-black/60 px-2 py-0.5 text-[11px] text-white">★</button>
+                )}
+                <button title="Retirer" onClick={() => edit((d) => { d.photos.splice(i, 1); })}
+                  className="rounded-full bg-black/60 px-2 py-0.5 text-[11px] text-white">✕</button>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          ))}
+          {c.photos.length < MAX_PHOTOS && (
+            <label className={`flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-line text-center text-xs text-muted transition hover:border-clic hover:text-ink ${upload ? "pointer-events-none" : ""}`}>
+              <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+              {upload ? (
+                <>
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-line border-t-clic" />
+                  Envoi {Math.min(upload.done + 1, upload.total)}/{upload.total}
+                </>
+              ) : (
+                <>
+                  <span className="text-2xl leading-none text-clic">+</span>
+                  Ajouter des photos
+                </>
+              )}
+            </label>
+          )}
+        </div>
+        <p className="text-xs text-muted">La photo marquée « En grand » s&apos;affiche en haut de votre site. Touchez ★ pour la changer.</p>
+        {photoError && <p role="alert" className="text-sm text-red-400">{photoError}</p>}
       </Block>
 
       <Block title="Points forts">

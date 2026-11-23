@@ -20,7 +20,9 @@ Thèmes visuels possibles :
 
 export class GenerationError extends Error {}
 
-export async function ask<T extends z.ZodType>(schema: T, system: string, user: string): Promise<z.infer<T>> {
+type UserContent = string | Anthropic.Beta.Messages.BetaContentBlockParam[];
+
+export async function ask<T extends z.ZodType>(schema: T, system: string, user: UserContent): Promise<z.infer<T>> {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new GenerationError("La clé de l'IA n'est pas encore configurée.");
   }
@@ -93,16 +95,32 @@ const EditSchema = z.object({
   content: SiteContentSchema,
 });
 
+/** Photos envoyées par les clients (hébergées chez nous) : l'IA peut les regarder. */
+function isOwnPhoto(url: string) {
+  return /^https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/public\/photos\//.test(url);
+}
+
 export async function editSiteContent(current: SiteContent, instruction: string) {
+  const text = `<site_actuel>\n${JSON.stringify(current)}\n</site_actuel>\n\n<demande>\n${instruction}\n</demande>`;
+  // Si la demande parle de photos, on montre les photos à l'IA pour qu'elle sache laquelle est laquelle.
+  const showPhotos = /photo|image|visuel|en haut|en grand|galerie/i.test(instruction);
+  const blocks: Anthropic.Beta.Messages.BetaContentBlockParam[] = [];
+  if (showPhotos) {
+    current.photos.forEach((url, i) => {
+      if (!isOwnPhoto(url)) return;
+      blocks.push({ type: "text", text: `Photo n°${i + 1} (photos[${i}]) : ${url}` });
+      blocks.push({ type: "image", source: { type: "url", url } });
+    });
+  }
   const result = await ask(
     EditSchema,
-    `Tu es l'assistant de SiteClic. Un commerçant te demande de modifier son site. Tu reçois le contenu actuel du site en JSON et sa demande.\n\nRègles :
+    `Tu es l'assistant de SiteClic. Un commerçant te demande de modifier son site. Tu reçois le contenu actuel du site en JSON, éventuellement ses photos, et sa demande.\n\nRègles :
 - Applique uniquement la demande. Recopie tout le reste à l'identique, mot pour mot.
 - Si la demande donne une nouvelle information (horaires, prix, plat, téléphone…), mets-la à jour partout où elle apparaît.
-- Si la demande est floue ou impossible (par exemple ajouter une photo, ce qui se fait avec le bouton « Photos »), ne change rien et explique-le gentiment dans reply.
-- Pour photos : garde exactement les mêmes adresses, sauf si le commerçant demande d'en retirer ou d'en changer l'ordre.
+- Photos : la première du tableau photos s'affiche en grand en haut du site, les suivantes dans la galerie. Tu peux changer leur ordre ou en retirer selon la demande, en recopiant les adresses exactement. Tu ne peux pas en inventer : pour en ajouter une, le commerçant utilise le bouton photo (appareil photo) à côté du message.
+- Si la demande est floue ou impossible, ne change rien et explique-le gentiment dans reply.
 - Pour changer l'ambiance ou les couleurs, choisis le thème le plus proche parmi : bistrot, atelier, terracotta, minuit, jardin.\n\n${WRITING_RULES}`,
-    `<site_actuel>\n${JSON.stringify(current)}\n</site_actuel>\n\n<demande>\n${instruction}\n</demande>`,
+    blocks.length ? [...blocks, { type: "text", text }] : text,
   );
   const allowed = new Set(current.photos);
   return {

@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export const maxDuration = 300;
 
-const Body = z.object({ instruction: z.string().trim().min(2).max(1000) });
+const Body = z.object({ instruction: z.string().trim().min(2).max(1500) });
 
 /** Modifie le site à partir d'une demande écrite (« on ferme à 19h le samedi »). */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
