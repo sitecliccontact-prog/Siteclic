@@ -22,7 +22,7 @@ export default async function CreatePage() {
         {blocked ? (
           <div className="rise mx-auto max-w-md rounded-3xl border border-line bg-card p-7">
             <p className="text-sm font-medium uppercase tracking-[0.18em] text-clic">Créer un site</p>
-            <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Vos sites gratuits sont créés.</h1>
+            <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">{blocked.subscribe ? "Vos sites gratuits sont créés." : "À demain !"}</h1>
             <p className="mt-3 leading-relaxed text-muted">{blocked.message}</p>
             <div className="mt-6 flex flex-wrap gap-3">
               {blocked.subscribe && (
