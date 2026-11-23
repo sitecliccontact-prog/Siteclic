@@ -3,6 +3,7 @@ import { z } from "zod";
 import { editSiteContent, explainError } from "@/lib/site/generate";
 import { parseStoredContent } from "@/lib/site/schema";
 import { requireSubscription } from "@/lib/billing/guard";
+import { consumeAi } from "@/lib/site/limits";
 import { createClient } from "@/lib/supabase/server";
 
 export const maxDuration = 300;
@@ -26,6 +27,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { data: row } = await supabase.from("sites").select("content").eq("id", id).maybeSingle();
   const current = parseStoredContent(row?.content);
   if (!current) return NextResponse.json({ error: "Site introuvable." }, { status: 404 });
+
+  // Non abonnés (dont la période gratuite actuelle) : nombre limité de modifications par l'IA.
+  const limit = await consumeAi(supabase, user, "modification");
+  if (limit) return NextResponse.json({ error: limit.message, needsSubscription: limit.subscribe }, { status: 429 });
 
   try {
     const { reply, content } = await editSiteContent(current, parsed.data.instruction);

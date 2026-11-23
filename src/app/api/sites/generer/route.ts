@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { BriefSchema } from "@/lib/site/schema";
 import { generateSiteContent, explainError } from "@/lib/site/generate";
 import { createClient } from "@/lib/supabase/server";
-import { creationBlocked } from "@/lib/site/limits";
+import { consumeAi } from "@/lib/site/limits";
 
 export const maxDuration = 300; // la création peut prendre jusqu'à une minute ou deux
 
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   }
   const brief = parsed.data;
 
-  const limit = await creationBlocked(supabase, user);
+  const limit = await consumeAi(supabase, user, "creation");
   if (limit) return NextResponse.json({ error: limit.message, needsSubscription: limit.subscribe }, { status: limit.subscribe ? 402 : 429 });
 
   try {

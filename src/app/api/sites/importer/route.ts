@@ -5,7 +5,7 @@ import { importSite, ImportError } from "@/lib/site/importer";
 import { preparePhotos, type PreparedPhoto } from "@/lib/site/import-photos";
 import { requireSubscription } from "@/lib/billing/guard";
 import { createClient } from "@/lib/supabase/server";
-import { creationBlocked } from "@/lib/site/limits";
+import { consumeAi, creationBlocked } from "@/lib/site/limits";
 
 export const maxDuration = 300;
 
@@ -29,6 +29,9 @@ export async function POST(request: Request) {
   try {
     const imported = await importSite(parsed.data.url);
     const photos = await preparePhotos(imported.images);
+    // On ne compte l'essai qu'au moment d'utiliser l'IA (une adresse invalide ne coûte rien).
+    const used = await consumeAi(supabase, user, "import");
+    if (used) return NextResponse.json({ error: used.message, needsSubscription: used.subscribe }, { status: used.subscribe ? 402 : 429 });
     const content = await generateFromImport(imported, photos);
     content.photos = await rehost(supabase, user.id, content.photos, photos);
     const { data, error } = await supabase

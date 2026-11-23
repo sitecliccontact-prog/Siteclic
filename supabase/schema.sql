@@ -32,3 +32,5 @@ create policy "sites_delete_own" on public.sites for delete using (auth.uid() = 
 create index if not exists sites_user_id_idx on public.sites (user_id);
 
 -- Étape 5 (mise en ligne) : voir 02-mise-en-ligne.sql
+
+-- Limites d'utilisation de l'IA : voir 05-limites-ia.sql
