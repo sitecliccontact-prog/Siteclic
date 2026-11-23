@@ -25,7 +25,7 @@ function useRedirect(endpoint: string, body?: object) {
 }
 
 /** Ouvre le paiement Stripe de l'abonnement. */
-export function SubscribeButton({ retour, label = "S'abonner · 29 €/mois" }: { retour?: string; label?: string }) {
+export function SubscribeButton({ retour, label = "Payer et mettre en ligne" }: { retour?: string; label?: string }) {
   const { busy, error, go } = useRedirect("/api/abonnement/paiement", { retour });
   return (
     <div>

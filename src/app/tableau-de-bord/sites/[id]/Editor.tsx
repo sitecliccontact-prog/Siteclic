@@ -220,7 +220,7 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 402) {
-        setMsgs((m) => [...m, { from: "ia", subscribe: true, text: "Les modifications par l'IA sont incluses dans l'abonnement SiteClic. Vous pouvez aussi modifier vos textes vous-même, gratuitement." }]);
+        setMsgs((m) => [...m, { from: "ia", subscribe: true, text: "Les modifications par l'IA sont incluses avec votre site (20 €, 50 modifications). Vous pouvez aussi modifier vos textes vous-même, gratuitement." }]);
         return;
       }
       if (!res.ok) throw new Error(data.error || "La modification a échoué.");
@@ -247,7 +247,7 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
             {m.subscribe && (
               <Link href={`/abonnement?retour=/tableau-de-bord/sites/${id}`}
                 className="mt-3 block rounded-full bg-clic px-4 py-2 text-center text-sm font-medium text-white">
-                Voir l&apos;abonnement
+                Voir les tarifs
               </Link>
             )}
           </div>

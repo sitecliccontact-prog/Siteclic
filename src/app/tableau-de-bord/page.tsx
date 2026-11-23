@@ -71,8 +71,8 @@ export default async function Dashboard() {
               </>
             ) : (
               <>
-                <span className="text-muted">Aperçu gratuit. Abonnez-vous pour mettre votre site en ligne.</span>
-                <Link href="/abonnement" className="ml-auto rounded-full bg-clic px-4 py-2 font-medium text-white">S&apos;abonner · 29 €/mois</Link>
+                <span className="text-muted">Aperçu gratuit. Mettez votre site en ligne à partir de 20 €.</span>
+                <Link href="/abonnement" className="ml-auto rounded-full bg-clic px-4 py-2 font-medium text-white">Voir les tarifs</Link>
               </>
             )}
           </div>

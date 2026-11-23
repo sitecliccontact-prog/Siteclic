@@ -26,7 +26,7 @@ export default async function CreatePage() {
             <p className="mt-3 leading-relaxed text-muted">{blocked.message}</p>
             <div className="mt-6 flex flex-wrap gap-3">
               {blocked.subscribe && (
-                <Link href="/abonnement?retour=/tableau-de-bord/creer" className="rounded-full bg-clic px-5 py-3 font-medium text-white">Voir l&apos;abonnement</Link>
+                <Link href="/abonnement?retour=/tableau-de-bord/creer" className="rounded-full bg-clic px-5 py-3 font-medium text-white">Voir les tarifs</Link>
               )}
               <Link href="/tableau-de-bord" className="rounded-full border border-line px-5 py-3 font-medium">Mes sites</Link>
             </div>

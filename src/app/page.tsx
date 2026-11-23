@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PriceCards } from "@/components/PriceCards";
 import { Logo } from "@/components/Logo";
 
 const trades = ["Restaurants", "Boulangeries", "Coiffeurs", "Fleuristes", "Instituts de beauté", "Cafés", "Artisans", "Boutiques"];
@@ -241,41 +242,22 @@ function EditByWriting() {
 
 /* ---------- Tarif ---------- */
 function Pricing() {
-  const included = [
-    "Votre site créé ou modernisé par l'IA",
-    "Modifications en écrivant, quand vous voulez",
-    "Mise en ligne et hébergement inclus",
-    "Adapté aux téléphones et ordinateurs",
-    "Sans engagement, résiliable à tout moment",
-  ];
   return (
     <section id="tarif" className="scroll-mt-20 border-y border-line bg-sand">
-      <div className="mx-auto grid max-w-6xl items-center gap-14 px-5 py-24 md:grid-cols-2">
-        <div>
-          <p className="text-sm font-medium uppercase tracking-[0.18em] text-clic">Tarif</p>
-          <h2 className="mt-3 font-display text-4xl font-semibold tracking-tight sm:text-5xl">Un seul prix, tout compris.</h2>
+      <div className="mx-auto max-w-6xl px-5 py-24">
+        <div className="max-w-2xl">
+          <p className="text-sm font-medium uppercase tracking-[0.18em] text-clic">Tarifs</p>
+          <h2 className="mt-3 font-display text-4xl font-semibold tracking-tight sm:text-5xl">Payez votre site une fois. C&apos;est tout.</h2>
           <p className="mt-5 max-w-md text-lg leading-relaxed text-muted">
             Créez votre site et regardez-le gratuitement. Vous ne payez que le jour où vous décidez de le mettre en ligne.
           </p>
         </div>
-        <div className="rounded-[2rem] border border-line bg-card p-8 text-ink shadow-[0_40px_80px_-40px_rgba(255,91,31,.35)] sm:p-10">
-          <p className="font-medium">Abonnement SiteClic</p>
-          <p className="mt-4 flex items-baseline gap-2">
-            <span className="font-display text-6xl font-semibold">29 €</span>
-            <span className="text-muted">/ mois</span>
-          </p>
-          <ul className="mt-8 space-y-3.5">
-            {included.map((i) => (
-              <li key={i} className="flex gap-3">
-                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-clic/15 text-[11px] text-clic">✓</span>
-                {i}
-              </li>
-            ))}
-          </ul>
-          <Link href="/inscription" className="mt-9 block rounded-full bg-ink py-4 text-center font-medium text-cream transition hover:bg-black">
-            Créer mon site gratuitement
-          </Link>
+        <div className="mt-12">
+          <PriceCards />
         </div>
+        <Link href="/inscription" className="mx-auto mt-10 block max-w-sm rounded-full bg-ink py-4 text-center font-medium text-cream transition hover:opacity-90">
+          Créer mon site gratuitement
+        </Link>
       </div>
     </section>
   );
@@ -285,9 +267,9 @@ function Pricing() {
 function Faq() {
   const qs = [
     ["Faut-il savoir utiliser un ordinateur ?", "Non. Si vous savez envoyer un message sur votre téléphone, vous savez utiliser SiteClic."],
-    ["Qu'est-ce qui est gratuit ?", "Créer votre site et le voir en aperçu. L'abonnement commence seulement quand vous le mettez en ligne."],
+    ["Qu'est-ce qui est gratuit ?", "Créer votre site et le voir en aperçu. Vous payez seulement quand vous le mettez en ligne : 20 € le site, puis 30 € par an d'hébergement."],
     ["Mon site actuel peut-il être repris ?", "Oui. Donnez son adresse, l'IA récupère vos textes et vos photos et les met en valeur dans un nouveau design."],
-    ["Puis-je arrêter quand je veux ?", "Oui, l'abonnement est sans engagement. Vous l'arrêtez en un clic depuis votre espace."],
+    ["Puis-je arrêter quand je veux ?", "Oui, l'hébergement est sans engagement. Vous l'arrêtez en un clic depuis votre espace."],
   ];
   return (
     <section id="questions" className="mx-auto max-w-3xl scroll-mt-20 px-5 py-24">

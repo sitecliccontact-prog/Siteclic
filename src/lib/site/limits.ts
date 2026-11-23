@@ -40,7 +40,7 @@ function verdict(kind: Kind, paying: boolean, c: Counts): Blocked | null {
       : null;
   }
   return c.total > FREE_SITES
-    ? { message: `Vous avez déjà créé ${FREE_SITES} sites gratuits. Pour en créer d'autres, passez à l'abonnement SiteClic. Vous pouvez toujours modifier vos sites existants.`, subscribe: true }
+    ? { message: `Vous avez déjà créé ${FREE_SITES} sites gratuits. Pour en créer d'autres, choisissez un site à 20 € ou le pack 5 sites à 50 €. Vous pouvez toujours modifier vos sites existants.`, subscribe: true }
     : null;
 }
 
