@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { PublishButton, type PublishState } from "@/components/PublishButton";
 import { SiteRenderer } from "@/components/site/SiteRenderer";
+import { useDictation } from "@/lib/hooks/useDictation";
 import { MAX_PHOTOS, uploadPhoto } from "@/lib/site/photos";
 import type { SiteContent, ThemeName } from "@/lib/site/schema";
 
@@ -166,7 +167,7 @@ type AiProps = {
 
 function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
   const [msgs, setMsgs] = useState<Msg[]>([
-    { from: "ia", text: "Bonjour ! Dites-moi ce que vous voulez changer sur votre site, comme dans un message. Par exemple : « On ferme à 19h le samedi »." },
+    { from: "ia", text: "Bonjour ! Dites-moi ce que vous voulez changer sur votre site, comme dans un message. Par exemple : « On ferme à 19h le samedi ». Vous pouvez aussi parler : touchez le micro." },
   ]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -176,6 +177,7 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
   }, [msgs, busy]);
 
   const [lastPhoto, setLastPhoto] = useState<string | null>(null);
+  const voice = useDictation(setText);
   const fileInput = useRef<HTMLInputElement>(null);
 
   async function attach(files: FileList | null) {
@@ -204,6 +206,7 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
 
   async function send(instruction: string) {
     if (!instruction.trim() || busy) return;
+    voice.stop();
     setMsgs((m) => [...m, { from: "moi", text: instruction }]);
     setText("");
     setBusy(true);
@@ -270,19 +273,35 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
         <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="flex items-end gap-2">
           <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={(e) => attach(e.target.files)} />
           <button type="button" onClick={() => fileInput.current?.click()} disabled={busy} aria-label="Ajouter une photo" title="Ajouter une photo"
-            className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full border border-line text-muted transition hover:border-ink/40 hover:text-ink disabled:opacity-30">
+            className="grid h-[48px] w-[48px] shrink-0 place-items-center rounded-full border border-line text-muted transition hover:border-ink/40 hover:text-ink disabled:opacity-30">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" />
             </svg>
           </button>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder="Que voulez-vous changer ?"
+          {voice.supported && (
+            <button type="button" disabled={busy} onClick={() => (voice.listening ? voice.stop() : voice.start(text))}
+              aria-label={voice.listening ? "Arrêter la dictée" : "Parler"} title={voice.listening ? "Arrêter la dictée" : "Parler"}
+              aria-pressed={voice.listening}
+              className={`relative grid h-[48px] w-[48px] shrink-0 place-items-center rounded-full border transition disabled:opacity-30 ${
+                voice.listening ? "border-clic bg-clic text-white" : "border-line text-muted hover:border-ink/40 hover:text-ink"}`}>
+              {voice.listening && <span className="absolute inset-0 animate-ping rounded-full bg-clic/40" aria-hidden />}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="relative">
+                {voice.listening
+                  ? <rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" />
+                  : <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></>}
+              </svg>
+            </button>
+          )}
+          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder={voice.listening ? "Je vous écoute…" : "Que voulez-vous changer ?"}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(text); } }}
-            className="min-h-[52px] flex-1 resize-none rounded-2xl border border-line bg-card px-4 py-3 text-[15px] outline-none focus:border-ink/60" />
+            className="min-h-[48px] min-w-0 flex-1 resize-none rounded-2xl border border-line bg-card px-4 py-3 text-[15px] outline-none focus:border-ink/60" />
           <button disabled={busy || !text.trim()} aria-label="Envoyer"
-            className="grid h-[52px] w-[52px] place-items-center rounded-full bg-clic text-xl text-white disabled:opacity-30">
+            className="grid h-[48px] w-[48px] shrink-0 place-items-center rounded-full bg-clic text-xl text-white disabled:opacity-30">
             ↑
           </button>
         </form>
+        {voice.listening && <p className="mt-2 text-center text-xs text-clic">Parlez, puis touchez ■ ou attendez un instant. Vous pourrez corriger le texte avant d&apos;envoyer.</p>}
+        {voice.error && <p className="mt-2 text-center text-xs text-red-400">{voice.error}</p>}
       </div>
     </div>
   );
