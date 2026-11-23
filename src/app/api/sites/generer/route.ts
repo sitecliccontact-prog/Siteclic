@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { BriefSchema } from "@/lib/site/schema";
 import { generateSiteContent, explainError } from "@/lib/site/generate";
 import { createClient } from "@/lib/supabase/server";
-import { dailyLimitReached } from "@/lib/site/limits";
+import { creationBlocked } from "@/lib/site/limits";
 
 export const maxDuration = 300; // la création peut prendre jusqu'à une minute ou deux
 
@@ -17,12 +17,8 @@ export async function POST(request: Request) {
   }
   const brief = parsed.data;
 
-  if (await dailyLimitReached(supabase)) {
-    return NextResponse.json(
-      { error: "Vous avez déjà créé 5 sites aujourd'hui. Revenez demain, ou modifiez un site existant." },
-      { status: 429 },
-    );
-  }
+  const limit = await creationBlocked(supabase, user);
+  if (limit) return NextResponse.json({ error: limit.message, needsSubscription: limit.subscribe }, { status: limit.subscribe ? 402 : 429 });
 
   try {
     const content = await generateSiteContent(brief);

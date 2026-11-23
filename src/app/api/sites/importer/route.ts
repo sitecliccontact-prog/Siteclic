@@ -4,7 +4,7 @@ import { explainError, generateFromImport } from "@/lib/site/generate";
 import { importSite, ImportError } from "@/lib/site/importer";
 import { requireSubscription } from "@/lib/billing/guard";
 import { createClient } from "@/lib/supabase/server";
-import { dailyLimitReached } from "@/lib/site/limits";
+import { creationBlocked } from "@/lib/site/limits";
 
 export const maxDuration = 300;
 
@@ -22,9 +22,8 @@ export async function POST(request: Request) {
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Indiquez l'adresse de votre site." }, { status: 400 });
 
-  if (await dailyLimitReached(supabase)) {
-    return NextResponse.json({ error: "Vous avez déjà créé 5 sites aujourd'hui. Revenez demain." }, { status: 429 });
-  }
+  const limit = await creationBlocked(supabase, user);
+  if (limit) return NextResponse.json({ error: limit.message, needsSubscription: limit.subscribe }, { status: limit.subscribe ? 402 : 429 });
 
   try {
     const imported = await importSite(parsed.data.url);
