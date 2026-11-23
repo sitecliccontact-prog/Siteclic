@@ -33,7 +33,7 @@ export function ImportForm() {
         window.location.href = "/abonnement?retour=/tableau-de-bord/importer";
         return;
       }
-      if (!res.ok) throw new Error(data.error || "L'import a échoué. Réessayez dans un instant.");
+      if (!res.ok) throw new Error(data.error || (res.status === 504 ? "L'IA a mis trop de temps à répondre. Réessayez. (code 504)" : "L'import a échoué. Réessayez dans un instant. (code HTTP " + res.status + ")"));
       router.push(`/apercu/${data.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "L'import a échoué.");

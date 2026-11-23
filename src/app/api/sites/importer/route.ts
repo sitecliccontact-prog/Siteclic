@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { generateFromImport, GenerationError } from "@/lib/site/generate";
+import { explainError, generateFromImport } from "@/lib/site/generate";
 import { importSite, ImportError } from "@/lib/site/importer";
 import { requireSubscription } from "@/lib/billing/guard";
 import { createClient } from "@/lib/supabase/server";
@@ -43,10 +43,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ id: data.id });
   } catch (err) {
     console.error("Import échoué", err);
-    const message =
-      err instanceof ImportError || err instanceof GenerationError
-        ? err.message
-        : "L'import a échoué. Réessayez dans un instant.";
+    const message = err instanceof ImportError ? err.message : explainError(err, "L'import a échoué. Réessayez dans un instant.");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

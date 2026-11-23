@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { editSiteContent, GenerationError } from "@/lib/site/generate";
+import { editSiteContent, explainError } from "@/lib/site/generate";
 import { parseStoredContent } from "@/lib/site/schema";
 import { requireSubscription } from "@/lib/billing/guard";
 import { createClient } from "@/lib/supabase/server";
@@ -37,7 +37,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ reply, content });
   } catch (err) {
     console.error("Modification IA échouée", err);
-    const message = err instanceof GenerationError ? err.message : "La modification a échoué. Réessayez dans un instant.";
+    const message = explainError(err, "La modification a échoué. Réessayez dans un instant.");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

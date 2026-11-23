@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { BriefSchema } from "@/lib/site/schema";
-import { generateSiteContent, GenerationError } from "@/lib/site/generate";
+import { generateSiteContent, explainError } from "@/lib/site/generate";
 import { createClient } from "@/lib/supabase/server";
 import { dailyLimitReached } from "@/lib/site/limits";
 
@@ -35,8 +35,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ id: data.id });
   } catch (err) {
     console.error("Création de site échouée", err);
-    const message =
-      err instanceof GenerationError ? err.message : "La création a échoué. Réessayez dans un instant.";
+    const message = explainError(err, "La création a échoué. Réessayez dans un instant.");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

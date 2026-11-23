@@ -20,7 +20,7 @@ Thèmes visuels possibles :
 
 export class GenerationError extends Error {}
 
-async function ask<T extends z.ZodType>(schema: T, system: string, user: string): Promise<z.infer<T>> {
+export async function ask<T extends z.ZodType>(schema: T, system: string, user: string): Promise<z.infer<T>> {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new GenerationError("La clé de l'IA n'est pas encore configurée.");
   }
@@ -109,4 +109,22 @@ export async function editSiteContent(current: SiteContent, instruction: string)
     reply: result.reply,
     content: { ...result.content, photos: result.content.photos.filter((u) => allowed.has(u)) },
   };
+}
+
+/** Message clair (et sans secret) pour comprendre une panne, affiché au client avec un petit code. */
+export function explainError(err: unknown, fallback: string): string {
+  if (err instanceof GenerationError) return err.message;
+  if (err instanceof Anthropic.APIError) {
+    const detail = String((err.error as { error?: { message?: string } } | undefined)?.error?.message ?? err.message ?? "");
+    if (err.status === 401) return "La clé de l'IA est refusée. Il faut la vérifier dans Vercel. (code IA-401)";
+    if (/credit balance|billing/i.test(detail)) return "Le crédit de l'IA est épuisé. Il faut en racheter. (code IA-crédit)";
+    if (err.status === 429) return "L'IA est très demandée en ce moment. Réessayez dans une minute. (code IA-429)";
+    if (err.status && err.status >= 500) return "L'IA est momentanément indisponible. Réessayez dans un instant. (code IA-" + err.status + ")";
+    return `${fallback} (code IA-${err.status ?? "?"} : ${detail.slice(0, 180)})`;
+  }
+  const e = err as { code?: string; message?: string; name?: string } | null;
+  if (e && typeof e.code === "string" && typeof e.message === "string") {
+    return `${fallback} (code BDD-${e.code} : ${e.message.slice(0, 140)})`;
+  }
+  return `${fallback} (code ${e?.name ?? "?"} : ${String(e?.message ?? err).slice(0, 140)})`;
 }
