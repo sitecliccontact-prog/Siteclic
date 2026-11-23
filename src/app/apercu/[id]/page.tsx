@@ -4,6 +4,8 @@ import { SiteRenderer } from "@/components/site/SiteRenderer";
 import { SAMPLE_SITES } from "@/lib/site/samples";
 import { parseStoredContent, type SiteContent } from "@/lib/site/schema";
 import { publishState } from "@/lib/site/publish-state";
+import { isTeam } from "@/lib/site/limits";
+import { billingEnabled, getSubscription } from "@/lib/billing/stripe";
 import { createClient } from "@/lib/supabase/server";
 import { PreviewShell } from "./PreviewShell";
 
@@ -13,6 +15,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   let content: SiteContent | null = null;
   let publish = publishState(null);
+  let clean = false;
 
   // Exemples de démonstration, uniquement en développement.
   if (id.startsWith("exemple-") && process.env.NODE_ENV !== "production") {
@@ -24,11 +27,13 @@ export default async function PreviewPage({ params }: { params: Promise<{ id: st
     const { data } = await supabase.from("sites").select("*").eq("id", id).maybeSingle();
     content = parseStoredContent(data?.content);
     publish = publishState(data);
+    // Pas de filigrane pour l'équipe SiteClic (démonstrations) ni pour les abonnés.
+    clean = isTeam(user) || (billingEnabled() && ((await getSubscription(user).catch(() => null))?.active ?? false));
   }
   if (!content) notFound();
 
   return (
-    <PreviewShell id={id} publish={publish}>
+    <PreviewShell id={id} publish={publish} clean={clean}>
       <SiteRenderer content={content} />
     </PreviewShell>
   );
