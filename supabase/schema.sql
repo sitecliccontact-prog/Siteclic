@@ -26,3 +26,5 @@ drop policy if exists "sites_delete_own" on public.sites;
 create policy "sites_delete_own" on public.sites for delete using (auth.uid() = user_id);
 
 create index if not exists sites_user_id_idx on public.sites (user_id);
+
+-- Étape 5 (mise en ligne) : voir 02-mise-en-ligne.sql

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { PublishButton, type PublishState } from "@/components/PublishButton";
 
 /** Cadre de l'aperçu gratuit : bandeau SiteClic, filigrane, copie désactivée. */
-export function PreviewShell({ id, children }: { id: string; children: React.ReactNode }) {
+export function PreviewShell({ id, publish, children }: { id: string; publish: PublishState; children: React.ReactNode }) {
   return (
     <div
       className="min-h-dvh select-none"
@@ -17,12 +18,10 @@ export function PreviewShell({ id, children }: { id: string; children: React.Rea
           <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#ff5b1f]" />
           Aperçu gratuit de votre site
         </p>
-        <Link href={`/tableau-de-bord/sites/${id}`} className="ml-auto rounded-full border border-white/20 px-4 py-2 text-sm font-medium hover:border-white/50 sm:ml-0">
+        <Link href={`/tableau-de-bord/sites/${id}`} className="ml-auto rounded-full border border-white/20 px-3 py-1.5 text-xs font-medium hover:border-white/50 sm:ml-0">
           Modifier
         </Link>
-        <span className="hidden rounded-full bg-[#ff5b1f] px-4 py-2 text-sm font-medium text-white opacity-90 sm:inline-block">
-          Mettre en ligne · bientôt
-        </span>
+        <PublishButton id={id} initial={publish} compact />
       </div>
       <div className="relative">
         {children}

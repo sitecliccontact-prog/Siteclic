@@ -3,7 +3,7 @@ import type { SiteContent } from "@/lib/site/schema";
 import { THEMES } from "./themes";
 
 /** Affiche le site d'un client à partir de son contenu. */
-export function SiteRenderer({ content }: { content: SiteContent }) {
+export function SiteRenderer({ content, credit = false }: { content: SiteContent; credit?: boolean }) {
   const t = THEMES[content.theme] ?? THEMES.bistrot;
   const c = t.colors;
   const style = {
@@ -179,6 +179,11 @@ export function SiteRenderer({ content }: { content: SiteContent }) {
           <span className="s-display s-brand">{brand.name}</span>
           <span>{[contact.address, contact.phone].filter(Boolean).join(" · ")}</span>
         </div>
+        {credit && (
+          <div className="s-wrap s-credit">
+            <a href="https://siteclic.vercel.app" target="_blank" rel="noopener">Site créé avec SiteClic</a>
+          </div>
+        )}
       </footer>
     </div>
   );
@@ -271,6 +276,9 @@ const SITE_CSS = `
 .site .s-band-inner{display:flex;flex-direction:column;align-items:center}
 .site .s-band p{max-width:52ch;opacity:.75;font-size:18px;margin:20px 0 36px}
 .site .s-footer{padding:36px 0;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+.site .s-credit{margin-top:18px;font-size:12px;opacity:.7}
+.site .s-credit a{color:inherit;text-decoration:none}
+.site .s-credit a:hover{text-decoration:underline}
 .site .s-footer-inner{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:center}
 .site .s-footer .s-brand{color:var(--ink);margin:0}
 `;

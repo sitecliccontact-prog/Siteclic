@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { PublishButton, type PublishState } from "@/components/PublishButton";
 import { SiteRenderer } from "@/components/site/SiteRenderer";
 import type { SiteContent, ThemeName } from "@/lib/site/schema";
 
@@ -24,25 +25,38 @@ const THEME_LABELS: { id: ThemeName; label: string; colors: [string, string] }[]
   { id: "jardin", label: "Jardin", colors: ["#eef0e7", "#5f7f63"] },
 ];
 
-export function Editor({ id, initial }: { id: string; initial: SiteContent }) {
+export function Editor({ id, initial, publish }: { id: string; initial: SiteContent; publish: PublishState }) {
   const [content, setContent] = useState<SiteContent>(initial);
   const [history, setHistory] = useState<SiteContent[]>([]);
   const [tab, setTab] = useState<Tab>("ia");
   const [save, setSave] = useState<SaveState>("ok");
+  const [changed, setChanged] = useState(publish.hasChanges);
   const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unsaved = useRef<SiteContent | null>(null);
+
+  async function saveNow(next: SiteContent) {
+    const res = await fetch(`/api/sites/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: next }),
+    }).catch(() => null);
+    if (unsaved.current === next) unsaved.current = null;
+    setSave(res?.ok ? "ok" : "error");
+  }
 
   // Enregistrement automatique, une seconde après la dernière modification à la main.
   function queueSave(next: SiteContent) {
     if (pending.current) clearTimeout(pending.current);
     setSave("saving");
-    pending.current = setTimeout(async () => {
-      const res = await fetch(`/api/sites/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: next }),
-      }).catch(() => null);
-      setSave(res?.ok ? "ok" : "error");
-    }, 1000);
+    setChanged(true);
+    unsaved.current = next;
+    pending.current = setTimeout(() => saveNow(next), 1000);
+  }
+
+  // Avant de publier : on enregistre tout de suite la dernière frappe.
+  async function flush() {
+    if (pending.current) clearTimeout(pending.current);
+    if (unsaved.current) await saveNow(unsaved.current);
   }
 
   function edit(fn: (draft: SiteContent) => void) {
@@ -73,7 +87,7 @@ export function Editor({ id, initial }: { id: string; initial: SiteContent }) {
     <div className="flex h-dvh flex-col">
       {/* Barre du haut */}
       <header className="flex items-center gap-3 border-b border-line px-4 py-3">
-        <Link href="/tableau-de-bord" className="text-sm text-muted hover:text-ink">← Mes sites</Link>
+        <Link href="/tableau-de-bord" className="shrink-0 whitespace-nowrap text-sm text-muted hover:text-ink">← Mes sites</Link>
         <p className="min-w-0 flex-1 truncate text-center font-display font-bold">{content.brand.name}</p>
         <span className="hidden text-xs text-muted sm:inline">
           {save === "saving" ? "Enregistrement…" : save === "error" ? "Non enregistré" : "Enregistré ✓"}
@@ -82,7 +96,9 @@ export function Editor({ id, initial }: { id: string; initial: SiteContent }) {
           className="rounded-full border border-line px-3 py-1.5 text-xs font-medium disabled:opacity-30">
           Annuler
         </button>
-        <Link href={`/apercu/${id}`} className="rounded-full bg-ink px-3 py-1.5 text-xs font-medium text-cream">Aperçu</Link>
+        <Link href={`/apercu/${id}`} className="hidden rounded-full border border-line px-3 py-1.5 text-xs font-medium sm:inline-block">Aperçu</Link>
+        <PublishButton id={id} initial={{ ...publish, hasChanges: changed }}
+          beforePublish={flush} onPublished={() => setChanged(false)} compact />
       </header>
 
       {/* Onglets (téléphone) */}
@@ -109,7 +125,7 @@ export function Editor({ id, initial }: { id: string; initial: SiteContent }) {
           {tab === "main" ? (
             <ManualPanel content={content} edit={(fn) => { remember(); edit(fn); }} />
           ) : (
-            <AiPanel id={id} onResult={(c) => { remember(true); setContent(c); }} />
+            <AiPanel id={id} onResult={(c) => { remember(true); setContent(c); setChanged(true); }} />
           )}
         </aside>
 
