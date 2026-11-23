@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ManageButton } from "@/components/BillingButtons";
 import { Logo } from "@/components/Logo";
+import { billingEnabled, getSubscription } from "@/lib/billing/stripe";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "./SignOutButton";
 
@@ -20,6 +22,7 @@ export default async function Dashboard() {
     .select("id, name, trade, status, created_at")
     .order("created_at", { ascending: false });
   const sites = (data ?? []) as SiteRow[];
+  const sub = billingEnabled() ? await getSubscription(user).catch(() => null) : null;
 
   return (
     <main className="min-h-dvh px-5 py-6">
@@ -34,6 +37,22 @@ export default async function Dashboard() {
           Bonjour{shopName ? `, ${shopName}` : ""} 👋
         </h1>
         <p className="mt-3 max-w-xl text-muted">Que voulez-vous faire aujourd&apos;hui ?</p>
+
+        {billingEnabled() && (
+          <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-line bg-card px-5 py-4 text-sm">
+            {sub?.active ? (
+              <>
+                <span className="flex items-center gap-2 font-medium"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Abonnement actif</span>
+                <ManageButton className="ml-auto text-muted underline underline-offset-4 hover:text-ink" />
+              </>
+            ) : (
+              <>
+                <span className="text-muted">Aperçu gratuit. Abonnez-vous pour mettre votre site en ligne.</span>
+                <Link href="/abonnement" className="ml-auto rounded-full bg-clic px-4 py-2 font-medium text-white">S&apos;abonner · 29 €/mois</Link>
+              </>
+            )}
+          </div>
+        )}
 
         {sites.length > 0 && (
           <div className="mt-10">

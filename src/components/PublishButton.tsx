@@ -37,6 +37,10 @@ export function PublishButton({ id, initial, beforePublish, onPublished, compact
       await beforePublish?.();
       const res = await fetch(`/api/sites/${id}/publier`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 402) {
+        window.location.href = `/abonnement?retour=${encodeURIComponent(window.location.pathname)}`;
+        return;
+      }
       if (!res.ok) throw new Error(data.error || "La mise en ligne n'a pas fonctionné.");
       setState({ online: true, slug: data.slug, hasChanges: false });
       setJustPublished(true);

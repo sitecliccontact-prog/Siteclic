@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { generateFromImport, GenerationError } from "@/lib/site/generate";
 import { importSite, ImportError } from "@/lib/site/importer";
+import { requireSubscription } from "@/lib/billing/guard";
 import { createClient } from "@/lib/supabase/server";
 import { dailyLimitReached } from "@/lib/site/limits";
 
@@ -13,6 +14,10 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Veuillez vous reconnecter." }, { status: 401 });
+
+  // Réservé aux abonnés.
+  const blocked = await requireSubscription(user);
+  if (blocked) return blocked;
 
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Indiquez l'adresse de votre site." }, { status: 400 });

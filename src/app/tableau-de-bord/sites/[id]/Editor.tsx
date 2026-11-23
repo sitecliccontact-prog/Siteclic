@@ -7,7 +7,7 @@ import { SiteRenderer } from "@/components/site/SiteRenderer";
 import type { SiteContent, ThemeName } from "@/lib/site/schema";
 
 type Tab = "ia" | "main" | "apercu";
-type Msg = { from: "moi" | "ia"; text: string };
+type Msg = { from: "moi" | "ia"; text: string; subscribe?: boolean };
 type SaveState = "ok" | "saving" | "error";
 
 const SUGGESTIONS = [
@@ -167,6 +167,10 @@ function AiPanel({ id, onResult }: { id: string; onResult: (c: SiteContent) => v
         body: JSON.stringify({ instruction }),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 402) {
+        setMsgs((m) => [...m, { from: "ia", subscribe: true, text: "Les modifications par l'IA sont incluses dans l'abonnement SiteClic. Vous pouvez aussi modifier vos textes vous-même, gratuitement." }]);
+        return;
+      }
       if (!res.ok) throw new Error(data.error || "La modification a échoué.");
       onResult(data.content);
       setMsgs((m) => [...m, { from: "ia", text: data.reply }]);
@@ -184,6 +188,12 @@ function AiPanel({ id, onResult }: { id: string; onResult: (c: SiteContent) => v
           <div key={i}
             className={`w-fit max-w-[88%] rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${m.from === "moi" ? "ml-auto rounded-br-md bg-clic text-white" : "rounded-bl-md bg-card"}`}>
             {m.text}
+            {m.subscribe && (
+              <Link href={`/abonnement?retour=/tableau-de-bord/sites/${id}`}
+                className="mt-3 block rounded-full bg-clic px-4 py-2 text-center text-sm font-medium text-white">
+                Voir l&apos;abonnement
+              </Link>
+            )}
           </div>
         ))}
         {busy && (

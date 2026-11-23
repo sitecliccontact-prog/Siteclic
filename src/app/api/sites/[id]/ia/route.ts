@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { editSiteContent, GenerationError } from "@/lib/site/generate";
 import { parseStoredContent } from "@/lib/site/schema";
+import { requireSubscription } from "@/lib/billing/guard";
 import { createClient } from "@/lib/supabase/server";
 
 export const maxDuration = 300;
@@ -14,6 +15,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Veuillez vous reconnecter." }, { status: 401 });
+
+  // Réservé aux abonnés.
+  const blocked = await requireSubscription(user);
+  if (blocked) return blocked;
 
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Écrivez ce que vous voulez changer." }, { status: 400 });

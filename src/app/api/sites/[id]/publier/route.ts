@@ -2,6 +2,8 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { parseStoredContent } from "@/lib/site/schema";
 import { publicPath, slugify } from "@/lib/site/slug";
+import { requireSubscription } from "@/lib/billing/guard";
+import { verifiedCustomerOf } from "@/lib/billing/stripe";
 import { createClient } from "@/lib/supabase/server";
 
 type Row = { id: string; name: string; content: unknown; slug: string | null };
@@ -13,7 +15,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Veuillez vous reconnecter." }, { status: 401 });
 
-  // Étape 6 : ici on vérifiera que l'abonnement est actif.
+  // Réservé aux abonnés.
+  const blocked = await requireSubscription(user);
+  if (blocked) return blocked;
 
   const { data } = await supabase.from("sites").select("id, name, content, slug").eq("id", id).maybeSingle();
   const site = data as Row | null;
@@ -22,11 +26,13 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
   const base = site.slug ?? slugify(content.brand.name || site.name);
   const now = new Date().toISOString();
+  // On garde le client Stripe sur le site : s'il résilie, son site sera retiré à la fin de la période payée.
+  const billingCustomer = await verifiedCustomerOf(user);
   for (let attempt = 0; attempt < 8; attempt++) {
     const slug = site.slug ?? (attempt === 0 ? base : attempt < 5 ? `${base}-${attempt + 1}` : `${base}-${Math.random().toString(36).slice(2, 6)}`);
     const { error } = await supabase
       .from("sites")
-      .update({ slug, status: "en_ligne", published_content: content, published_at: now })
+      .update({ slug, status: "en_ligne", published_content: content, published_at: now, ...(billingCustomer ? { billing_customer: billingCustomer } : {}) })
       .eq("id", id);
     if (!error) {
       revalidatePath(publicPath(slug));

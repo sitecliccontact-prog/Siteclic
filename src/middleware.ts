@@ -23,7 +23,7 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user && request.nextUrl.pathname.startsWith("/tableau-de-bord")) {
+  if (!user && (request.nextUrl.pathname.startsWith("/tableau-de-bord") || request.nextUrl.pathname.startsWith("/abonnement"))) {
     const url = request.nextUrl.clone();
     url.pathname = "/connexion";
     return NextResponse.redirect(url);

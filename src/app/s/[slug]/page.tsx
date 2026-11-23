@@ -10,8 +10,10 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const content = await getPublishedSite(slug);
-  if (!content) return { title: "Site introuvable", robots: { index: false } };
+  const site = await getPublishedSite(slug);
+  if (!site) return { title: "Site introuvable", robots: { index: false } };
+  const { content } = site;
+  if (!site.available) return { title: content.brand.name, robots: { index: false } };
   const title = content.seo.title || content.brand.name;
   const description = content.seo.description || content.hero.subtitle;
   const image = content.photos[0];
@@ -28,8 +30,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PublishedSite({ params }: Props) {
   const { slug } = await params;
-  const content = await getPublishedSite(slug);
-  if (!content) notFound();
+  const site = await getPublishedSite(slug);
+  if (!site) notFound();
+  const { content } = site;
+  if (!site.available) return <Unavailable name={content.brand.name} />;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -47,5 +51,17 @@ export default async function PublishedSite({ params }: Props) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <SiteRenderer content={content} credit />
     </>
+  );
+}
+
+/** Affiché quand l'abonnement du commerçant est terminé. */
+function Unavailable({ name }: { name: string }) {
+  return (
+    <main className="grid min-h-dvh place-items-center bg-[#0b0b0d] px-6 text-center text-[#f5f4f0]">
+      <div>
+        <p className="font-display text-3xl font-bold tracking-tight">{name}</p>
+        <p className="mt-3 text-white/60">Ce site est momentanément indisponible.</p>
+      </div>
+    </main>
   );
 }

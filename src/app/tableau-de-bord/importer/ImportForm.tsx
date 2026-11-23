@@ -29,6 +29,10 @@ export function ImportForm() {
         body: JSON.stringify({ url }),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 402) {
+        window.location.href = "/abonnement?retour=/tableau-de-bord/importer";
+        return;
+      }
       if (!res.ok) throw new Error(data.error || "L'import a échoué. Réessayez dans un instant.");
       router.push(`/apercu/${data.id}`);
     } catch (err) {
