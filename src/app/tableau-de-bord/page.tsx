@@ -17,10 +17,11 @@ export default async function Dashboard() {
   if (!user) redirect("/connexion");
   const shopName = (user.user_metadata?.shop_name as string) || "";
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("sites")
     .select("id, name, trade, status, created_at")
     .order("created_at", { ascending: false });
+  if (error) console.error("Lecture des sites impossible", error);
   const sites = (data ?? []) as SiteRow[];
   const sub = billingEnabled() ? await getSubscription(user).catch(() => null) : null;
 
@@ -37,6 +38,12 @@ export default async function Dashboard() {
           Bonjour{shopName ? `, ${shopName}` : ""} 👋
         </h1>
         <p className="mt-3 max-w-xl text-muted">Que voulez-vous faire aujourd&apos;hui ?</p>
+        <p className="mt-1 text-xs text-muted/70">Connecté avec {user.email}</p>
+        {error && (
+          <p role="alert" className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            Impossible d&apos;afficher vos sites pour le moment. (code BDD-{error.code} : {error.message.slice(0, 120)})
+          </p>
+        )}
 
         {billingEnabled() && (
           <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-line bg-card px-5 py-4 text-sm">
