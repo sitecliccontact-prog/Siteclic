@@ -41,7 +41,7 @@ export default async function Dashboard() {
             <ul className="mt-3 grid gap-3 sm:grid-cols-2">
               {sites.map((s) => (
                 <li key={s.id}>
-                  <Link href={`/apercu/${s.id}`}
+                  <Link href={`/tableau-de-bord/sites/${s.id}`}
                     className="flex items-center justify-between gap-4 rounded-3xl border border-line bg-card p-6 transition hover:border-ink/30">
                     <div>
                       <p className="font-display text-xl font-semibold">{s.name}</p>
@@ -50,7 +50,7 @@ export default async function Dashboard() {
                         {s.status === "en_ligne" ? "En ligne" : "Aperçu"}
                       </p>
                     </div>
-                    <span className="text-clic">Voir →</span>
+                    <span className="text-clic">Modifier →</span>
                   </Link>
                 </li>
               ))}

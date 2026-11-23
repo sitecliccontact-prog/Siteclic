@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 /** Cadre de l'aperçu gratuit : bandeau SiteClic, filigrane, copie désactivée. */
-export function PreviewShell({ children }: { children: React.ReactNode }) {
+export function PreviewShell({ id, children }: { id: string; children: React.ReactNode }) {
   return (
     <div
       className="min-h-dvh select-none"
@@ -17,7 +17,10 @@ export function PreviewShell({ children }: { children: React.ReactNode }) {
           <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#ff5b1f]" />
           Aperçu gratuit de votre site
         </p>
-        <span className="ml-auto rounded-full bg-[#ff5b1f] px-4 py-2 text-sm font-medium text-white opacity-90 sm:ml-0">
+        <Link href={`/tableau-de-bord/sites/${id}`} className="ml-auto rounded-full border border-white/20 px-4 py-2 text-sm font-medium hover:border-white/50 sm:ml-0">
+          Modifier
+        </Link>
+        <span className="hidden rounded-full bg-[#ff5b1f] px-4 py-2 text-sm font-medium text-white opacity-90 sm:inline-block">
           Mettre en ligne · bientôt
         </span>
       </div>

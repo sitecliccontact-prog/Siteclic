@@ -4,6 +4,10 @@ import { supabaseAnonKey, supabaseReady, supabaseUrl } from "@/lib/supabase/conf
 
 export async function middleware(request: NextRequest) {
   if (!supabaseReady) return NextResponse.next();
+  // Pages d'exemple pour tester l'affichage, uniquement en développement.
+  if (process.env.NODE_ENV !== "production" && request.nextUrl.pathname.includes("/exemple-")) {
+    return NextResponse.next();
+  }
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {

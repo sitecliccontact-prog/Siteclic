@@ -25,7 +25,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ id: st
   if (!content) notFound();
 
   return (
-    <PreviewShell>
+    <PreviewShell id={id}>
       <SiteRenderer content={content} />
     </PreviewShell>
   );

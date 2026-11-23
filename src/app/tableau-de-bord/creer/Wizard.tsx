@@ -173,7 +173,7 @@ export function Generating({ steps = LOADING }: { steps?: string[] }) {
   useEffect(() => {
     const t = setInterval(() => setI((n) => Math.min(n + 1, steps.length - 1)), 9000);
     return () => clearInterval(t);
-  }, []);
+  }, [steps.length]);
   return (
     <div className="mx-auto flex max-w-md flex-col items-center py-24 text-center" role="status" aria-live="polite">
       <div className="relative h-20 w-20">
