@@ -135,12 +135,12 @@ export function extract(root: HTMLElement, base: URL) {
     const abs = absolute(src, base);
     const w = Number(img.getAttribute("width") || 0);
     if (!abs || /\.(svg|gif|ico)(\?|$)/i.test(abs) || (w > 0 && w < 120)) continue;
-    if (/(sprite|pixel|spacer|icon|facebook|instagram|twitter|tripadvisor|badge|avatar|logo-?footer)/i.test(abs)) continue;
+    if (/(sprite|pixel|spacer|icon|facebook|instagram|twitter|tripadvisor|badge|avatar|logo|googleusercontent|gravatar)/i.test(abs)) continue;
     images.push(abs);
   }
 
   for (const abs of rawImages) {
-    if (/(sprite|pixel|spacer|icon|favicon|logo|facebook|instagram|twitter|tripadvisor|badge|avatar|flag)/i.test(abs)) continue;
+    if (/(sprite|pixel|spacer|icon|favicon|logo|facebook|instagram|twitter|tripadvisor|badge|avatar|flag|googleusercontent|gravatar)/i.test(abs)) continue;
     images.push(abs);
   }
 
@@ -183,8 +183,16 @@ export async function importSite(input: string): Promise<ImportedSite> {
   const pages = [{ url: home.url.toString(), text: first.text }];
   const images = [...first.images];
   const seen = new Set([home.url.toString()]);
+  // Si l'adresse donnée est une sous-page (ex. une boutique d'une chaîne), on reste dans cette partie du site
+  // pour ne pas mélanger avec les autres boutiques.
+  // (« /index.html » ou « /fr » comptent comme l'accueil.)
+  const prefix = home.url.pathname
+    .replace(/\/[^/]*\.[a-z0-9]+$/i, "")
+    .replace(/\/+$/, "")
+    .replace(/^\/[a-z]{2}$/i, "");
   const extraLinks: URL[] = [];
   for (const u of first.links) {
+    if (prefix && !u.pathname.startsWith(`${prefix}/`)) continue;
     if (extraLinks.length >= 3) break;
     if (seen.has(u.toString())) continue;
     seen.add(u.toString());

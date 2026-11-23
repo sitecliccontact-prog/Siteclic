@@ -78,6 +78,7 @@ export async function generateFromImport(site: ImportedSite): Promise<SiteConten
 - Reprends exactement les faits du site actuel : nom, adresse, téléphone, e-mail, horaires, produits, services et prix. Ne change aucun prix ni horaire.
 - Réécris les textes pour qu'ils soient plus clairs et plus engageants, sans rien inventer.
 - Ignore les mentions légales, cookies, menus de navigation et textes techniques.
+- Si la page appartient à une chaîne ou une enseigne à plusieurs adresses, ne décris que CE commerce-ci (son adresse, ses horaires, son téléphone) et ignore les autres boutiques.
 - Photos : choisis dans la liste fournie 1 à 7 vraies photos du commerce, de ses produits ou de son lieu (la plus belle en premier). Exclus logos, icônes, bannières, boutons, cartes et images de réseaux sociaux. Recopie les adresses exactement. Tableau vide si aucune ne convient.`,
     `Voici le contenu du site actuel (${site.url}).\n\nTitre : ${site.title}\nDescription : ${site.description}\n\n${pages}\n\nImages trouvées sur le site :\n${images || "(aucune)"}`,
   );
