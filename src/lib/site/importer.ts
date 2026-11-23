@@ -108,7 +108,20 @@ function absolute(src: string | undefined, base: URL) {
   }
 }
 
+const IMAGE_URL = /https?:\/\/[^"'\s()<>]+?\.(?:jpe?g|png|webp|avif)(?:\?[^"'\s()<>]*)?/gi;
+const BG_URL = /background(?:-image)?\s*:\s*url\(\s*['"]?([^'")]+)['"]?\s*\)/gi;
+
 export function extract(root: HTMLElement, base: URL) {
+  // Certains créateurs de sites (galeries, carrousels) cachent les photos dans des styles ou du JSON :
+  // on les repère dans le code brut avant de le nettoyer.
+  const raw = root.toString().replace(/\\\//g, "/");
+  const rawImages: string[] = [];
+  for (const m of raw.matchAll(BG_URL)) {
+    const abs = absolute(m[1], base);
+    if (abs) rawImages.push(abs);
+  }
+  for (const m of raw.matchAll(IMAGE_URL)) rawImages.push(m[0]);
+
   root.querySelectorAll("script,style,noscript,svg,iframe,template").forEach((n) => n.remove());
 
   const images: string[] = [];
@@ -123,6 +136,11 @@ export function extract(root: HTMLElement, base: URL) {
     const w = Number(img.getAttribute("width") || 0);
     if (!abs || /\.(svg|gif|ico)(\?|$)/i.test(abs) || (w > 0 && w < 120)) continue;
     if (/(sprite|pixel|spacer|icon|facebook|instagram|twitter|tripadvisor|badge|avatar|logo-?footer)/i.test(abs)) continue;
+    images.push(abs);
+  }
+
+  for (const abs of rawImages) {
+    if (/(sprite|pixel|spacer|icon|favicon|logo|facebook|instagram|twitter|tripadvisor|badge|avatar|flag)/i.test(abs)) continue;
     images.push(abs);
   }
 
