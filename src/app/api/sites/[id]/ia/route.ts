@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { editSiteContent, explainError } from "@/lib/site/generate";
-import { parseStoredContent } from "@/lib/site/schema";
+import { keepExtras, parseStoredContent } from "@/lib/site/schema";
 import { requireSubscription } from "@/lib/billing/guard";
 import { consumeAi } from "@/lib/site/limits";
 import { createClient } from "@/lib/supabase/server";
@@ -33,7 +33,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (limit) return NextResponse.json({ error: limit.message, needsSubscription: limit.subscribe }, { status: 429 });
 
   try {
-    const { reply, content } = await editSiteContent(current, parsed.data.instruction);
+    const edited = await editSiteContent(current, parsed.data.instruction);
+    const reply = edited.reply;
+    const content = keepExtras(current, edited.content);
     const { error } = await supabase
       .from("sites")
       .update({ content, name: content.brand.name || "Mon site", updated_at: new Date().toISOString() })

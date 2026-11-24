@@ -3,6 +3,11 @@ import type { SiteContent } from "./schema";
 // Exemples fictifs, utilisés seulement pour tester l'affichage en développement.
 const restaurant: SiteContent = {
   theme: "bistrot",
+  special: {
+    title: "Menu du jour",
+    text: "Velouté de potimarron, huile de noisette\nDaube provençale, polenta crémeuse\nTarte au citron meringuée\nFormule entrée, plat, dessert · 24 €",
+    date: new Date().toISOString(),
+  },
   brand: { name: "Le Petit Provençal", tagline: "La Provence, servie à table" },
   hero: {
     eyebrow: "Restaurant · Aix-en-Provence",

@@ -49,7 +49,7 @@ export default async function PublishedSite({ params }: Props) {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
-      <SiteRenderer content={content} credit />
+      <SiteRenderer content={content} credit slug={slug} />
     </>
   );
 }

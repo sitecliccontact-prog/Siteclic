@@ -12,6 +12,8 @@ import { SignOutButton } from "./SignOutButton";
 export const metadata: Metadata = { title: "Mes sites · SiteClic" };
 export const dynamic = "force-dynamic";
 
+type Reservation = { id: string; site_id: string; name: string; phone: string; day: string; time: string; people: number; message: string; created_at: string };
+
 type SiteRow = { id: string; name: string; trade: string | null; status: string; created_at: string; photos?: unknown; theme?: unknown };
 
 /** Couleurs de fond / d'accent de chaque style, pour la vignette quand le site n'a pas de photo. */
@@ -37,6 +39,16 @@ export default async function Dashboard() {
   const sites = (data ?? []) as SiteRow[];
   const sub = billingEnabled() ? await getSubscription(user).catch(() => null) : null;
   const hello = greeting(shopName);
+  // Demandes de réservation (si le texte SQL 06 a été lancé ; sinon rien ne s'affiche).
+  const { data: resa } = await supabase
+    .from("reservations")
+    .select("id, site_id, name, phone, day, time, people, message, created_at")
+    .gte("day", new Date().toISOString().slice(0, 10))
+    .order("day", { ascending: true })
+    .order("time", { ascending: true })
+    .limit(30);
+  const reservations = (resa ?? []) as Reservation[];
+  const siteName = new Map(sites.map((s) => [s.id, s.name]));
 
   return (
     <main className="relative isolate min-h-dvh overflow-x-clip px-5 py-6">
@@ -78,6 +90,17 @@ export default async function Dashboard() {
           </div>
         )}
 
+        {reservations.length > 0 && (
+          <div className="mt-14">
+            <h2 className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted">
+              <span className="h-1.5 w-1.5 rounded-full bg-clic" /> Réservations à venir
+            </h2>
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+              {reservations.map((r) => <ReservationCard key={r.id} r={r} site={sites.length > 1 ? siteName.get(r.site_id) : undefined} />)}
+            </ul>
+          </div>
+        )}
+
         {sites.length > 0 && (
           <div className="mt-14">
             <h2 className="text-xs font-medium uppercase tracking-[0.18em] text-muted">Vos sites</h2>
@@ -108,6 +131,26 @@ export default async function Dashboard() {
         </p>
       </section>
     </main>
+  );
+}
+
+function ReservationCard({ r, site }: { r: Reservation; site?: string }) {
+  const day = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${r.day}T12:00:00Z`));
+  const isNew = Date.now() - Date.parse(r.created_at) < 24 * 3600 * 1000;
+  return (
+    <li className="min-w-0 rounded-3xl border border-line bg-card/80 p-5 backdrop-blur">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-display text-lg font-semibold first-letter:uppercase">{day} · {r.time.replace(":", "h")}</p>
+          <p className="mt-0.5 text-sm text-muted">{r.people} {r.people > 1 ? "personnes" : "personne"} · {r.name}{site ? ` · ${site}` : ""}</p>
+        </div>
+        {isNew && <span className="shrink-0 rounded-full bg-clic/15 px-2.5 py-1 text-xs font-medium text-clic">Nouveau</span>}
+      </div>
+      {r.message && <p className="mt-3 rounded-2xl bg-white/5 px-3 py-2 text-sm text-ink/80">{r.message}</p>}
+      <a href={`tel:${r.phone.replace(/[^\d+]/g, "")}`} className="mt-4 inline-flex rounded-full bg-clic px-4 py-2 text-sm font-medium text-white">
+        Appeler pour confirmer · {r.phone}
+      </a>
+    </li>
   );
 }
 

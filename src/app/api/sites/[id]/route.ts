@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { SiteContentSchema } from "@/lib/site/schema";
+import { StoredContentSchema } from "@/lib/site/schema";
 import { createClient } from "@/lib/supabase/server";
 
-const Body = z.object({ content: SiteContentSchema });
+const Body = z.object({ content: StoredContentSchema });
 
 /** Enregistre les modifications faites à la main dans l'éditeur. */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {

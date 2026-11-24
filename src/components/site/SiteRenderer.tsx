@@ -1,9 +1,10 @@
 import type { CSSProperties } from "react";
-import type { SiteContent } from "@/lib/site/schema";
+import { bookingEnabled, specialIsFresh, type SiteContent } from "@/lib/site/schema";
+import { BookingDialog, SiteMotion } from "./SiteClient";
 import { THEMES } from "./themes";
 
 /** Affiche le site d'un client à partir de son contenu. */
-export function SiteRenderer({ content, credit = false }: { content: SiteContent; credit?: boolean }) {
+export function SiteRenderer({ content, credit = false, slug }: { content: SiteContent; credit?: boolean; slug?: string }) {
   const t = THEMES[content.theme] ?? THEMES.bistrot;
   const c = t.colors;
   const style = {
@@ -21,7 +22,9 @@ export function SiteRenderer({ content, credit = false }: { content: SiteContent
   const aboutPhoto = photos[1];
   const gallery = photos.slice(aboutPhoto ? 2 : 1, 8);
   const phoneHref = contact.phone ? `tel:${contact.phone.replace(/[^\d+]/g, "")}` : undefined;
-  const ctaHref = phoneHref ?? "#infos";
+  const booking = bookingEnabled(content);
+  const ctaHref = booking ? "#reserver" : phoneHref ?? "#infos";
+  const special = specialIsFresh(content) ? content.special : null;
   const query = encodeURIComponent(`${brand.name} ${contact.address}`);
   const mapsHref = contact.address ? `https://www.google.com/maps/search/?api=1&query=${query}` : undefined;
   const mapEmbed = contact.address ? `https://www.google.com/maps?q=${query}&output=embed` : undefined;
@@ -109,18 +112,36 @@ export function SiteRenderer({ content, credit = false }: { content: SiteContent
         </div>
       )}
 
+      {/* Menu du jour */}
+      {special && (
+        <section className="s-special" aria-label={special.title}>
+          <div className="s-wrap">
+            <div className="s-special-card" data-r>
+              <div className="s-special-head">
+                <p className="s-eyebrow"><i className="s-live" aria-hidden />Aujourd&apos;hui · {dayLabel(special.date)}</p>
+                <h2 className="s-display s-special-title">{special.title}</h2>
+              </div>
+              <div className="s-special-text">
+                {special.text.split(/\n+/).filter((l) => l.trim()).map((l, i) => <p key={i}>{l}</p>)}
+              </div>
+              {booking && <a href="#reserver" className="s-link">Réserver une table</a>}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* La maison */}
       <section id="maison" className="s-section">
         <div className={`s-wrap s-about ${aboutPhoto ? "with-photo" : ""}`}>
-          <div className="s-about-head">
+          <div className="s-about-head" data-r>
             <p className="s-eyebrow">La maison</p>
             <h2 className="s-display s-h2">{about.title}</h2>
             {aboutPhoto && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={aboutPhoto} alt="" loading="lazy" referrerPolicy="no-referrer" className="s-about-img" />
+              <img src={aboutPhoto} alt="" loading="lazy" referrerPolicy="no-referrer" className="s-about-img" data-r />
             )}
           </div>
-          <div className="s-prose">
+          <div className="s-prose" data-r>
             {about.paragraphs.map((p, i) => (
               <p key={i} className={i === 0 ? "s-display s-lede" : ""}>{p}</p>
             ))}
@@ -147,7 +168,7 @@ export function SiteRenderer({ content, credit = false }: { content: SiteContent
           </div>
           <div className="s-wrap s-values-list">
             {highlights.slice(0, 4).map((h, i) => (
-              <div key={i} className="s-value">
+              <div key={i} className="s-value" data-r style={{ "--d": `${i * 90}ms` } as CSSProperties}>
                 <h3 className="s-display">{h.title}</h3>
                 <p>{h.text}</p>
               </div>
@@ -162,7 +183,7 @@ export function SiteRenderer({ content, credit = false }: { content: SiteContent
           <div className={`s-gallery-grid n${Math.min(gallery.length, 6)}`}>
             {gallery.slice(0, 6).map((src, i) => (
               // eslint-disable-next-line @next/next/no-img-element
-              <img key={i} src={src} alt="" loading="lazy" referrerPolicy="no-referrer" />
+              <img key={i} src={src} alt="" loading="lazy" referrerPolicy="no-referrer" data-r style={{ "--d": `${(i % 3) * 110}ms` } as CSSProperties} />
             ))}
           </div>
         </section>
@@ -172,14 +193,14 @@ export function SiteRenderer({ content, credit = false }: { content: SiteContent
       {hasOffer && (
         <section id="offre" className="s-section s-surface">
           <div className="s-wrap">
-            <div className="s-head">
+            <div className="s-head" data-r>
               {ornament}
               <h2 className="s-display s-h2">{offer.title}</h2>
               {offer.intro && <p className="s-lead">{offer.intro}</p>}
             </div>
             <div className={`s-menu ${cats.length === 1 ? "single" : ""}`}>
               {cats.map((cat, i) => (
-                <div key={i} className="s-cat">
+                <div key={i} className="s-cat" data-r style={{ "--d": `${i * 120}ms` } as CSSProperties}>
                   <h3 className="s-cat-title">{cat.name}</h3>
                   <ul>
                     {cat.items.map((it, j) => (
@@ -203,11 +224,11 @@ export function SiteRenderer({ content, credit = false }: { content: SiteContent
       {hasInfos && (
         <section id="infos" className="s-section">
           <div className="s-wrap">
-            <div className="s-head s-head-left">
+            <div className="s-head s-head-left" data-r>
               <p className="s-eyebrow">Infos pratiques</p>
               <h2 className="s-display s-h2">Venir nous voir</h2>
             </div>
-            <div className="s-infos">
+            <div className="s-infos" data-r>
               {hours.length > 0 && (
                 <div className="s-info">
                   <h3 className="s-info-title">Horaires</h3>
@@ -237,7 +258,7 @@ export function SiteRenderer({ content, credit = false }: { content: SiteContent
               )}
             </div>
             {mapEmbed && (
-              <div className="s-map">
+              <div className="s-map" data-r>
                 <span>{contact.address}</span>
                 <iframe src={mapEmbed} title={`Plan d'accès : ${brand.name}`} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
               </div>
@@ -248,7 +269,7 @@ export function SiteRenderer({ content, credit = false }: { content: SiteContent
 
       {/* Invitation finale */}
       <section className="s-band">
-        <div className="s-wrap s-band-inner">
+        <div className="s-wrap s-band-inner" data-r>
           {ornament}
           <h2 className="s-display s-h2">{closing.title}</h2>
           {closing.text && <p>{closing.text}</p>}
@@ -272,14 +293,26 @@ export function SiteRenderer({ content, credit = false }: { content: SiteContent
       </footer>
 
       {/* Barre d'action sur téléphone */}
-      {(phoneHref || mapsHref) && (
+      {(booking || phoneHref || mapsHref) && (
         <div className="s-dock">
-          {phoneHref && <a href={phoneHref} className="s-dock-main">Appeler</a>}
+          {booking && <a href="#reserver" className="s-dock-main">Réserver</a>}
+          {phoneHref && <a href={phoneHref} className={booking ? "" : "s-dock-main"}>Appeler</a>}
           {mapsHref && <a href={mapsHref} target="_blank" rel="noreferrer">Itinéraire</a>}
         </div>
       )}
+
+      <SiteMotion />
+      {booking && <BookingDialog slug={slug} brand={brand.name} phone={contact.phone} phoneHref={phoneHref} />}
     </div>
   );
+}
+
+function dayLabel(iso: string) {
+  try {
+    return new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Paris" }).format(new Date(iso));
+  } catch {
+    return "";
+  }
 }
 
 function shortTitle(s: string) {
@@ -474,4 +507,48 @@ const SITE_CSS = `
 .site .s-hero-foot.s-rise{animation-delay:.18s}
 @keyframes s-rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.site *{animation:none!important}}
+/* Menu du jour */
+.site .s-special{padding:clamp(28px,5cqi,56px) 0 0}
+.site .s-special-card{position:relative;display:grid;gap:18px 48px;padding:clamp(26px,4.5cqi,52px);border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line));border-radius:var(--radius);background:var(--surface)}
+@container (min-width:760px){.site .s-special-card{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);align-items:start}.site .s-special-card .s-link{grid-column:2}}
+.site .s-special-head .s-eyebrow{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.site .s-live{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 60%,transparent);animation:s-pulse 2.2s infinite}
+@keyframes s-pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 55%,transparent)}70%{box-shadow:0 0 0 10px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.site .s-special-title{font-size:clamp(32px,4.4cqi,56px);margin:0}
+.site .s-special-text p{margin:0;padding:12px 0;border-bottom:1px solid var(--line);font-size:17px}
+.site .s-special-text p:last-child{border-bottom:0}
+.site .s-special-card .s-link{justify-self:start}
+
+/* Apparitions au défilement (seulement si le navigateur les gère) */
+.site.motion [data-r]{opacity:0;transform:translateY(26px);transition:opacity .9s cubic-bezier(.2,.7,.2,1) var(--d,0ms),transform 1.1s cubic-bezier(.2,.7,.2,1) var(--d,0ms)}
+.site.motion img[data-r]{transform:scale(1.06);clip-path:inset(6% 4% 6% 4% round var(--radius));transition:opacity 1s ease var(--d,0ms),transform 1.6s cubic-bezier(.2,.7,.2,1) var(--d,0ms),clip-path 1.3s cubic-bezier(.2,.7,.2,1) var(--d,0ms)}
+.site.motion [data-r].in{opacity:1;transform:none;clip-path:inset(0 0 0 0 round var(--radius))}
+.site .s-hero-photo img{will-change:translate}
+@media (prefers-reduced-motion:reduce){.site.motion [data-r]{opacity:1;transform:none;clip-path:none;transition:none}.site .s-live{animation:none}}
+
+/* Réservation */
+.site .s-modal{position:fixed;inset:0;z-index:200;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:s-fade .25s ease}
+@media (min-width:640px){.site .s-modal{align-items:center;padding:24px}}
+.site .s-modal-panel{position:relative;width:100%;max-width:480px;max-height:92dvh;overflow:auto;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:calc(var(--radius) + 14px) calc(var(--radius) + 14px) 0 0;padding:30px 24px 26px;animation:s-up .35s cubic-bezier(.2,.7,.2,1)}
+@media (min-width:640px){.site .s-modal-panel{border-radius:calc(var(--radius) + 10px);padding:38px 36px 32px}}
+@keyframes s-fade{from{opacity:0}}
+@keyframes s-up{from{transform:translateY(40px);opacity:0}}
+.site .s-modal-close{position:absolute;top:14px;right:16px;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:22px;line-height:1;cursor:pointer}
+.site .s-modal-title{font-size:clamp(28px,7vw,40px);margin:0 0 22px}
+.site .s-modal .s-eyebrow{margin-bottom:10px}
+.site .s-field{display:block;margin-bottom:14px}
+.site .s-field>span{display:block;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:7px}
+.site .s-field em{font-style:normal;text-transform:none;letter-spacing:0}
+.site .s-field input,.site .s-field textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:13px 14px;outline:none;color-scheme:light dark;min-width:0;max-width:100%;-webkit-appearance:none;appearance:none;min-height:50px}
+.site .s-field input:focus,.site .s-field textarea:focus{border-color:var(--accent)}
+.site .s-field-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.site .s-stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);width:max-content}
+.site .s-stepper button{width:48px;height:46px;border:0;background:transparent;color:var(--ink);font-size:20px;cursor:pointer}
+.site .s-stepper output{min-width:40px;text-align:center;font-weight:600;font-size:17px}
+.site .s-btn-full{width:100%;margin-top:6px;cursor:pointer}
+.site .s-btn:disabled{opacity:.6}
+.site .s-modal-note{margin:12px 0 0;text-align:center;font-size:13px;color:var(--muted)}
+.site .s-modal-error{margin:0 0 12px;color:#e5484d;font-size:14px}
+.site .s-modal-done{display:grid;gap:18px;justify-items:start;padding-top:8px}
+.site .s-modal-done .s-modal-title{margin:0;font-size:clamp(24px,6vw,32px);line-height:1.2}
 `;

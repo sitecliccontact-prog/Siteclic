@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { PublishButton, type PublishState } from "@/components/PublishButton";
+import { DailyPanel } from "./DailyPanel";
 import { SiteRenderer } from "@/components/site/SiteRenderer";
 import { useDictation } from "@/lib/hooks/useDictation";
 import { MAX_PHOTOS, uploadPhoto } from "@/lib/site/photos";
@@ -135,7 +136,9 @@ export function Editor({ id, initial, publish }: { id: string; initial: SiteCont
             ))}
           </div>
           {tab === "main" ? (
-            <ManualPanel id={id} content={content} edit={(fn) => { remember(); edit(fn); }} addPhotos={addPhotos} />
+            <ManualPanel id={id} content={content} edit={(fn) => { remember(); edit(fn); }} addPhotos={addPhotos}
+              daily={<DailyPanel id={id} content={content} beforeSave={flush}
+                onSaved={(c) => setContent((prev) => ({ ...prev, special: c.special, booking: c.booking }))} />} />
           ) : (
             <AiPanel id={id} photoCount={content.photos.length} beforeSend={flush} addPhotos={addPhotos}
               onResult={(c) => { remember(true); setContent(c); setChanged(true); }} />
@@ -314,9 +317,10 @@ type ManualProps = {
   content: SiteContent;
   edit: (fn: (d: SiteContent) => void) => void;
   addPhotos: (urls: string[]) => Promise<void>;
+  daily: React.ReactNode;
 };
 
-function ManualPanel({ id, content: c, edit, addPhotos }: ManualProps) {
+function ManualPanel({ id, content: c, edit, addPhotos, daily }: ManualProps) {
   const [upload, setUpload] = useState<{ done: number; total: number } | null>(null);
   const [photoError, setPhotoError] = useState("");
 
@@ -341,6 +345,7 @@ function ManualPanel({ id, content: c, edit, addPhotos }: ManualProps) {
 
   return (
     <div className="flex-1 space-y-2 overflow-y-auto p-4 pb-16">
+      {daily}
       <Block title="Style" open>
         <div className="grid grid-cols-5 gap-2">
           {THEME_LABELS.map((t) => (

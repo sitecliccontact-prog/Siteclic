@@ -63,7 +63,39 @@ export const SiteContentSchema = z.object({
   }),
 });
 
-export type SiteContent = z.infer<typeof SiteContentSchema>;
+/** Réglages gérés par le commerçant lui-même (jamais par l'IA). */
+export const SiteExtrasSchema = z.object({
+  /** Menu ou plat du jour, affiché en haut du site le jour même. */
+  special: z
+    .object({ title: z.string().max(80), text: z.string().max(1200), date: z.string() })
+    .nullable()
+    .optional(),
+  /** Bouton « Réserver une table » avec formulaire. */
+  booking: z.object({ enabled: z.boolean() }).optional(),
+});
+
+/** Contenu enregistré = contenu écrit par l'IA + réglages du commerçant. */
+export const StoredContentSchema = SiteContentSchema.extend(SiteExtrasSchema.shape);
+
+export type SiteContent = z.infer<typeof StoredContentSchema>;
+export type SiteExtras = z.infer<typeof SiteExtrasSchema>;
+
+/** Garde les réglages du commerçant quand l'IA réécrit le site. */
+export function keepExtras(from: SiteContent, to: SiteContent): SiteContent {
+  return { ...to, special: from.special, booking: from.booking };
+}
+
+/** Le formulaire de réservation est-il proposé ? (par défaut : oui si le bouton principal parle de réserver) */
+export function bookingEnabled(c: SiteContent) {
+  return c.booking?.enabled ?? /r[ée]serv/i.test(c.hero.cta);
+}
+
+/** Le menu du jour est-il encore d'actualité ? (affiché pendant 20 h) */
+export function specialIsFresh(c: SiteContent, now = Date.now()) {
+  if (!c.special?.text.trim()) return false;
+  const t = Date.parse(c.special.date);
+  return Number.isFinite(t) && now - t < 20 * 3600 * 1000;
+}
 
 /** Réponses du questionnaire de création. */
 export const BriefSchema = z.object({
@@ -84,6 +116,6 @@ export type Brief = z.infer<typeof BriefSchema>;
 /** Lit un contenu enregistré (les anciens sites n'ont pas encore de photos). */
 export function parseStoredContent(raw: unknown): SiteContent | null {
   if (!raw || typeof raw !== "object") return null;
-  const r = SiteContentSchema.safeParse({ photos: [], ...(raw as object) });
+  const r = StoredContentSchema.safeParse({ photos: [], ...(raw as object) });
   return r.success ? r.data : null;
 }
