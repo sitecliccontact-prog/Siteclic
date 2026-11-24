@@ -14,6 +14,7 @@ export async function GET(request: Request) {
     branche: process.env.VERCEL_GIT_COMMIT_REF ?? null,
     cleIA: Boolean(process.env.ANTHROPIC_API_KEY),
     stripe: Boolean(process.env.STRIPE_SECRET_KEY),
+    limitesIA: await limitsReady(),
   };
   if (new URL(request.url).searchParams.get("test") !== "ia") return NextResponse.json(base);
 
@@ -27,5 +28,19 @@ export async function GET(request: Request) {
   } catch (err) {
     console.error("Test IA échoué", err);
     return NextResponse.json({ ...base, testIA: explainError(err, "Échec"), secondes: Math.round((Date.now() - start) / 1000) });
+  }
+}
+
+/** Le texte SQL des limites IA (supabase/05-limites-ia.sql) a-t-il été lancé ? */
+async function limitsReady() {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("ai_use_counts", { p_kind: "creation" });
+    // Sans être connecté, la fonction existe mais refuse l'accès (42501) : c'est bon signe.
+    if (!error || error.code === "42501") return "OK";
+    if (error.code === "PGRST202" || error.code === "42883") return "PAS ENCORE FAIT";
+    return `inconnu (${error.code})`;
+  } catch {
+    return "inconnu";
   }
 }
