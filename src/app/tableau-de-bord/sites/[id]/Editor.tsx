@@ -6,6 +6,7 @@ import { PublishButton, type PublishState } from "@/components/PublishButton";
 import { DailyPanel } from "./DailyPanel";
 import { SiteRenderer } from "@/components/site/SiteRenderer";
 import { useDictation } from "@/lib/hooks/useDictation";
+import { speak, stopSpeaking } from "@/lib/hooks/speak";
 import { MAX_PHOTOS, uploadPhoto } from "@/lib/site/photos";
 import type { SiteContent, ThemeName } from "@/lib/site/schema";
 
@@ -149,7 +150,7 @@ export function Editor({ id, initial, publish }: { id: string; initial: SiteCont
         <section className={`${tab === "apercu" ? "block" : "hidden"} min-w-0 flex-1 overflow-y-auto bg-sand lg:block`}>
           <div className="lg:p-6">
             <div className="overflow-hidden lg:rounded-2xl lg:border lg:border-line lg:shadow-2xl">
-              <SiteRenderer content={content} />
+              <SiteRenderer content={content} siteId={id} />
             </div>
           </div>
         </section>
@@ -180,8 +181,40 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
   }, [msgs, busy]);
 
   const [lastPhoto, setLastPhoto] = useState<string | null>(null);
-  const voice = useDictation(setText);
+  // Mode conversation : on parle, l'IA modifie le site et répond à voix haute, puis réécoute.
+  const [talk, setTalk] = useState<"off" | "listening" | "thinking" | "speaking">("off");
+  const talkOn = useRef(false);
+  const voice = useDictation(setText, (said) => {
+    if (!talkOn.current) return;
+    if (said.trim()) {
+      send(said);
+    } else {
+      talkOn.current = false;
+      setTalk("off");
+    }
+  });
   const fileInput = useRef<HTMLInputElement>(null);
+
+  function startTalk() {
+    talkOn.current = true;
+    setTalk("listening");
+    stopSpeaking();
+    voice.start("");
+  }
+  function stopTalk() {
+    talkOn.current = false;
+    setTalk("off");
+    voice.stop();
+    stopSpeaking();
+  }
+  function answer(reply: string) {
+    if (!talkOn.current) return;
+    setTalk("speaking");
+    speak(reply, () => {
+      if (talkOn.current) startTalk();
+    });
+  }
+  useEffect(() => () => stopSpeaking(), []);
 
   async function attach(files: FileList | null) {
     if (!files?.length || busy) return;
@@ -210,6 +243,7 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
   async function send(instruction: string) {
     if (!instruction.trim() || busy) return;
     voice.stop();
+    if (talkOn.current) setTalk("thinking");
     setMsgs((m) => [...m, { from: "moi", text: instruction }]);
     setText("");
     setBusy(true);
@@ -223,14 +257,18 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 402) {
+        answer("Les modifications par l'IA sont incluses avec votre site.");
         setMsgs((m) => [...m, { from: "ia", subscribe: true, text: "Les modifications par l'IA sont incluses avec votre site (20 €, 50 modifications). Vous pouvez aussi modifier vos textes vous-même, gratuitement." }]);
         return;
       }
       if (!res.ok) throw new Error(data.error || "La modification a échoué.");
       onResult(data.content);
       setMsgs((m) => [...m, { from: "ia", text: data.reply }]);
+      answer(data.reply);
     } catch (e) {
-      setMsgs((m) => [...m, { from: "ia", text: e instanceof Error ? e.message : "La modification a échoué." }]);
+      const t = e instanceof Error ? e.message : "La modification a échoué.";
+      setMsgs((m) => [...m, { from: "ia", text: t }]);
+      answer(t);
     } finally {
       setBusy(false);
     }
@@ -265,6 +303,21 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
         <div ref={end} />
       </div>
       <div className="border-t border-line p-3">
+        {voice.supported && (talk === "off" ? (
+          <button type="button" onClick={startTalk} disabled={busy}
+            className="mb-3 flex w-full items-center justify-center gap-2.5 rounded-2xl border border-clic/40 bg-clic/10 py-3 text-[15px] font-medium text-ink transition hover:bg-clic/15 disabled:opacity-40">
+            <Waves /> Parler à l&apos;IA
+            <span className="text-xs font-normal text-muted">· elle vous répond à voix haute</span>
+          </button>
+        ) : (
+          <div className="mb-3 flex items-center gap-3 rounded-2xl bg-clic px-4 py-3 text-white">
+            <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/20 ${talk === "listening" ? "animate-pulse" : ""}`}><Waves /></span>
+            <span className="flex-1 text-[15px] font-medium">
+              {talk === "listening" ? (text || "Je vous écoute…") : talk === "thinking" ? "Je modifie votre site…" : "Je vous réponds…"}
+            </span>
+            <button type="button" onClick={stopTalk} className="rounded-full bg-white/20 px-3 py-1.5 text-sm font-medium">Arrêter</button>
+          </div>
+        ))}
         <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
           {SUGGESTIONS.map((s) => (
             <button key={s} onClick={() => send(s)} disabled={busy}
@@ -303,7 +356,7 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
             ↑
           </button>
         </form>
-        {voice.listening && <p className="mt-2 text-center text-xs text-clic">Parlez, puis touchez ■ ou attendez un instant. Vous pourrez corriger le texte avant d&apos;envoyer.</p>}
+        {voice.listening && talk === "off" && <p className="mt-2 text-center text-xs text-clic">Parlez, puis touchez ■ ou attendez un instant. Vous pourrez corriger le texte avant d&apos;envoyer.</p>}
         {voice.error && <p className="mt-2 text-center text-xs text-red-400">{voice.error}</p>}
       </div>
     </div>
@@ -518,5 +571,13 @@ function Add({ onClick, children }: { onClick: () => void; children: React.React
     <button onClick={onClick} className="w-full rounded-xl border border-dashed border-line py-2.5 text-sm text-muted hover:border-ink/40 hover:text-ink">
       + {children}
     </button>
+  );
+}
+
+function Waves() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+      <path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4" />
+    </svg>
   );
 }

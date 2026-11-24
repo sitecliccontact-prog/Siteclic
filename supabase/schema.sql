@@ -35,3 +35,4 @@ create index if not exists sites_user_id_idx on public.sites (user_id);
 
 -- Limites d'utilisation de l'IA : voir 05-limites-ia.sql
 -- Réservations de table : voir 06-reservations.sql
+-- Assistant IA + statut des réservations : voir 07-assistant.sql

@@ -3,6 +3,7 @@ import type { SiteContent } from "./schema";
 // Exemples fictifs, utilisés seulement pour tester l'affichage en développement.
 const restaurant: SiteContent = {
   theme: "bistrot",
+  assistant: { enabled: true },
   special: {
     title: "Menu du jour",
     text: "Velouté de potimarron, huile de noisette\nDaube provençale, polenta crémeuse\nTarte au citron meringuée\nFormule entrée, plat, dessert · 24 €",

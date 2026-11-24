@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 const Body = z.object({
   special: z.object({ title: z.string().trim().max(80), text: z.string().trim().max(1200) }).nullable().optional(),
   booking: z.object({ enabled: z.boolean() }).optional(),
+  assistant: z.object({ enabled: z.boolean() }).optional(),
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -32,6 +33,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     patch.special = s && s.text ? { title: s.title || "Menu du jour", text: s.text, date: new Date().toISOString() } : null;
   }
   if (parsed.data.booking) patch.booking = parsed.data.booking;
+  if (parsed.data.assistant) patch.assistant = parsed.data.assistant;
 
   const next = { ...content, ...patch };
   const published = parseStoredContent(row.published_content);

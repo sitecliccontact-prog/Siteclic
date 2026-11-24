@@ -1,10 +1,10 @@
 import type { CSSProperties } from "react";
 import { bookingEnabled, specialIsFresh, type SiteContent } from "@/lib/site/schema";
-import { BookingDialog, SiteMotion } from "./SiteClient";
+import { AssistantWidget, BookingDialog, SiteMotion } from "./SiteClient";
 import { THEMES } from "./themes";
 
 /** Affiche le site d'un client à partir de son contenu. */
-export function SiteRenderer({ content, credit = false, slug }: { content: SiteContent; credit?: boolean; slug?: string }) {
+export function SiteRenderer({ content, credit = false, slug, siteId }: { content: SiteContent; credit?: boolean; slug?: string; siteId?: string }) {
   const t = THEMES[content.theme] ?? THEMES.bistrot;
   const c = t.colors;
   const style = {
@@ -302,6 +302,9 @@ export function SiteRenderer({ content, credit = false, slug }: { content: SiteC
       )}
 
       <SiteMotion />
+      {content.assistant?.enabled && (
+        <AssistantWidget slug={slug} siteId={siteId} brand={brand.name} booking={booking} special={Boolean(special)} />
+      )}
       {booking && <BookingDialog slug={slug} brand={brand.name} phone={contact.phone} phoneHref={phoneHref} />}
     </div>
   );
@@ -551,4 +554,39 @@ const SITE_CSS = `
 .site .s-modal-error{margin:0 0 12px;color:#e5484d;font-size:14px}
 .site .s-modal-done{display:grid;gap:18px;justify-items:start;padding-top:8px}
 .site .s-modal-done .s-modal-title{margin:0;font-size:clamp(24px,6vw,32px);line-height:1.2}
+/* Assistant IA */
+.site .s-ai-launch{position:fixed;right:16px;bottom:88px;z-index:60;display:inline-flex;align-items:center;gap:9px;padding:13px 18px 13px 15px;border-radius:999px;border:0;background:var(--ink);color:var(--bg);font:inherit;font-weight:600;font-size:14px;cursor:pointer;box-shadow:0 14px 40px rgba(0,0,0,.3);animation:s-up .6s cubic-bezier(.2,.7,.2,1) 1s both}
+.site .s-ai-launch span{display:none}
+.site .s-ai-launch{padding:0;width:54px;height:54px;justify-content:center}
+@container (min-width:860px){.site .s-ai-launch{bottom:24px;right:24px;width:auto;height:auto;padding:13px 18px 13px 15px}.site .s-ai-launch span{display:inline}}
+.site .s-ai-launch.is-preview{position:sticky;float:right;margin:-70px 16px 16px 0;bottom:16px}
+.site .s-ai{position:fixed;z-index:210;inset:auto 0 0 0;height:min(88dvh,640px);display:flex;flex-direction:column;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:22px 22px 0 0;box-shadow:0 -20px 60px rgba(0,0,0,.35);animation:s-up .35s cubic-bezier(.2,.7,.2,1);overflow:hidden}
+@media (min-width:640px){.site .s-ai{inset:auto 24px 24px auto;width:390px;height:min(80dvh,620px);border-radius:22px}}
+.site .s-ai-head{display:flex;align-items:center;gap:12px;padding:16px 16px 14px 20px;border-bottom:1px solid var(--line)}
+.site .s-ai-head>div{flex:1;min-width:0}
+.site .s-ai-dot{width:10px;height:10px;border-radius:50%;background:#3ecf8e;box-shadow:0 0 0 4px color-mix(in srgb,#3ecf8e 25%,transparent)}
+.site .s-ai-title{margin:0;font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.site .s-ai-sub{margin:0;font-size:12px;color:var(--muted)}
+.site .s-ai-icon{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);display:grid;place-items:center;font-size:20px;cursor:pointer}
+.site .s-ai-icon.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.site .s-ai-body{flex:1;overflow-y:auto;padding:18px 16px;display:flex;flex-direction:column;gap:10px}
+.site .s-ai-msg{margin:0;max-width:86%;padding:11px 15px;border-radius:18px;font-size:15px;line-height:1.5}
+.site .s-ai-msg.bot{background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:6px;align-self:flex-start}
+.site .s-ai-msg.me{background:var(--accent);color:var(--on-accent);border-bottom-right-radius:6px;align-self:flex-end}
+.site .s-ai-typing{display:flex;gap:5px;padding:15px 16px}
+.site .s-ai-typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:s-blink 1.2s infinite}
+.site .s-ai-typing i:nth-child(2){animation-delay:.2s}.site .s-ai-typing i:nth-child(3){animation-delay:.4s}
+@keyframes s-blink{0%,100%{opacity:.25}50%{opacity:1}}
+.site .s-ai-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.site .s-ai-chips button{font:inherit;font-size:13px;padding:8px 13px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.site .s-ai-chips button:hover{border-color:var(--accent);color:var(--accent)}
+.site .s-ai-error{margin:0;padding:0 16px 6px;font-size:12px;color:#e5484d}
+.site .s-ai-form{display:flex;align-items:center;gap:8px;padding:12px;border-top:1px solid var(--line)}
+.site .s-ai-form input{flex:1;min-width:0;font:inherit;font-size:16px;padding:12px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);outline:none}
+.site .s-ai-form input:focus{border-color:var(--accent)}
+.site .s-ai-mic,.site .s-ai-send{width:46px;height:46px;flex-shrink:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;font-size:18px}
+.site .s-ai-mic{border:1px solid var(--line);background:transparent;color:var(--ink)}
+.site .s-ai-mic.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.site .s-ai-send{border:0;background:var(--accent);color:var(--on-accent)}
+.site .s-ai-send:disabled{opacity:.35}
 `;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useDictation } from "@/lib/hooks/useDictation";
 
 /* Parties interactives des sites clients : animations au défilement et formulaire de réservation. */
 
@@ -148,5 +149,124 @@ export function BookingDialog({ slug, brand, phone, phoneHref }: BookingProps) {
         </div>
       )}
     </div>
+  );
+}
+
+/* ---------- Assistant IA pour les visiteurs ---------- */
+
+type Msg = { role: "user" | "assistant"; text: string };
+type AssistantProps = { slug?: string; siteId?: string; brand: string; booking: boolean; special: boolean };
+
+export function AssistantWidget({ slug, siteId, brand, booking, special }: AssistantProps) {
+  const [open, setOpen] = useState(false);
+  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [speak, setSpeak] = useState(false);
+  const end = useRef<HTMLDivElement>(null);
+  const voice = useDictation(setText);
+  const usedVoice = useRef(false);
+
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: "end" });
+  }, [msgs, busy, open]);
+
+  function say(t: string) {
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(t);
+    u.lang = "fr-FR";
+    const fr = window.speechSynthesis.getVoices().find((v) => v.lang.startsWith("fr"));
+    if (fr) u.voice = fr;
+    window.speechSynthesis.speak(u);
+  }
+
+  async function send(q: string) {
+    const question = q.trim();
+    if (!question || busy) return;
+    voice.stop();
+    const history = [...msgs, { role: "user" as const, text: question }];
+    setMsgs(history);
+    setText("");
+    setBusy(true);
+    const aloud = speak || usedVoice.current;
+    usedVoice.current = false;
+    try {
+      const res = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: siteId ? undefined : slug, siteId, messages: history.slice(-12) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      const reply: string = data.reply || data.error || "Je n'ai pas pu répondre. Réessayez dans un instant.";
+      setMsgs((m) => [...m, { role: "assistant", text: reply }]);
+      if (aloud) say(reply);
+    } catch {
+      setMsgs((m) => [...m, { role: "assistant", text: "Pas de connexion. Réessayez dans un instant." }]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const chips = [
+    "Quels sont vos horaires ?",
+    ...(booking ? ["Je voudrais réserver une table"] : []),
+    ...(special ? ["C'est quoi le menu du jour ?"] : []),
+    "Où êtes-vous ?",
+  ];
+
+  return (
+    <>
+      <button type="button" className={`s-ai-launch ${siteId ? "is-preview" : ""}`} onClick={() => setOpen(true)} aria-label="Poser une question">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M4 5h16v11H9l-5 4z" /><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01" />
+        </svg>
+        <span>Une question ?</span>
+      </button>
+      {open && (
+        <div className="s-ai" role="dialog" aria-label={`Assistant de ${brand}`}>
+          <header className="s-ai-head">
+            <span className="s-ai-dot" aria-hidden />
+            <div>
+              <p className="s-ai-title">{brand}</p>
+              <p className="s-ai-sub">Assistant · répond tout de suite</p>
+            </div>
+            <button type="button" onClick={() => { setSpeak((v) => !v); window.speechSynthesis?.cancel(); }}
+              className={`s-ai-icon ${speak ? "on" : ""}`} aria-pressed={speak} aria-label={speak ? "Ne plus lire les réponses" : "Lire les réponses à voix haute"}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 9v6h4l5 4V5L8 9z" />{speak ? <path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" /> : <path d="m17 9 4 6M21 9l-4 6" />}
+              </svg>
+            </button>
+            <button type="button" onClick={() => { setOpen(false); window.speechSynthesis?.cancel(); }} className="s-ai-icon" aria-label="Fermer">×</button>
+          </header>
+          <div className="s-ai-body">
+            <p className="s-ai-msg bot">Bonjour ! Je suis l&apos;assistant de {brand}. Horaires, carte{booking ? ", réservation" : ""} : posez-moi votre question, par écrit ou au micro.</p>
+            {msgs.map((m, i) => <p key={i} className={`s-ai-msg ${m.role === "user" ? "me" : "bot"}`}>{m.text}</p>)}
+            {busy && <p className="s-ai-msg bot s-ai-typing"><i /><i /><i /></p>}
+            {!msgs.length && (
+              <div className="s-ai-chips">
+                {chips.map((c) => <button key={c} type="button" onClick={() => send(c)}>{c}</button>)}
+              </div>
+            )}
+            <div ref={end} />
+          </div>
+          {voice.error && <p className="s-ai-error">{voice.error}</p>}
+          <form className="s-ai-form" onSubmit={(e) => { e.preventDefault(); send(text); }}>
+            {voice.supported && (
+              <button type="button" className={`s-ai-mic ${voice.listening ? "on" : ""}`}
+                onClick={() => { if (voice.listening) voice.stop(); else { usedVoice.current = true; voice.start(text); } }}
+                aria-label={voice.listening ? "Arrêter" : "Parler"}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  {voice.listening ? <rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" /> : <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></>}
+                </svg>
+              </button>
+            )}
+            <input value={text} onChange={(e) => setText(e.target.value)} maxLength={500}
+              placeholder={voice.listening ? "Je vous écoute…" : "Votre question…"} aria-label="Votre question" />
+            <button className="s-ai-send" disabled={busy || !text.trim()} aria-label="Envoyer">↑</button>
+          </form>
+        </div>
+      )}
+    </>
   );
 }

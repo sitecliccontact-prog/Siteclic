@@ -23,12 +23,13 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
   const fresh = specialIsFresh(content);
   const [title, setTitle] = useState(content.special?.title || "Menu du jour");
   const [text, setText] = useState(fresh ? content.special?.text ?? "" : "");
-  const [busy, setBusy] = useState<"menu" | "booking" | null>(null);
+  const [busy, setBusy] = useState<"menu" | "booking" | "assistant" | null>(null);
   const [msg, setMsg] = useState("");
   const voice = useDictation(setText);
   const booking = bookingEnabled(content);
+  const assistant = content.assistant?.enabled ?? false;
 
-  async function run(kind: "menu" | "booking", body: object, ok: string) {
+  async function run(kind: "menu" | "booking" | "assistant", body: object, ok: string) {
     setBusy(kind);
     setMsg("");
     try {
@@ -80,18 +81,28 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-4 rounded-2xl border border-line bg-card p-4">
-        <div>
-          <p className="font-medium">Réservation de table</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted">Un bouton « Réserver » sur votre site. Les demandes arrivent dans « Mes sites ».</p>
-        </div>
-        <button type="button" role="switch" aria-checked={booking} disabled={busy !== null}
-          onClick={() => run("booking", { booking: { enabled: !booking } }, booking ? "Réservation désactivée." : "Réservation activée ✓")}
-          className={`relative h-7 w-12 shrink-0 rounded-full transition ${booking ? "bg-clic" : "bg-white/15"}`}>
-          <span className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${booking ? "left-6" : "left-1"}`} />
-        </button>
-      </div>
+      <Switch title="Réservation de table" on={booking} disabled={busy !== null}
+        text="Un bouton « Réserver » sur votre site. Les demandes arrivent dans votre tableau des réservations."
+        onToggle={() => run("booking", { booking: { enabled: !booking } }, booking ? "Réservation désactivée." : "Réservation activée ✓")} />
+      <Switch title="Assistant IA pour vos clients" on={assistant} disabled={busy !== null}
+        text="Un bouton « Une question ? » sur votre site : l'IA répond à l'écrit ou à l'oral (horaires, carte) et prend les réservations."
+        onToggle={() => run("assistant", { assistant: { enabled: !assistant } }, assistant ? "Assistant désactivé." : "Assistant activé ✓ Essayez-le dans « Voir ».")} />
       {msg && <p className="px-1 text-xs text-muted" role="status">{msg}</p>}
+    </div>
+  );
+}
+
+function Switch({ title, text, on, disabled, onToggle }: { title: string; text: string; on: boolean; disabled: boolean; onToggle: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-2xl border border-line bg-card p-4">
+      <div>
+        <p className="font-medium">{title}</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted">{text}</p>
+      </div>
+      <button type="button" role="switch" aria-checked={on} aria-label={title} disabled={disabled} onClick={onToggle}
+        className={`relative h-7 w-12 shrink-0 rounded-full transition ${on ? "bg-clic" : "bg-white/15"}`}>
+        <span className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${on ? "left-6" : "left-1"}`} />
+      </button>
     </div>
   );
 }

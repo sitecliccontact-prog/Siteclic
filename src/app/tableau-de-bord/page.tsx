@@ -92,11 +92,14 @@ export default async function Dashboard() {
 
         {reservations.length > 0 && (
           <div className="mt-14">
-            <h2 className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted">
-              <span className="h-1.5 w-1.5 rounded-full bg-clic" /> Réservations à venir
-            </h2>
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted">
+                <span className="h-1.5 w-1.5 rounded-full bg-clic" /> Réservations à venir
+              </h2>
+              <Link href="/tableau-de-bord/reservations" className="text-sm font-medium text-clic">Tableau complet →</Link>
+            </div>
             <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-              {reservations.map((r) => <ReservationCard key={r.id} r={r} site={sites.length > 1 ? siteName.get(r.site_id) : undefined} />)}
+              {reservations.slice(0, 4).map((r) => <ReservationCard key={r.id} r={r} site={sites.length > 1 ? siteName.get(r.site_id) : undefined} />)}
             </ul>
           </div>
         )}

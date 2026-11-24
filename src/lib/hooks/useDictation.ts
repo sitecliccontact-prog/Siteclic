@@ -32,13 +32,16 @@ const ERRORS: Record<string, string> = {
 };
 
 /** `base` = texte déjà écrit ; le texte dicté s'ajoute à la suite. */
-export function useDictation(onText: (text: string) => void) {
+export function useDictation(onText: (text: string) => void, onEnd?: (text: string) => void) {
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
   const [error, setError] = useState("");
   const rec = useRef<Recognition | null>(null);
   const cb = useRef(onText);
   cb.current = onText;
+  const endCb = useRef(onEnd);
+  endCb.current = onEnd;
+  const last = useRef("");
 
   useEffect(() => {
     setSupported(!!getRecognition());
@@ -55,16 +58,23 @@ export function useDictation(onText: (text: string) => void) {
     r.continuous = false;
     r.interimResults = true;
     const prefix = base.trim() ? `${base.trim()} ` : "";
+    last.current = "";
     r.onresult = (e) => {
       let said = "";
       for (let i = 0; i < e.results.length; i++) said += e.results[i][0].transcript;
       said = said.trim();
-      if (said) cb.current(prefix + said.charAt(0).toUpperCase() + said.slice(1));
+      if (said) {
+        last.current = prefix + said.charAt(0).toUpperCase() + said.slice(1);
+        cb.current(last.current);
+      }
     };
     r.onerror = (e) => {
       if (e.error !== "no-speech" && e.error !== "aborted") setError(ERRORS[e.error] ?? "La dictée n'a pas fonctionné. Réessayez.");
     };
-    r.onend = () => setListening(false);
+    r.onend = () => {
+      setListening(false);
+      endCb.current?.(last.current);
+    };
     rec.current = r;
     try {
       r.start();

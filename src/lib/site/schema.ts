@@ -72,6 +72,8 @@ export const SiteExtrasSchema = z.object({
     .optional(),
   /** Bouton « Réserver une table » avec formulaire. */
   booking: z.object({ enabled: z.boolean() }).optional(),
+  /** Assistant IA qui répond aux visiteurs (texte et voix). */
+  assistant: z.object({ enabled: z.boolean() }).optional(),
 });
 
 /** Contenu enregistré = contenu écrit par l'IA + réglages du commerçant. */
@@ -82,7 +84,7 @@ export type SiteExtras = z.infer<typeof SiteExtrasSchema>;
 
 /** Garde les réglages du commerçant quand l'IA réécrit le site. */
 export function keepExtras(from: SiteContent, to: SiteContent): SiteContent {
-  return { ...to, special: from.special, booking: from.booking };
+  return { ...to, special: from.special, booking: from.booking, assistant: from.assistant };
 }
 
 /** Le formulaire de réservation est-il proposé ? (par défaut : oui si le bouton principal parle de réserver) */
