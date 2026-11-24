@@ -15,14 +15,26 @@ const MOODS = [
   { id: "Naturel et doux", label: "Naturel", hint: "Simple, apaisant" },
 ];
 
+const SERVICES = [
+  "Sur place", "À emporter", "Livraison", "Terrasse", "Click & collect", "Sur réservation",
+  "Accès handicapé", "Parking proche", "Wi-Fi", "Animaux acceptés", "Groupes et privatisation", "Traiteur et événements",
+];
+const PAYMENTS = ["Carte bancaire", "Sans contact", "Espèces", "Titres-restaurant", "Chèques"];
+
 type Brief = {
   trade: string; name: string; city: string; address: string; phone: string; email: string;
   offer: string; hours: string; story: string; mood: string;
+  specialties: string; services: string[]; payments: string[]; audience: string; since: string;
+  languages: string; instagram: string; facebook: string;
+};
+type TextKey = Exclude<keyof Brief, "services" | "payments">;
+
+const EMPTY: Brief = {
+  trade: "", name: "", city: "", address: "", phone: "", email: "", offer: "", hours: "", story: "", mood: "",
+  specialties: "", services: [], payments: [], audience: "", since: "", languages: "", instagram: "", facebook: "",
 };
 
-const EMPTY: Brief = { trade: "", name: "", city: "", address: "", phone: "", email: "", offer: "", hours: "", story: "", mood: "" };
-
-const STEPS = ["Votre métier", "Votre commerce", "Ce que vous proposez", "Horaires et contact", "L'ambiance"];
+const STEPS = ["Votre métier", "Votre commerce", "Ce que vous proposez", "Plus de détails", "Horaires et contact", "L'ambiance"];
 
 const LOADING = [
   "Nous lisons vos réponses…",
@@ -38,12 +50,15 @@ export function Wizard({ defaultName }: { defaultName: string }) {
   const [b, setB] = useState<Brief>({ ...EMPTY, name: defaultName });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const set = (k: keyof Brief) => (v: string) => setB((p) => ({ ...p, [k]: v }));
+  const set = (k: TextKey) => (v: string) => setB((p) => ({ ...p, [k]: v }));
+  const toggle = (k: "services" | "payments", v: string) =>
+    setB((p) => ({ ...p, [k]: p[k].includes(v) ? p[k].filter((x) => x !== v) : [...p[k], v] }));
 
   const canNext = [
     b.trade.trim().length > 0,
     b.name.trim().length > 0,
     b.offer.trim().length > 10,
+    true,
     true,
     b.mood.length > 0,
   ][step];
@@ -118,6 +133,30 @@ export function Wizard({ defaultName }: { defaultName: string }) {
         )}
 
         {step === 3 && (
+          <Section title="Quelques détails en plus" subtitle="Facultatif, mais plus vous en dites, plus votre site sera précis et convaincant. Vous pouvez aussi passer.">
+            <Area label="Vos spécialités ou produits phares" optional rows={3} value={b.specialties} onChange={set("specialties")}
+              placeholder="Ex. Notre fougasse aux olives, la tarte tropézienne maison, le pain au levain cuit au feu de bois…" />
+            <div>
+              <Label label="Vos services" optional />
+              <div className="flex flex-wrap gap-2">
+                {SERVICES.map((v) => <Chip key={v} active={b.services.includes(v)} onClick={() => toggle("services", v)}>{v}</Chip>)}
+              </div>
+            </div>
+            <div>
+              <Label label="Paiements acceptés" optional />
+              <div className="flex flex-wrap gap-2">
+                {PAYMENTS.map((v) => <Chip key={v} active={b.payments.includes(v)} onClick={() => toggle("payments", v)}>{v}</Chip>)}
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input label="Ouvert depuis" optional value={b.since} onChange={set("since")} placeholder="Ex. 1998" />
+              <Input label="Langues parlées" optional value={b.languages} onChange={set("languages")} placeholder="Ex. anglais, italien" />
+            </div>
+            <Input label="Vos clients" optional value={b.audience} onChange={set("audience")} placeholder="Ex. familles du quartier, touristes l'été, travailleurs le midi" />
+          </Section>
+        )}
+
+        {step === 4 && (
           <Section title="Horaires et contact" subtitle="Tout est facultatif. Ce que vous laissez vide n'apparaîtra pas.">
             <Area label="Horaires" optional rows={3} value={b.hours} onChange={set("hours")}
               placeholder="Ex. du mardi au samedi, 12h-14h et 19h-22h. Fermé dimanche et lundi." />
@@ -126,10 +165,14 @@ export function Wizard({ defaultName }: { defaultName: string }) {
               <Input label="Téléphone" optional value={b.phone} onChange={set("phone")} placeholder="04 42 00 00 00" type="tel" />
               <Input label="E-mail" optional value={b.email} onChange={set("email")} placeholder="contact@exemple.fr" type="email" />
             </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input label="Instagram" optional value={b.instagram} onChange={set("instagram")} placeholder="@moncommerce" />
+              <Input label="Facebook" optional value={b.facebook} onChange={set("facebook")} placeholder="Nom de la page ou lien" />
+            </div>
           </Section>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <Section title="Quelle ambiance pour votre site ?">
             <div className="grid grid-cols-2 gap-2.5">
               {MOODS.map((m) => (
@@ -155,7 +198,7 @@ export function Wizard({ defaultName }: { defaultName: string }) {
         {step < STEPS.length - 1 ? (
           <button disabled={!canNext} onClick={() => setStep(step + 1)}
             className="rounded-full bg-ink px-7 py-3.5 font-medium text-cream transition disabled:opacity-30">
-            Continuer
+            {step === 3 && !b.specialties && !b.services.length && !b.payments.length && !b.since && !b.languages && !b.audience ? "Passer" : "Continuer"}
           </button>
         ) : (
           <button disabled={!canNext} onClick={submit}
@@ -209,6 +252,15 @@ function Choice({ active, onClick, children }: { active: boolean; onClick: () =>
 
 const fieldCls =
   "w-full rounded-2xl border border-line bg-card px-4 py-3.5 text-base outline-none transition placeholder:text-muted/50 focus:border-ink/60 focus:ring-4 focus:ring-ink/5";
+
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} aria-pressed={active}
+      className={`rounded-full border px-3.5 py-2 text-sm transition ${active ? "border-clic bg-clic/15 text-ink" : "border-line text-muted hover:border-ink/40 hover:text-ink"}`}>
+      {active && "✓ "}{children}
+    </button>
+  );
+}
 
 function Label({ label, optional }: { label: string; optional?: boolean }) {
   return (

@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { bookingEnabled, specialIsFresh, type SiteContent } from "@/lib/site/schema";
+import { bookingEnabled, socialUrl, specialIsFresh, type SiteContent } from "@/lib/site/schema";
 import { AssistantWidget, BookingDialog, SiteMotion } from "./SiteClient";
 import { THEMES } from "./themes";
 
@@ -25,6 +25,8 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
   const booking = bookingEnabled(content);
   const ctaHref = booking ? "#reserver" : phoneHref ?? "#infos";
   const special = specialIsFresh(content) ? content.special : null;
+  const instagram = socialUrl("instagram", content.links?.instagram);
+  const facebook = socialUrl("facebook", content.links?.facebook);
   const query = encodeURIComponent(`${brand.name} ${contact.address}`);
   const mapsHref = contact.address ? `https://www.google.com/maps/search/?api=1&query=${query}` : undefined;
   const mapEmbed = contact.address ? `https://www.google.com/maps?q=${query}&output=embed` : undefined;
@@ -284,6 +286,12 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
             <span>{brand.tagline}</span>
             <span>{[contact.address, contact.phone].filter(Boolean).join(" · ")}</span>
           </div>
+          {(instagram || facebook) && (
+            <div className="s-social">
+              {instagram && <a href={instagram} target="_blank" rel="noreferrer" className="s-link">Instagram</a>}
+              {facebook && <a href={facebook} target="_blank" rel="noreferrer" className="s-link">Facebook</a>}
+            </div>
+          )}
           {credit && (
             <p className="s-credit">
               <a href="https://siteclic.vercel.app" target="_blank" rel="noopener">Site créé avec SiteClic</a>
@@ -589,4 +597,5 @@ const SITE_CSS = `
 .site .s-ai-mic.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .site .s-ai-send{border:0;background:var(--accent);color:var(--on-accent)}
 .site .s-ai-send:disabled{opacity:.35}
+.site .s-social{display:flex;gap:28px;margin-top:22px}
 `;

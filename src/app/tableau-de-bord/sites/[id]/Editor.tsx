@@ -521,6 +521,8 @@ function ManualPanel({ id, content: c, edit, addPhotos, daily }: ManualProps) {
         <Field label="Adresse" value={c.contact.address} onChange={(v) => edit((d) => { d.contact.address = v; })} />
         <Field label="Téléphone" value={c.contact.phone} onChange={(v) => edit((d) => { d.contact.phone = v; })} />
         <Field label="E-mail" value={c.contact.email} onChange={(v) => edit((d) => { d.contact.email = v; })} />
+        <Field label="Instagram" value={c.links?.instagram ?? ""} onChange={(v) => edit((d) => { d.links = { ...d.links, instagram: v }; })} />
+        <Field label="Facebook" value={c.links?.facebook ?? ""} onChange={(v) => edit((d) => { d.links = { ...d.links, facebook: v }; })} />
       </Block>
 
       <Block title="Fin de page">

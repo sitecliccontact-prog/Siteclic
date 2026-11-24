@@ -72,6 +72,12 @@ function briefToText(b: Brief) {
     `Ce que nous proposons (avec prix si donnés) :\n${b.offer}`,
     b.hours && `Horaires :\n${b.hours}`,
     b.story && `Notre histoire / ce qui nous rend différents :\n${b.story}`,
+    b.specialties && `Nos spécialités / produits phares :\n${b.specialties}`,
+    b.since && `Ouvert depuis : ${b.since}`,
+    b.audience && `Notre clientèle : ${b.audience}`,
+    b.services.length && `Services : ${b.services.join(", ")}`,
+    b.payments.length && `Moyens de paiement acceptés : ${b.payments.join(", ")}`,
+    b.languages && `Langues parlées : ${b.languages}`,
     b.mood && `Ambiance souhaitée pour le site : ${b.mood}`,
   ];
   return lines.filter(Boolean).join("\n\n");
@@ -80,7 +86,7 @@ function briefToText(b: Brief) {
 export async function generateSiteContent(brief: Brief): Promise<SiteContent> {
   const content = await ask(
     SiteContentSchema,
-    `Tu es directeur de création dans une agence web haut de gamme. Tu écris le contenu du site d'un commerce de proximité à partir des réponses de son propriétaire.\n\n${WRITING_RULES}\n\nTu peux reformuler et mettre en valeur ce que le client a écrit, corriger l'orthographe et regrouper les horaires proprement. Tiens compte de l'ambiance souhaitée. Aucune photo n'est fournie : photos doit être un tableau vide.`,
+    `Tu es directeur de création dans une agence web haut de gamme. Tu écris le contenu du site d'un commerce de proximité à partir des réponses de son propriétaire.\n\n${WRITING_RULES}\n\nTu peux reformuler et mettre en valeur ce que le client a écrit, corriger l'orthographe et regrouper les horaires proprement. Tiens compte de l'ambiance souhaitée. Sers-toi des détails facultatifs quand ils sont donnés : mets les spécialités en avant (points forts, carte), et glisse naturellement les services utiles (terrasse, à emporter, livraison, paiements, langues…) dans les points forts ou les textes, sans en faire une liste. Aucune photo n'est fournie : photos doit être un tableau vide.`,
     `Voici les réponses du propriétaire. Écris le contenu complet de son site.\n\n<reponses>\n${briefToText(brief)}\n</reponses>`,
     "high",
   );

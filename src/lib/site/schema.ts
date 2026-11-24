@@ -74,6 +74,8 @@ export const SiteExtrasSchema = z.object({
   booking: z.object({ enabled: z.boolean() }).optional(),
   /** Assistant IA qui répond aux visiteurs (texte et voix). */
   assistant: z.object({ enabled: z.boolean() }).optional(),
+  /** Réseaux sociaux, affichés en bas du site. */
+  links: z.object({ instagram: z.string().max(200), facebook: z.string().max(200) }).partial().optional(),
 });
 
 /** Contenu enregistré = contenu écrit par l'IA + réglages du commerçant. */
@@ -84,7 +86,7 @@ export type SiteExtras = z.infer<typeof SiteExtrasSchema>;
 
 /** Garde les réglages du commerçant quand l'IA réécrit le site. */
 export function keepExtras(from: SiteContent, to: SiteContent): SiteContent {
-  return { ...to, special: from.special, booking: from.booking, assistant: from.assistant };
+  return { ...to, special: from.special, booking: from.booking, assistant: from.assistant, links: from.links };
 }
 
 /** Le formulaire de réservation est-il proposé ? (par défaut : oui si le bouton principal parle de réserver) */
@@ -111,6 +113,15 @@ export const BriefSchema = z.object({
   hours: z.string().max(600).default(""),
   story: z.string().max(1500).default(""),
   mood: z.string().max(40).default(""),
+  // Détails facultatifs (questionnaire « Plus de détails »)
+  specialties: z.string().max(1500).default(""),
+  services: z.array(z.string().max(40)).max(20).default([]),
+  payments: z.array(z.string().max(40)).max(10).default([]),
+  audience: z.string().max(300).default(""),
+  since: z.string().max(40).default(""),
+  languages: z.string().max(120).default(""),
+  instagram: z.string().max(200).default(""),
+  facebook: z.string().max(200).default(""),
 });
 
 export type Brief = z.infer<typeof BriefSchema>;
@@ -120,4 +131,14 @@ export function parseStoredContent(raw: unknown): SiteContent | null {
   if (!raw || typeof raw !== "object") return null;
   const r = StoredContentSchema.safeParse({ photos: [], ...(raw as object) });
   return r.success ? r.data : null;
+}
+
+/** Transforme « @moncompte » ou une adresse incomplète en lien Instagram / Facebook. */
+export function socialUrl(kind: "instagram" | "facebook", raw: string | undefined) {
+  const v = (raw ?? "").trim();
+  if (!v) return null;
+  if (/^https?:\/\//i.test(v)) return v;
+  if (/^(www\.)?(instagram|facebook)\.com\//i.test(v)) return `https://${v.replace(/^www\./i, "")}`;
+  const handle = v.replace(/^@/, "").replace(/[^\w.-]/g, "");
+  return handle ? `https://${kind}.com/${handle}` : null;
 }

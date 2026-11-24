@@ -21,7 +21,9 @@ export async function POST(request: Request) {
   if (limit) return NextResponse.json({ error: limit.message, needsSubscription: limit.subscribe }, { status: limit.subscribe ? 402 : 429 });
 
   try {
-    const content = await generateSiteContent(brief);
+    const generated = await generateSiteContent(brief);
+    const links = { instagram: brief.instagram, facebook: brief.facebook };
+    const content = brief.instagram || brief.facebook ? { ...generated, links } : generated;
     const { data, error } = await supabase
       .from("sites")
       .insert({ name: brief.name, trade: brief.trade, brief, content })
