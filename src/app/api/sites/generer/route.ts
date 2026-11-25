@@ -3,6 +3,7 @@ import { BriefSchema, isOwnVideo } from "@/lib/site/schema";
 import { generateSiteContent, explainError } from "@/lib/site/generate";
 import { createClient } from "@/lib/supabase/server";
 import { consumeAi } from "@/lib/site/limits";
+import { moodTheme } from "@/lib/site/moods";
 
 export const maxDuration = 300; // la création peut prendre jusqu'à une minute ou deux
 
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
     const videoUrl = brief.video === "perso" && isOwnVideo(brief.videoUrl) ? brief.videoUrl : "";
     const content = {
       ...generated,
+      theme: moodTheme(brief.mood) ?? generated.theme, // l'ambiance choisie décide du style
       ...(brief.instagram || brief.facebook ? { links } : {}),
       ...(brief.video !== "non" ? { video: { enabled: true, url: videoUrl, clips: brief.video === "auto" ? brief.videoClips.filter(isOwnVideo) : [] } } : {}),
     };

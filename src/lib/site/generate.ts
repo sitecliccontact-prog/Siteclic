@@ -30,6 +30,9 @@ Thèmes visuels possibles :
 - terracotta : tons chauds ocre et sable. Boulangeries, pâtisseries, cuisine du sud, cafés chaleureux.
 - minuit : bleu nuit et or, élégant et feutré. Restaurants gastronomiques, bars à cocktails, instituts de beauté haut de gamme.
 - jardin : vert sauge et ivoire, doux et naturel. Fleuristes, bien-être, salons de thé, produits bio.
+- riviera : blanc chaux et bleu mer, lumineux. Restaurants de bord de mer, poissonneries, hôtels, cuisine méditerranéenne.
+- galerie : blanc et noir très épuré, typographie fine, beaucoup d'espace. Créateurs, galeries, architectes, boutiques design, cafés de spécialité.
+- retro : crème et bordeaux, esprit brasserie d'antan. Brasseries, bouchons, bars à vin, pizzerias, crêperies.
 
 Choisis le thème qui correspond le mieux à l'identité du commerce et, s'il y a des photos, à leurs couleurs et à leur ambiance (un thème qui s'accorde avec les photos, pas qui les contredit).`;
 
@@ -155,7 +158,7 @@ export async function editSiteContent(current: SiteContent, instruction: string)
 - Si la demande donne une nouvelle information (horaires, prix, plat, téléphone…), mets-la à jour partout où elle apparaît.
 - Photos : la première du tableau photos s'affiche en grand en haut du site, les suivantes dans la galerie. Tu peux changer leur ordre ou en retirer selon la demande, en recopiant les adresses exactement. Tu ne peux pas en inventer : pour en ajouter une, le commerçant utilise le bouton photo (appareil photo) à côté du message.
 - Si la demande est floue ou impossible, ne change rien et explique-le gentiment dans reply.
-- Pour changer l'ambiance ou les couleurs, choisis le thème le plus proche parmi : bistrot, atelier, terracotta, minuit, jardin.\n\n${WRITING_RULES}`,
+- Pour changer l'ambiance ou les couleurs, choisis le thème le plus proche parmi : bistrot, atelier, terracotta, minuit, jardin, riviera (méditerranée), galerie (minimaliste), retro.\n\n${WRITING_RULES}`,
     blocks.length ? [...blocks, { type: "text", text }] : text,
     "low",
     "eco",

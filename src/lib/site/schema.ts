@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /** Les styles visuels disponibles pour les sites des clients. */
-export const THEMES = ["bistrot", "atelier", "terracotta", "minuit", "jardin"] as const;
+export const THEMES = ["bistrot", "atelier", "terracotta", "minuit", "jardin", "riviera", "galerie", "retro"] as const;
 export type ThemeName = (typeof THEMES)[number];
 
 /** Contenu d'un site client, rempli par l'IA puis modifiable. */

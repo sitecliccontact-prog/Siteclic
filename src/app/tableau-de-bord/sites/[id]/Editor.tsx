@@ -28,6 +28,9 @@ const THEME_LABELS: { id: ThemeName; label: string; colors: [string, string] }[]
   { id: "terracotta", label: "Terracotta", colors: ["#f5ece0", "#bf5b2c"] },
   { id: "minuit", label: "Minuit", colors: ["#0d1322", "#c8a96a"] },
   { id: "jardin", label: "Jardin", colors: ["#eef0e7", "#5f7f63"] },
+  { id: "riviera", label: "Méditerranée", colors: ["#f7f4ee", "#1d5f8c"] },
+  { id: "galerie", label: "Minimaliste", colors: ["#fafaf7", "#121212"] },
+  { id: "retro", label: "Rétro", colors: ["#f3e9d7", "#8c1c1f"] },
 ];
 
 export function Editor({ id, initial, publish }: { id: string; initial: SiteContent; publish: PublishState }) {

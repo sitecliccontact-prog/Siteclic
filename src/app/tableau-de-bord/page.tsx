@@ -23,6 +23,9 @@ const SWATCH: Record<string, [string, string, string]> = {
   terracotta: ["#f5ece0", "#bf5b2c", "#3b2416"],
   minuit: ["#0b0f1a", "#c6a66b", "#ebe4d2"],
   jardin: ["#eef0e7", "#5f7f63", "#1e2a21"],
+  riviera: ["#f7f4ee", "#1d5f8c", "#0f2539"],
+  galerie: ["#fafaf7", "#121212", "#121212"],
+  retro: ["#f3e9d7", "#8c1c1f", "#2b1a13"],
 };
 
 export default async function Dashboard() {

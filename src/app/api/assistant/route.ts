@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { assistantReply } from "@/lib/site/assistant";
 import { getPublishedSite } from "@/lib/site/published";
-import { parseStoredContent, type SiteContent } from "@/lib/site/schema";
+import { bookingEnabled, parseStoredContent, type SiteContent } from "@/lib/site/schema";
 import { createClient } from "@/lib/supabase/server";
 
 export const maxDuration = 60;
@@ -34,7 +34,8 @@ export async function POST(request: Request) {
     content = parseStoredContent(data?.content);
   } else if (slug) {
     const site = await getPublishedSite(slug);
-    if (site?.available && site.content.assistant?.enabled) {
+    // Assistant activé, ou réservation activée (bouton « Réserver en parlant »).
+    if (site?.available && (site.content.assistant?.enabled || bookingEnabled(site.content))) {
       content = site.content;
       liveSlug = slug;
     }

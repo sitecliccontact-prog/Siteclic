@@ -50,7 +50,7 @@ export function SiteMotion() {
   return <span ref={ref} hidden />;
 }
 
-type BookingProps = { slug?: string; brand: string; phone?: string; phoneHref?: string; voice?: boolean };
+type BookingProps = { slug?: string; brand: string; phone?: string; phoneHref?: string };
 
 /** Ouvre l'appel vocal avec l'assistant (écouté par AssistantWidget). */
 export function startAssistantCall() {
@@ -63,10 +63,9 @@ function canTalk() {
 }
 
 /** Fenêtre « Réserver une table ». S'ouvre avec tout lien vers #reserver. */
-export function BookingDialog({ slug, brand, phone, phoneHref, voice = false }: BookingProps) {
+export function BookingDialog({ slug, brand, phone, phoneHref }: BookingProps) {
   const [open, setOpen] = useState(false);
-  const [talk, setTalk] = useState(false);
-  useEffect(() => setTalk(voice && canTalk()), [voice]);
+  const [noVoice, setNoVoice] = useState(false);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState("");
   const [error, setError] = useState("");
@@ -138,15 +137,12 @@ export function BookingDialog({ slug, brand, phone, phoneHref, voice = false }: 
               <form onSubmit={submit}>
                 <p className="s-eyebrow">Réservation</p>
                 <h2 className="s-display s-modal-title">Réserver une table</h2>
-                {talk && (
-                  <>
-                    <button type="button" className="s-call-cta" onClick={() => { setOpen(false); startAssistantCall(); }}>
-                      <span className="s-call-cta-icon" aria-hidden><PhoneIcon /></span>
-                      <span><b>Réserver en parlant</b><small>Notre assistant vous répond à voix haute</small></span>
-                    </button>
-                    <p className="s-modal-or"><span>ou remplissez le formulaire</span></p>
-                  </>
-                )}
+                <button type="button" className="s-call-cta" onClick={() => { if (canTalk()) { setOpen(false); startAssistantCall(); } else setNoVoice(true); }}>
+                  <span className="s-call-cta-icon" aria-hidden><PhoneIcon /></span>
+                  <span><b>Réserver en parlant à l&apos;IA</b><small>Notre assistant vous répond à voix haute</small></span>
+                </button>
+                {noVoice && <p className="s-modal-error" role="alert">Votre navigateur ne permet pas de parler à l&apos;assistant. Ouvrez ce site dans Google Chrome, ou remplissez le formulaire ci-dessous.</p>}
+                <p className="s-modal-or"><span>ou remplissez le formulaire</span></p>
                 <div className="s-field-row">
                   <label className="s-field"><span>Date</span><input name="day" type="date" min={today} defaultValue={today} required /></label>
                   <label className="s-field"><span>Heure</span><input name="time" type="time" defaultValue="20:00" step={900} required /></label>
@@ -177,9 +173,9 @@ export function BookingDialog({ slug, brand, phone, phoneHref, voice = false }: 
 /* ---------- Assistant IA pour les visiteurs ---------- */
 
 type Msg = { role: "user" | "assistant"; text: string };
-type AssistantProps = { slug?: string; siteId?: string; brand: string; booking: boolean; special: boolean };
+type AssistantProps = { slug?: string; siteId?: string; brand: string; booking: boolean; special: boolean; launcher?: boolean };
 
-export function AssistantWidget({ slug, siteId, brand, booking, special }: AssistantProps) {
+export function AssistantWidget({ slug, siteId, brand, booking, special, launcher = true }: AssistantProps) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState("");
@@ -315,12 +311,14 @@ export function AssistantWidget({ slug, siteId, brand, booking, special }: Assis
 
   return (
     <>
+      {launcher && (
       <button type="button" className={`s-ai-launch ${siteId ? "is-preview" : ""}`} onClick={() => setOpen(true)} aria-label="Poser une question">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M4 5h16v11H9l-5 4z" /><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01" />
         </svg>
         <span>Une question ?</span>
       </button>
+      )}
       {open && (
         <div className="s-ai" role="dialog" aria-label={`Assistant de ${brand}`}>
           <header className="s-ai-head">

@@ -108,3 +108,34 @@ h1.font-display em {
 }
 @keyframes help-in { from { opacity: 0; transform: translateY(12px) scale(.95); } to { opacity: 1; transform: none; } }
 .help-in { animation: help-in .5s .6s cubic-bezier(.2,.7,.2,1) both; }
+
+/* Parcours de création : progression, étapes et choix animés */
+.wiz-fill { transform: scaleX(0); transition: transform .7s cubic-bezier(.2,.7,.2,1); }
+.wiz-fill.is-done { transform: scaleX(1); }
+.wiz-fill.is-now { transform: scaleX(.5); animation: wiz-glow 1.8s ease-in-out infinite; }
+@keyframes wiz-glow { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+.wiz-count { display: inline-block; animation: wiz-count .5s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes wiz-count { from { opacity: 0; transform: translateY(8px) scale(.9); } }
+.wiz-step { animation: wiz-step .55s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes wiz-step { from { opacity: 0; transform: translateX(28px); } }
+.wiz-step .wiz-choice, .wiz-step .wiz-mood { animation: rise .55s cubic-bezier(.2,.7,.2,1) both; }
+.wiz-step .grid > :nth-child(2) { animation-delay: .05s; } .wiz-step .grid > :nth-child(3) { animation-delay: .1s; }
+.wiz-step .grid > :nth-child(4) { animation-delay: .15s; } .wiz-step .grid > :nth-child(5) { animation-delay: .2s; }
+.wiz-step .grid > :nth-child(6) { animation-delay: .25s; } .wiz-step .grid > :nth-child(n+7) { animation-delay: .3s; }
+.wiz-choice.is-on, .wiz-mood.is-on { animation: wiz-pop .35s cubic-bezier(.2,.9,.3,1.3) both !important; box-shadow: 0 10px 30px -14px var(--clic); }
+@keyframes wiz-pop { 0% { transform: scale(.96); } 100% { transform: scale(1); } }
+
+/* Écran d'attente pendant que l'IA crée le site */
+.gen-phone { position: relative; width: 210px; height: 370px; border-radius: 30px; padding: 10px; background: #000; box-shadow: 0 40px 80px -30px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.08), 0 0 80px -10px color-mix(in srgb, var(--clic) 35%, transparent); }
+.gen-screen { position: relative; height: 100%; border-radius: 22px; overflow: hidden; transition: background 1.2s ease; }
+.gen-b { display: block; border-radius: 4px; opacity: 0; transform: translateY(10px); animation: gen-in .7s cubic-bezier(.2,.7,.2,1) forwards; }
+@keyframes gen-in { to { opacity: 1; transform: none; } }
+.gen-shim { position: relative; overflow: hidden; }
+.gen-shim::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 20%, rgba(255,255,255,.35) 50%, transparent 80%); transform: translateX(-100%); animation: gen-shim 1.8s ease-in-out infinite; }
+@keyframes gen-shim { to { transform: translateX(100%); } }
+.gen-cursor { position: absolute; width: 18px; height: 18px; border-radius: 50%; background: var(--clic); box-shadow: 0 0 0 6px color-mix(in srgb, var(--clic) 25%, transparent); animation: gen-cursor 6s ease-in-out infinite; }
+@keyframes gen-cursor { 0% { left: 20%; top: 18%; } 25% { left: 70%; top: 30%; } 50% { left: 35%; top: 58%; } 75% { left: 72%; top: 76%; } 100% { left: 20%; top: 18%; } }
+.gen-step { transition: opacity .4s, color .4s; }
+@media (prefers-reduced-motion: reduce) {
+  .wiz-fill.is-now, .wiz-step, .wiz-count, .gen-shim::after, .gen-cursor { animation: none; }
+}

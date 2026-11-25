@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { THEMES } from "@/components/site/themes";
+import { MOODS } from "@/lib/site/moods";
 import { uploadVideo } from "@/lib/site/videos";
 
 const TRADES = [
@@ -9,12 +11,6 @@ const TRADES = [
   "Institut de beauté", "Fleuriste", "Boutique", "Artisan", "Bar", "Autre",
 ];
 
-const MOODS = [
-  { id: "Chaleureux et convivial", label: "Chaleureux", hint: "Accueillant, familial" },
-  { id: "Chic et raffiné", label: "Chic", hint: "Élégant, feutré" },
-  { id: "Moderne et épuré", label: "Moderne", hint: "Net, graphique" },
-  { id: "Naturel et doux", label: "Naturel", hint: "Simple, apaisant" },
-];
 
 const SERVICES = [
   "Sur place", "À emporter", "Livraison", "Terrasse", "Click & collect", "Sur réservation",
@@ -34,10 +30,10 @@ type TextKey = Exclude<keyof Brief, "services" | "payments" | "video" | "videoCl
 const EMPTY: Brief = {
   trade: "", name: "", city: "", address: "", phone: "", email: "", offer: "", hours: "", story: "", mood: "",
   specialties: "", services: [], payments: [], audience: "", since: "", languages: "", instagram: "", facebook: "",
-  video: "non", videoUrl: "", videoClips: [],
+  video: "auto", videoUrl: "", videoClips: [],
 };
 
-const STEPS = ["Votre métier", "Votre commerce", "Ce que vous proposez", "Plus de détails", "Horaires et contact", "L'ambiance"];
+const STEPS = ["Votre métier", "Votre commerce", "Ce que vous proposez", "Plus de détails", "Horaires et contact", "Vidéo", "L'ambiance"];
 
 const LOADING = [
   "Nous lisons vos réponses…",
@@ -63,6 +59,7 @@ export function Wizard({ defaultName }: { defaultName: string }) {
     b.offer.trim().length > 10,
     true,
     true,
+    true,
     b.mood.length > 0,
   ][step];
 
@@ -84,21 +81,24 @@ export function Wizard({ defaultName }: { defaultName: string }) {
     }
   }
 
-  if (loading) return <Generating />;
+  if (loading) return <Generating mood={b.mood} />;
 
   return (
     <div className="mx-auto max-w-xl">
       {/* Progression */}
       <div className="mb-10 flex gap-1.5" aria-hidden>
         {STEPS.map((s, i) => (
-          <div key={s} className={`h-1 flex-1 rounded-full transition ${i <= step ? "bg-clic" : "bg-line"}`} />
+          <div key={s} className="relative h-1 flex-1 overflow-hidden rounded-full bg-line">
+            <div className={`wiz-fill absolute inset-0 origin-left rounded-full bg-clic ${i < step ? "is-done" : i === step ? "is-now" : ""}`} />
+          </div>
         ))}
       </div>
-      <p className="text-sm font-medium uppercase tracking-[0.18em] text-clic">
-        Étape {step + 1} sur {STEPS.length}
+      <p className="flex min-w-0 items-baseline gap-2 text-sm font-medium uppercase tracking-[0.16em] text-clic">
+        <span key={step} className="wiz-count whitespace-nowrap">Étape {step + 1}</span>
+        <span className="truncate text-muted">sur {STEPS.length} · {STEPS[step]}</span>
       </p>
 
-      <div key={step} className="rise">
+      <div key={step} className="wiz-step">
         {step === 0 && (
           <Section title="Quel est votre métier ?">
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
@@ -156,7 +156,6 @@ export function Wizard({ defaultName }: { defaultName: string }) {
               <Input label="Langues parlées" optional value={b.languages} onChange={set("languages")} placeholder="Ex. anglais, italien" />
             </div>
             <Input label="Vos clients" optional value={b.audience} onChange={set("audience")} placeholder="Ex. familles du quartier, touristes l'été, travailleurs le midi" />
-            <VideoChoice b={b} setB={setB} />
           </Section>
         )}
 
@@ -177,13 +176,16 @@ export function Wizard({ defaultName }: { defaultName: string }) {
         )}
 
         {step === 5 && (
-          <Section title="Quelle ambiance pour votre site ?">
-            <div className="grid grid-cols-2 gap-2.5">
-              {MOODS.map((m) => (
-                <Choice key={m.id} active={b.mood === m.id} onClick={() => set("mood")(m.id)}>
-                  <span className="block font-semibold">{m.label}</span>
-                  <span className="mt-0.5 block text-sm opacity-60">{m.hint}</span>
-                </Choice>
+          <Section title="Une vidéo de présentation ?" subtitle="Elle se lance toute seule en haut de votre site, sans le son. Les sites avec une vidéo donnent bien plus envie de venir.">
+            <VideoChoice b={b} setB={setB} />
+          </Section>
+        )}
+
+        {step === 6 && (
+          <Section title="Quelle ambiance pour votre site ?" subtitle="Touchez celle qui vous ressemble. Vous pourrez en changer plus tard.">
+            <div className="grid grid-cols-2 gap-3">
+              {MOODS.map((m, k) => (
+                <MoodCard key={m.id} mood={m} index={k} active={b.mood === m.id} onClick={() => set("mood")(m.id)} />
               ))}
             </div>
           </Section>
@@ -202,7 +204,7 @@ export function Wizard({ defaultName }: { defaultName: string }) {
         {step < STEPS.length - 1 ? (
           <button disabled={!canNext} onClick={() => setStep(step + 1)}
             className="rounded-full bg-ink px-7 py-3.5 font-medium text-cream transition disabled:opacity-30">
-            {step === 3 && !b.specialties && !b.services.length && !b.payments.length && !b.since && !b.languages && !b.audience && b.video === "non" ? "Passer" : "Continuer"}
+            {step === 3 && !b.specialties && !b.services.length && !b.payments.length && !b.since && !b.languages && !b.audience ? "Passer" : "Continuer"}
           </button>
         ) : (
           <button disabled={!canNext} onClick={submit}
@@ -215,22 +217,74 @@ export function Wizard({ defaultName }: { defaultName: string }) {
   );
 }
 
-export function Generating({ steps = LOADING }: { steps?: string[] }) {
+export function Generating({ steps = LOADING, mood = "" }: { steps?: string[]; mood?: string }) {
   const [i, setI] = useState(0);
+  const [pct, setPct] = useState(3);
+  const [palette, setPalette] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setI((n) => Math.min(n + 1, steps.length - 1)), 9000);
-    return () => clearInterval(t);
+    const a = setInterval(() => setI((n) => Math.min(n + 1, steps.length - 1)), 9000);
+    // Progression qui ralentit en approchant de la fin (la création prend environ une minute).
+    const b = setInterval(() => setPct((p) => Math.min(96, p + Math.max(0.25, (96 - p) / 28))), 600);
+    const c = setInterval(() => setPalette((n) => n + 1), 2600);
+    return () => { clearInterval(a); clearInterval(b); clearInterval(c); };
   }, [steps.length]);
+  // Le téléphone essaie des couleurs, puis se pose sur l'ambiance choisie.
+  const chosen = MOODS.find((m) => m.id === mood)?.theme;
+  const order = chosen ? [chosen] : MOODS.map((m) => m.theme);
+  const t = THEMES[order[palette % order.length]];
+  const c = t.colors;
+  const block = (delay: number, style: React.CSSProperties, shim = false) => (
+    <span className={`gen-b ${shim ? "gen-shim" : ""}`} style={{ animationDelay: `${delay}s`, ...style }} />
+  );
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center py-24 text-center" role="status" aria-live="polite">
-      <div className="relative h-20 w-20">
-        <div className="absolute inset-0 animate-ping rounded-full bg-clic/20" />
-        <div className="absolute inset-3 animate-pulse rounded-full bg-clic/40" />
-        <div className="absolute inset-7 rounded-full bg-clic" />
+    <div className="mx-auto flex max-w-md flex-col items-center py-10 text-center" role="status" aria-live="polite">
+      <div className="gen-phone">
+        <div className="gen-screen" style={{ background: c.bg }}>
+          <div className="flex items-center justify-between px-3.5 pt-4">
+            {block(0.2, { width: 54, height: 6, background: c.ink, opacity: 0.7 })}
+            {block(0.4, { width: 34, height: 12, background: c.accent, borderRadius: 99 })}
+          </div>
+          <div className="px-3.5 pt-8">
+            {block(1, { width: 60, height: 5, background: c.accent })}
+            <div className="mt-3 space-y-2">
+              {block(2, { width: "92%", height: 16, background: c.ink }, true)}
+              {block(3, { width: "70%", height: 16, background: c.ink }, true)}
+            </div>
+            <div className="mt-4 space-y-1.5">
+              {block(4.5, { width: "88%", height: 5, background: c.muted, opacity: 0.6 })}
+              {block(5, { width: "64%", height: 5, background: c.muted, opacity: 0.6 })}
+            </div>
+            {block(6.5, { width: 92, height: 24, marginTop: 16, background: c.accent, borderRadius: 99 })}
+          </div>
+          <div className="absolute inset-x-0 bottom-0 px-3.5 pb-4">
+            <div className="grid grid-cols-2 gap-2">
+              {block(8, { height: 70, background: c.surface, borderRadius: 10 }, true)}
+              {block(9, { height: 70, background: c.surface, borderRadius: 10 }, true)}
+            </div>
+            {block(10.5, { height: 18, marginTop: 8, background: c.band, borderRadius: 6 })}
+          </div>
+          <span className="gen-cursor" aria-hidden />
+        </div>
       </div>
+
       <h2 className="mt-10 font-display text-3xl font-extrabold tracking-tight">Votre site prend forme</h2>
-      <p key={i} className="rise mt-3 text-muted">{steps[i]}</p>
-      <p className="mt-8 text-sm text-muted/70">Cela prend environ une minute. Ne fermez pas cette page.</p>
+      <div className="mt-4 w-full max-w-xs">
+        <div className="h-1.5 overflow-hidden rounded-full bg-line">
+          <div className="h-full rounded-full bg-clic transition-[width] duration-500 ease-out" style={{ width: `${pct}%` }} />
+        </div>
+        <p className="mt-2 text-right text-xs tabular-nums text-muted">{Math.round(pct)} %</p>
+      </div>
+      <ul className="mt-4 w-full max-w-xs space-y-2 text-left text-sm">
+        {steps.map((st, k) => (
+          <li key={st} className={`gen-step flex items-center gap-2.5 ${k < i ? "text-ink" : k === i ? "text-ink" : "text-muted/50"}`}>
+            <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] ${k < i ? "bg-clic text-white" : k === i ? "border-2 border-clic border-t-transparent animate-spin" : "border border-line"}`}>
+              {k < i ? "✓" : ""}
+            </span>
+            {st.replace(/…$/, "")}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-8 text-sm text-muted/70">Environ une minute. Ne fermez pas cette page.</p>
     </div>
   );
 }
@@ -248,7 +302,7 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
 function Choice({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button type="button" onClick={onClick} aria-pressed={active}
-      className={`rounded-2xl border px-4 py-4 text-left transition ${active ? "border-clic bg-clic/10 text-ink" : "border-line bg-card text-ink/85 hover:border-ink/30"}`}>
+      className={`wiz-choice rounded-2xl border px-4 py-4 text-left transition active:scale-[.97] ${active ? "is-on border-clic bg-clic/10 text-ink" : "border-line bg-card text-ink/85 hover:-translate-y-0.5 hover:border-ink/30"}`}>
       {children}
     </button>
   );
@@ -288,14 +342,19 @@ function VideoChoice({ b, setB }: { b: Brief; setB: React.Dispatch<React.SetStat
   }
   return (
     <div>
-      <Label label="Vidéo de présentation" optional />
-      <p className="mb-2 text-xs leading-relaxed text-muted">Elle se lance toute seule sur votre site, sans le son. Pas de vidéo ? Nous faisons un petit film avec vos photos.</p>
-      <div className="flex flex-wrap gap-2">
-        <Chip active={b.video === "non"} onClick={() => setB((p) => ({ ...p, video: "non" }))}>Non merci</Chip>
-        <Chip active={b.video === "auto"} onClick={() => setB((p) => ({ ...p, video: "auto" }))}>Oui, faites-la pour moi</Chip>
-        <Chip active={b.video === "perso"} onClick={() => (b.videoUrl ? setB((p) => ({ ...p, video: "perso" })) : ref.current?.click())}>
-          {b.videoUrl ? "Ma vidéo" : "Oui, j'ai ma vidéo"}
-        </Chip>
+      <div className="grid gap-2.5">
+        <Choice active={b.video === "auto"} onClick={() => setB((p) => ({ ...p, video: "auto" }))}>
+          <span className="flex items-center gap-2 font-semibold">Oui, faites-la pour moi <span className="rounded-full bg-clic px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">Conseillé</span></span>
+          <span className="mt-0.5 block text-sm opacity-60">Nous montons un film avec vos petits clips ou vos photos, vos textes et votre nom. Gratuit.</span>
+        </Choice>
+        <Choice active={b.video === "perso"} onClick={() => (b.videoUrl ? setB((p) => ({ ...p, video: "perso" })) : ref.current?.click())}>
+          <span className="block font-semibold">{b.videoUrl ? "Ma vidéo ✓" : "J'ai déjà ma vidéo"}</span>
+          <span className="mt-0.5 block text-sm opacity-60">Choisissez-la dans votre galerie (30 secondes suffisent).</span>
+        </Choice>
+        <Choice active={b.video === "non"} onClick={() => setB((p) => ({ ...p, video: "non" }))}>
+          <span className="block font-semibold">Pas de vidéo</span>
+          <span className="mt-0.5 block text-sm opacity-60">Vous pourrez en ajouter une plus tard.</span>
+        </Choice>
       </div>
       {b.video === "auto" && (
         <div className="mt-3 rounded-xl border border-line p-3">
@@ -316,6 +375,31 @@ function VideoChoice({ b, setB }: { b: Brief; setB: React.Dispatch<React.SetStat
       {status && <p className="mt-2 text-xs text-muted" role="status">{status}</p>}
       <input ref={ref} type="file" accept="video/*" hidden onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ""; }} />
     </div>
+  );
+}
+
+function MoodCard({ mood, index, active, onClick }: { mood: (typeof MOODS)[number]; index: number; active: boolean; onClick: () => void }) {
+  const t = THEMES[mood.theme];
+  const c = t.colors;
+  return (
+    <button type="button" onClick={onClick} aria-pressed={active} style={{ animationDelay: `${index * 60}ms` }}
+      className={`wiz-mood group rounded-2xl border p-2 text-left transition active:scale-[.97] ${active ? "is-on border-clic bg-clic/10" : "border-line bg-card hover:-translate-y-0.5 hover:border-ink/30"}`}>
+      {/* Petite vignette : à quoi ressemblera le site */}
+      <span className={`${t.fontClasses} block overflow-hidden border border-black/10`} style={{ background: c.bg, borderRadius: `min(${t.radius}, 12px)` }} aria-hidden>
+        <span className="flex items-center justify-between px-2.5 pt-2">
+          <span className="h-1 w-8 rounded-full" style={{ background: c.ink, opacity: 0.55 }} />
+          <span className="h-2.5 w-7" style={{ background: c.accent, borderRadius: t.btnRadius === "999px" ? 99 : 1 }} />
+        </span>
+        <span className="block px-2.5 pb-1 pt-3 text-[26px] leading-none transition-transform duration-500 group-hover:scale-105"
+          style={{ color: c.ink, fontFamily: `${t.display}, serif`, fontWeight: t.displayWeight, letterSpacing: t.displayTracking }}>
+          Aa
+        </span>
+        <span className="mx-2.5 mb-2.5 mt-1.5 block h-1 w-14 rounded-full" style={{ background: c.muted, opacity: 0.5 }} />
+        <span className="block h-3" style={{ background: c.band }} />
+      </span>
+      <span className="block px-1.5 pb-1 pt-2.5 font-semibold">{active && "✓ "}{mood.label}</span>
+      <span className="block px-1.5 pb-1 text-sm opacity-60">{mood.hint}</span>
+    </button>
   );
 }
 

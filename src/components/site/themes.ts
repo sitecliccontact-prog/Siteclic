@@ -65,4 +65,28 @@ export const THEMES: Record<ThemeName, Theme> = {
     radius: "20px", btnRadius: "999px", btnCaps: false, ornament: false, heroAlign: "left",
     colors: { bg: "#eef0e7", surface: "#e3e7da", ink: "#1e2a21", muted: "#5d6b5f", line: "#d3d9c7", accent: "#5f7f63", onAccent: "#f6f7f1", band: "#1e2a21", onBand: "#eef0e7" },
   },
+  /** Méditerranée : blanc chaux, bleu profond de la mer, titres à empattements doux. */
+  riviera: {
+    fontClasses: `${fraunces.variable} ${dmSans.variable}`,
+    display: "var(--s-display-fraunces)", body: "var(--s-body-dmsans)",
+    displayWeight: 400, displayTracking: "-0.035em",
+    radius: "14px", btnRadius: "999px", btnCaps: false, ornament: false, heroAlign: "left",
+    colors: { bg: "#f7f4ee", surface: "#ecefee", ink: "#0f2539", muted: "#5a6a78", line: "#dbe2e5", accent: "#1d5f8c", onAccent: "#ffffff", band: "#0f2539", onBand: "#f7f4ee" },
+  },
+  /** Minimaliste : façon galerie d'art, beaucoup d'espace, typographie fine. */
+  galerie: {
+    fontClasses: `${outfit.variable} ${inter.variable}`,
+    display: "var(--s-body-outfit)", body: "var(--s-body-inter)",
+    displayWeight: 300, displayTracking: "-0.045em",
+    radius: "0px", btnRadius: "0px", btnCaps: false, ornament: false, heroAlign: "left",
+    colors: { bg: "#fafaf7", surface: "#f0f0ec", ink: "#121212", muted: "#6c6c66", line: "#e4e4de", accent: "#121212", onAccent: "#fafaf7", band: "#121212", onBand: "#fafaf7" },
+  },
+  /** Rétro : brasserie d'antan, crème et bordeaux, titres généreux. */
+  retro: {
+    fontClasses: `${playfair.variable} ${dmSans.variable}`,
+    display: "var(--s-display-playfair)", body: "var(--s-body-dmsans)",
+    displayWeight: 700, displayTracking: "-0.02em",
+    radius: "4px", btnRadius: "999px", btnCaps: true, ornament: true, heroAlign: "center",
+    colors: { bg: "#f3e9d7", surface: "#eadbc1", ink: "#2b1a13", muted: "#6e5646", line: "#dcc7a6", accent: "#8c1c1f", onAccent: "#f8efe0", band: "#8c1c1f", onBand: "#f3e9d7" },
+  },
 };

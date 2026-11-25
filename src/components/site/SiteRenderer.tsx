@@ -328,10 +328,11 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
       )}
 
       <SiteMotion />
-      {content.assistant?.enabled && (
-        <AssistantWidget slug={slug} siteId={siteId} brand={brand.name} booking={booking} special={Boolean(special)} />
+      {(content.assistant?.enabled || booking) && (
+        <AssistantWidget slug={slug} siteId={siteId} brand={brand.name} booking={booking} special={Boolean(special)}
+          launcher={content.assistant?.enabled ?? false} />
       )}
-      {booking && <BookingDialog slug={slug} brand={brand.name} phone={contact.phone} phoneHref={phoneHref} voice={content.assistant?.enabled ?? false} />}
+      {booking && <BookingDialog slug={slug} brand={brand.name} phone={contact.phone} phoneHref={phoneHref} />}
     </div>
   );
 }
