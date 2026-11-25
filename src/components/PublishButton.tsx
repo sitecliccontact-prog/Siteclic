@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { celebrate } from "./Celebration";
 
 export type PublishState = { online: boolean; slug: string | null; hasChanges: boolean };
 
@@ -44,7 +45,9 @@ export function PublishButton({ id, initial, beforePublish, onPublished, compact
       if (!res.ok) throw new Error(data.error || "La mise en ligne n'a pas fonctionné.");
       setState({ online: true, slug: data.slug, hasChanges: false });
       setJustPublished(true);
-      setOpen(true);
+      const first = !state.online;
+      celebrate(first ? "Votre site est en ligne" : "Modifications publiées", first ? "big" : "small");
+      setTimeout(() => setOpen(true), first ? 2300 : 0);
       onPublished?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "La mise en ligne n'a pas fonctionné.");

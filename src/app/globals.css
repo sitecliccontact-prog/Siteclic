@@ -83,3 +83,28 @@ h1.font-display em {
 @media (prefers-reduced-motion: reduce) {
   .ripple { animation: none; opacity: 0; }
 }
+
+/* Animations de réussite */
+@keyframes cel-veil { 0% { background: rgba(11,11,13,0); } 15%, 75% { background: rgba(11,11,13,.72); } 100% { background: rgba(11,11,13,0); } }
+.cel-veil { animation: cel-veil 2.6s ease forwards; backdrop-filter: blur(2px); }
+@keyframes cel-wave { 0% { transform: scale(.4); opacity: .9; } 100% { transform: scale(3.2); opacity: 0; } }
+.cel-wave { animation: cel-wave 1.4s cubic-bezier(.2,.7,.2,1) both; }
+.cel-badge { animation-name: cel-pop, cel-out; animation-duration: .7s, .4s; animation-delay: 0s, 2.15s; animation-fill-mode: both, forwards; }
+@keyframes cel-pop { 0% { transform: scale(0); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes cel-out { to { transform: scale(.85); opacity: 0; } }
+@keyframes cel-draw { from { stroke-dashoffset: 30; } to { stroke-dashoffset: 0; } }
+.cel-check { stroke-dasharray: 30; stroke-dashoffset: 30; animation: cel-draw .45s .35s ease-out forwards; }
+@keyframes cel-spark { 0% { transform: rotate(var(--a)) translateX(30px) scale(1); opacity: 0; } 20% { opacity: 1; } 100% { transform: rotate(var(--a)) translateX(var(--r)) scale(.2); opacity: 0; } }
+.cel-spark { animation: cel-spark 1.1s cubic-bezier(.15,.7,.2,1) both; }
+@keyframes cel-text { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: none; } }
+.cel-text { animation: cel-text .5s .45s ease both, cel-out .4s 2.15s forwards; }
+@keyframes cel-toast { 0% { opacity: 0; transform: translateY(-16px) scale(.96); } 12%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-8px); } }
+.cel-toast { animation: cel-toast 2.2s cubic-bezier(.2,.7,.2,1) forwards; }
+@keyframes cel-ring { from { transform: scale(1); opacity: .9; } to { transform: scale(2.2); opacity: 0; } }
+.cel-ring { animation: cel-ring .9s ease-out .1s both; }
+@media (prefers-reduced-motion: reduce) {
+  .cel-wave, .cel-spark { display: none; }
+  .cel-badge, .cel-check, .cel-text, .cel-toast, .cel-ring { animation-duration: .01s !important; }
+}
+@keyframes help-in { from { opacity: 0; transform: translateY(12px) scale(.95); } to { opacity: 1; transform: none; } }
+.help-in { animation: help-in .5s .6s cubic-bezier(.2,.7,.2,1) both; }

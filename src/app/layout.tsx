@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Inter_Tight } from "next/font/google";
 import "./globals.css";
+import { Celebration } from "@/components/Celebration";
+import { HelpWidget } from "@/components/HelpWidget";
 import { ServiceWorker } from "@/components/ServiceWorker";
 
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
@@ -31,6 +33,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className={`${inter.variable} ${interTight.variable} antialiased`}>
         {children}
         <ServiceWorker />
+        <Celebration />
+        <HelpWidget />
       </body>
     </html>
   );

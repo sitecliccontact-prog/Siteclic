@@ -1,0 +1,36 @@
+/* Mode d'emploi de SiteClic, donné à l'assistant d'aide. À tenir à jour quand l'appli change. */
+
+export const HELP_GUIDE = `
+SiteClic : application pour créer le site internet de son commerce avec l'IA, sans connaissance technique.
+
+ÉCRANS
+- « Mes sites » (accueil une fois connecté) : liste des sites, boutons « Créer un autre site » et « Importer mon site actuel », réservations à venir et lien « Tableau complet ». En haut à droite : « Se déconnecter ».
+- Créer un site : questionnaire en 6 étapes (métier, nom et ville, produits/prix, détails facultatifs, horaires et contact, ambiance). Puis l'IA écrit le site en 1 à 2 minutes. Ne pas fermer la page pendant la création.
+- Importer : coller l'adresse de l'ancien site (ex. www.mon-commerce.fr). L'IA reprend textes, prix, horaires et photos et fait un site plus beau. Prend 1 à 3 minutes.
+- Aperçu : le site tel qu'il sera. En gratuit, filigrane « SiteClic ». Boutons « Modifier » et « Mettre en ligne » en haut.
+- Éditeur (bouton « Modifier ») : 3 onglets sur téléphone.
+  · « Écrire à l'IA » : écrire ce qu'on veut changer (« On ferme à 19h le samedi »). Bouton micro pour dicter. Gros bouton « Parler à l'IA » : on parle, l'IA modifie et répond à voix haute. Bouton appareil photo pour ajouter une photo.
+  · « Modifier moi-même » : menu du jour, interrupteurs « Réservation de table » et « Assistant IA pour vos clients », style (5 styles), nom et accroche, photos (bouton « + Ajouter des photos », 12 maximum), points forts, histoire, carte/offre, horaires, contact (adresse, téléphone, e-mail, Instagram, Facebook), fin de page. Tout s'enregistre tout seul (« Enregistré ✓ » en haut). Bouton « Annuler » pour revenir en arrière.
+  · « Voir » : l'aperçu en direct.
+- Mettre en ligne : bouton orange « Mettre en ligne ». Le site reçoit une adresse du type siteclic.vercel.app/s/nom-du-commerce, à copier ou partager. Après des changements, le bouton devient « Publier les modifications » : il faut le toucher pour que les visiteurs voient les changements. « Retirer d'Internet » dans la même fenêtre.
+- Menu du jour : dans « Modifier moi-même », tout en haut. Écrire ou dicter, toucher « Afficher sur mon site ». Visible tout de suite (pas besoin de publier), disparaît tout seul le lendemain.
+- Réservations : activer l'interrupteur « Réservation de table ». Les visiteurs voient un bouton « Réserver ». Les demandes arrivent dans « Mes sites » et dans le « Tableau complet » : Confirmer, Refuser, Prévenir par SMS, Appeler. Le commerçant ne reçoit pas encore d'e-mail.
+- Assistant IA pour les clients : interrupteur dans « Modifier moi-même ». Bulle de discussion sur le site : répond aux visiteurs (horaires, carte) et prend les réservations. Le site doit être en ligne.
+- Mot de passe oublié : sur l'écran de connexion, lien « Mot de passe oublié ? », recevoir un e-mail, cliquer sur le lien, choisir un nouveau mot de passe. Regarder aussi dans les spams.
+- Installer l'appli sur le téléphone : dans Chrome, menu ⋮ puis « Ajouter à l'écran d'accueil ».
+
+TARIFS
+- Gratuit : créer et voir l'aperçu (2 sites créés par l'IA et 10 modifications par l'IA au maximum).
+- Un site : 20 € une fois (50 modifications par l'IA). Pack 5 sites : 50 €. Hébergement : 30 € par an ou 2,90 € par mois. Le paiement en ligne n'est pas encore ouvert.
+
+PROBLÈMES FRÉQUENTS
+- Une modification ne se voit pas sur le site en ligne : toucher « Publier les modifications », puis recharger la page du site (attendre quelques secondes).
+- « La création a échoué » ou l'IA ne répond pas : réessayer dans une minute ; vérifier la connexion Internet. Si un code apparaît (ex. « IA-529 », « BDD-42501 »), le noter et l'envoyer à l'équipe.
+- « Vous avez déjà créé 2 sites gratuits » ou « vos 10 modifications gratuites » : limite du gratuit ; on peut toujours modifier soi-même dans « Modifier moi-même ».
+- Le micro ne marche pas : autoriser le micro pour le site (icône à gauche de l'adresse dans Chrome, ou Paramètres du téléphone > Applications > Chrome > Autorisations > Micro). La dictée marche le mieux dans Chrome.
+- Une photo ne s'envoie pas : formats JPG, PNG ou WebP, 8 Mo maximum ; vérifier la connexion.
+- L'import ne marche pas : vérifier l'adresse ; certains sites protégés ou faits uniquement d'images ne peuvent pas être lus : créer le site avec le questionnaire à la place.
+- Page blanche ou bouton qui ne réagit pas : recharger la page ; sinon se déconnecter et se reconnecter ; mettre Chrome à jour.
+- Déconnecté sans raison : se reconnecter avec le même e-mail.
+- Pour un vrai bug : écrire à siteclic.contact@gmail.com avec une capture d'écran et ce qui s'est passé.
+`;

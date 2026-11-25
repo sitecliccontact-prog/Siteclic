@@ -34,7 +34,7 @@ export function ImportForm() {
         return;
       }
       if (!res.ok) throw new Error(data.error || (res.status === 504 ? "L'IA a mis trop de temps à répondre. Réessayez. (code 504)" : "L'import a échoué. Réessayez dans un instant. (code HTTP " + res.status + ")"));
-      router.push(`/apercu/${data.id}`);
+      router.push(`/apercu/${data.id}?nouveau=1`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "L'import a échoué.");
       setLoading(false);

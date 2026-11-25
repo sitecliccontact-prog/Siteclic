@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { PublishButton, type PublishState } from "@/components/PublishButton";
 import { DailyPanel } from "./DailyPanel";
+import { celebrate } from "@/components/Celebration";
 import { SiteRenderer } from "@/components/site/SiteRenderer";
 import { useDictation } from "@/lib/hooks/useDictation";
 import { speak, stopSpeaking } from "@/lib/hooks/speak";
@@ -264,6 +265,7 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
       if (!res.ok) throw new Error(data.error || "La modification a échoué.");
       onResult(data.content);
       setMsgs((m) => [...m, { from: "ia", text: data.reply }]);
+      celebrate("Site mis à jour");
       answer(data.reply);
     } catch (e) {
       const t = e instanceof Error ? e.message : "La modification a échoué.";
@@ -306,8 +308,8 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
         {voice.supported && (talk === "off" ? (
           <button type="button" onClick={startTalk} disabled={busy}
             className="mb-3 flex w-full items-center justify-center gap-2.5 rounded-2xl border border-clic/40 bg-clic/10 py-3 text-[15px] font-medium text-ink transition hover:bg-clic/15 disabled:opacity-40">
-            <Waves /> Parler à l&apos;IA
-            <span className="text-xs font-normal text-muted">· elle vous répond à voix haute</span>
+            <Waves /> <span className="whitespace-nowrap">Parler à l&apos;IA</span>
+            <span className="hidden text-xs font-normal text-muted sm:inline">· elle vous répond à voix haute</span>
           </button>
         ) : (
           <div className="mb-3 flex items-center gap-3 rounded-2xl bg-clic px-4 py-3 text-white">
@@ -392,7 +394,10 @@ function ManualPanel({ id, content: c, edit, addPhotos, daily }: ManualProps) {
       }
       setUpload({ done: urls.length, total: list.length });
     }
-    if (urls.length) await addPhotos(urls);
+    if (urls.length) {
+      await addPhotos(urls);
+      celebrate(urls.length > 1 ? `${urls.length} photos ajoutées` : "Photo ajoutée");
+    }
     setUpload(null);
   }
 

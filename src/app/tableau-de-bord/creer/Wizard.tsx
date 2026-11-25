@@ -74,7 +74,7 @@ export function Wizard({ defaultName }: { defaultName: string }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || (res.status === 504 ? "L'IA a mis trop de temps à répondre. Réessayez. (code 504)" : "La création a échoué. Réessayez dans un instant. (code HTTP " + res.status + ")"));
-      router.push(`/apercu/${data.id}`);
+      router.push(`/apercu/${data.id}?nouveau=1`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "La création a échoué.");
       setLoading(false);

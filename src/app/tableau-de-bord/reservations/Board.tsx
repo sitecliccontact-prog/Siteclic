@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { celebrate } from "@/components/Celebration";
 
 export type Resa = {
   id: string; site_id: string; site: string; name: string; phone: string; day: string; time: string;
@@ -23,6 +24,8 @@ export function Board({ initial, multiSite }: { initial: Resa[]; multiSite: bool
     if (!res?.ok) {
       setErr("La modification n'est pas passée. Réessayez.");
       setList((l) => l.map((x) => (x.id === r.id ? r : x)));
+    } else if (status === "confirmee") {
+      celebrate("Réservation confirmée");
     }
   }
   async function remove(r: Resa) {

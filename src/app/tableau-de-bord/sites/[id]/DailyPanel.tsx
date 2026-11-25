@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { celebrate } from "@/components/Celebration";
 import { useDictation } from "@/lib/hooks/useDictation";
 import { bookingEnabled, specialIsFresh, type SiteContent } from "@/lib/site/schema";
 
@@ -36,6 +37,7 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
       await beforeSave();
       onSaved(await saveSettings(id, body));
       setMsg(ok);
+      if (ok.includes("✓")) celebrate(ok.split(" ✓")[0].replace("C'est sur votre site", "Menu du jour en ligne"));
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Enregistrement impossible.");
     } finally {

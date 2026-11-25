@@ -1,10 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { celebrate } from "@/components/Celebration";
 import { PublishButton, type PublishState } from "@/components/PublishButton";
 
 /** Cadre de l'aperçu gratuit : bandeau SiteClic, filigrane, copie désactivée. */
 export function PreviewShell({ id, publish, clean, children }: { id: string; publish: PublishState; clean: boolean; children: React.ReactNode }) {
+  // Juste après la création : petite célébration, puis on retire « ?nouveau=1 » de l'adresse.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("nouveau") !== "1") return;
+    url.searchParams.delete("nouveau");
+    window.history.replaceState(null, "", url.pathname + url.search);
+    const t = setTimeout(() => celebrate("Votre site est prêt", "big"), 350);
+    return () => clearTimeout(t);
+  }, []);
   return (
     <div
       className={`min-h-dvh ${clean ? "" : "select-none"}`}
