@@ -16,7 +16,18 @@ drop policy if exists "videos_delete_own" on storage.objects;
 create policy "videos_delete_own" on storage.objects for delete to authenticated
   using (bucket_id = 'videos' and (storage.foldername(name))[1] = auth.uid()::text);
 
--- 2) Assistant des sites : 40 questions par site et par jour, 15 par visiteur.
+-- 2) Compteur (déjà créé par le texte 07 ; recréé ici au cas où)
+create table if not exists public.assistant_usage (
+  id uuid primary key default gen_random_uuid(),
+  slug text not null,
+  visitor text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists assistant_usage_idx on public.assistant_usage (slug, created_at);
+alter table public.assistant_usage enable row level security;
+revoke all on table public.assistant_usage from anon, authenticated;
+
+-- 3) Assistant des sites : 40 questions par site et par jour, 15 par visiteur.
 create or replace function public.assistant_hit(p_slug text, p_visitor text)
 returns boolean
 language plpgsql security definer set search_path = public
@@ -37,7 +48,7 @@ $$;
 revoke all on function public.assistant_hit(text, text) from public;
 grant execute on function public.assistant_hit(text, text) to anon, authenticated;
 
--- 3) Aide SiteClic : 10 questions par jour et par compte.
+-- 4) Aide SiteClic : 10 questions par jour et par compte.
 create or replace function public.aide_hit()
 returns boolean
 language plpgsql security definer set search_path = public
