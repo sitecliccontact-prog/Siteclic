@@ -160,7 +160,7 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
               {content.video.url ? (
                 <SiteVideo src={content.video.url} />
               ) : (
-                <AutoFilm photos={photos} brand={brand.name}
+                <AutoFilm photos={photos} clips={content.video.clips ?? []} brand={brand.name}
                   sign={hero.eyebrow || contact.address.split(",").at(-1)?.trim() || ""}
                   lines={[hero.title, ...highlights.map((h) => h.title), about.title].filter(Boolean).slice(0, 5)} />
               )}
@@ -489,7 +489,9 @@ const SITE_CSS = `
 .site .s-af-bars i{flex:1;height:2px;border-radius:2px;background:rgba(255,255,255,.3);overflow:hidden;position:relative}
 .site .s-af-bars i::after{content:"";position:absolute;inset:0;background:#fff;transform-origin:left;transform:scaleX(0)}
 .site .s-af-bars i.done::after{transform:scaleX(1)}
-.site .s-af-bars i.run::after{animation:s-af-run 4.2s linear forwards}
+.site .s-af-bars i.run::after{animation:s-af-run var(--af-d,4.2s) linear forwards}
+.site .s-af-slide video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scale(1.02);transition:transform 6s ease-out}
+.site .s-af-slide.on video{transform:scale(1.08)}
 @keyframes s-af-run{to{transform:scaleX(1)}}
 @media (prefers-reduced-motion:reduce){.site .s-af-slide img,.site .s-af-slide.on img{transition:none;transform:none}}
 .site .s-gallery{padding:0 var(--pad) clamp(88px,11cqi,160px)}

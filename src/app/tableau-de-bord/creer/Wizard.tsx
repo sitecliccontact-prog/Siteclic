@@ -27,14 +27,14 @@ type Brief = {
   offer: string; hours: string; story: string; mood: string;
   specialties: string; services: string[]; payments: string[]; audience: string; since: string;
   languages: string; instagram: string; facebook: string;
-  video: "non" | "auto" | "perso"; videoUrl: string;
+  video: "non" | "auto" | "perso"; videoUrl: string; videoClips: string[];
 };
-type TextKey = Exclude<keyof Brief, "services" | "payments" | "video">;
+type TextKey = Exclude<keyof Brief, "services" | "payments" | "video" | "videoClips">;
 
 const EMPTY: Brief = {
   trade: "", name: "", city: "", address: "", phone: "", email: "", offer: "", hours: "", story: "", mood: "",
   specialties: "", services: [], payments: [], audience: "", since: "", languages: "", instagram: "", facebook: "",
-  video: "non", videoUrl: "",
+  video: "non", videoUrl: "", videoClips: [],
 };
 
 const STEPS = ["Votre métier", "Votre commerce", "Ce que vous proposez", "Plus de détails", "Horaires et contact", "L'ambiance"];
@@ -259,7 +259,22 @@ const fieldCls =
 
 function VideoChoice({ b, setB }: { b: Brief; setB: React.Dispatch<React.SetStateAction<Brief>> }) {
   const ref = useRef<HTMLInputElement>(null);
+  const clipRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState("");
+  async function addClips(files: FileList | null) {
+    const list = Array.from(files ?? []).slice(0, 5 - b.videoClips.length);
+    if (!list.length) return;
+    try {
+      for (const [k, f] of list.entries()) {
+        setStatus(`Envoi du clip ${k + 1} sur ${list.length}… (gardez l'appli ouverte)`);
+        const url = await uploadVideo(f, "creation");
+        setB((p) => ({ ...p, video: "auto", videoClips: [...p.videoClips, url] }));
+      }
+      setStatus("Clips reçus ✓ Nous en ferons un film.");
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Envoi impossible.");
+    }
+  }
   async function pick(file: File | undefined) {
     if (!file) return;
     setStatus("Envoi de la vidéo… (gardez l'appli ouverte)");
@@ -282,6 +297,19 @@ function VideoChoice({ b, setB }: { b: Brief; setB: React.Dispatch<React.SetStat
           {b.videoUrl ? "Ma vidéo" : "Oui, j'ai ma vidéo"}
         </Chip>
       </div>
+      {b.video === "auto" && (
+        <div className="mt-3 rounded-xl border border-line p-3">
+          <p className="text-xs leading-relaxed text-muted">
+            Encore mieux : filmez 3 à 5 petits moments de 5 secondes (la salle, un plat, l&apos;équipe…). Nous les montons en film avec vos textes. Sinon, le film sera fait avec vos photos.
+          </p>
+          {b.videoClips.length < 5 && (
+            <button type="button" onClick={() => clipRef.current?.click()} className="mt-2 rounded-full border border-line px-4 py-2 text-sm hover:border-ink/60">
+              {b.videoClips.length ? `+ Ajouter un clip (${b.videoClips.length}/5)` : "+ Ajouter mes petits clips"}
+            </button>
+          )}
+          <input ref={clipRef} type="file" accept="video/*" multiple hidden onChange={(e) => { void addClips(e.target.files); e.target.value = ""; }} />
+        </div>
+      )}
       {b.video === "perso" && b.videoUrl && (
         <button type="button" onClick={() => ref.current?.click()} className="mt-2 text-sm text-muted underline underline-offset-4">Changer de vidéo</button>
       )}

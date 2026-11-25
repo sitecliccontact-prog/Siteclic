@@ -77,7 +77,12 @@ export const SiteExtrasSchema = z.object({
   /** Réseaux sociaux, affichés en bas du site. */
   links: z.object({ instagram: z.string().max(200), facebook: z.string().max(200) }).partial().optional(),
   /** Vidéo de présentation : celle du commerçant (url) ou, sans url, un petit film animé fait à partir de ses photos. */
-  video: z.object({ enabled: z.boolean(), url: z.string().max(400).default("") }).optional(),
+  video: z.object({
+    enabled: z.boolean(),
+    url: z.string().max(400).default(""),
+    /** Petits clips (5 secondes environ) montés automatiquement en film. */
+    clips: z.array(z.string().max(400)).max(5).default([]),
+  }).optional(),
 });
 
 /** Contenu enregistré = contenu écrit par l'IA + réglages du commerçant. */
@@ -124,9 +129,10 @@ export const BriefSchema = z.object({
   languages: z.string().max(120).default(""),
   instagram: z.string().max(200).default(""),
   facebook: z.string().max(200).default(""),
-  // Vidéo de présentation : "non", "auto" (faite par SiteClic) ou "perso" (videoUrl envoyée)
+  // Vidéo de présentation : "non", "auto" (film fait par SiteClic avec les photos et videoClips) ou "perso" (videoUrl envoyée)
   video: z.enum(["non", "auto", "perso"]).default("non"),
   videoUrl: z.string().max(400).default(""),
+  videoClips: z.array(z.string().max(400)).max(5).default([]),
 });
 
 export type Brief = z.infer<typeof BriefSchema>;

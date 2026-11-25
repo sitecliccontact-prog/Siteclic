@@ -12,7 +12,11 @@ const Body = z.object({
   special: z.object({ title: z.string().trim().max(80), text: z.string().trim().max(1200) }).nullable().optional(),
   booking: z.object({ enabled: z.boolean() }).optional(),
   assistant: z.object({ enabled: z.boolean() }).optional(),
-  video: z.object({ enabled: z.boolean(), url: z.string().max(400).refine((u) => !u || isOwnVideo(u)) }).optional(),
+  video: z.object({
+    enabled: z.boolean(),
+    url: z.string().max(400).refine((u) => !u || isOwnVideo(u)),
+    clips: z.array(z.string().max(400).refine(isOwnVideo)).max(5).default([]),
+  }).optional(),
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {

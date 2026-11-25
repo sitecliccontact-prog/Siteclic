@@ -437,31 +437,53 @@ export function SiteVideo({ src }: { src: string }) {
   );
 }
 
-/** Film de présentation fait automatiquement à partir des photos et des textes du site (aucun coût d'IA). */
-export function AutoFilm({ photos, lines, brand, sign }: { photos: string[]; lines: string[]; brand: string; sign: string }) {
-  // Avec photos : une photo par plan. Sans photo : un plan par phrase, sur fond de couleur.
-  const base = photos.length ? photos.slice(0, 5) : lines.slice(0, 4).map(() => "");
-  const slides = (base.length ? base : [""]).map((src, i) => ({ src, text: lines[i % Math.max(lines.length, 1)] ?? "" }));
-  const all = [...slides, { src: photos[0] ?? "", text: "", end: true }];
+/** Film de présentation monté automatiquement : les petits clips vidéo du commerçant (et/ou ses photos),
+    avec ses textes, des fondus et une fin à son nom. Tout se fait dans le navigateur : aucun coût d'IA. */
+export function AutoFilm({ photos, clips = [], lines, brand, sign }: { photos: string[]; clips?: string[]; lines: string[]; brand: string; sign: string }) {
+  type Slide = { src: string; clip?: boolean; text: string; end?: boolean };
+  const media: { src: string; clip?: boolean }[] = clips.length
+    ? [...clips.slice(0, 5).map((src) => ({ src, clip: true })), ...photos.slice(0, Math.max(0, 3 - clips.length)).map((src) => ({ src }))]
+    : photos.length ? photos.slice(0, 5).map((src) => ({ src })) : lines.slice(0, 4).map(() => ({ src: "" }));
+  const slides: Slide[] = (media.length ? media : [{ src: "" }]).map((m, k) => ({ ...m, text: lines[k % Math.max(lines.length, 1)] ?? "" }));
+  const all: Slide[] = [...slides, { src: photos[0] ?? "", text: "", end: true }];
   const [i, setI] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  const visible = useRef(true);
+  const vids = useRef<(HTMLVideoElement | null)[]>([]);
+  const dur = all[i]?.clip ? 5200 : 4200;
+
   useEffect(() => {
-    let visible = true;
-    const io = "IntersectionObserver" in window
-      ? new IntersectionObserver(([e]) => { visible = e.isIntersecting; }, { threshold: 0.2 })
-      : null;
-    if (io && ref.current) io.observe(ref.current);
-    const t = window.setInterval(() => { if (visible) setI((n) => (n + 1) % all.length); }, 4200);
-    return () => { window.clearInterval(t); io?.disconnect(); };
-  }, [all.length]);
+    if (!("IntersectionObserver" in window) || !ref.current) return;
+    const io = new IntersectionObserver(([e]) => { visible.current = e.isIntersecting; }, { threshold: 0.2 });
+    io.observe(ref.current);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    // Le plan en cours joue son clip depuis le début ; les autres sont en pause.
+    vids.current.forEach((v, k) => {
+      if (!v) return;
+      if (k === i) { v.currentTime = 0; void v.play().catch(() => {}); } else v.pause();
+    });
+    const t = window.setTimeout(function next() {
+      if (visible.current) setI((n) => (n + 1) % all.length);
+      else window.setTimeout(next, 800);
+    }, dur);
+    return () => window.clearTimeout(t);
+  }, [i, dur, all.length]);
+
   return (
     <div ref={ref} className="s-film-frame s-autofilm" aria-label={`Présentation de ${brand}`} role="img">
       {all.map((s, k) => (
-        <div key={k} className={`s-af-slide${k === i ? " on" : ""}${"end" in s ? " end" : ""}${s.src ? "" : " plain"}`}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {s.src && <img src={s.src} alt="" loading="lazy" referrerPolicy="no-referrer" />}
+        <div key={k} className={`s-af-slide${k === i ? " on" : ""}${s.end ? " end" : ""}${s.src ? "" : " plain"}${s.clip ? " is-clip" : ""}`}>
+          {s.clip ? (
+            <video ref={(el) => { vids.current[k] = el; }} src={s.src} muted playsInline preload={k < 2 ? "auto" : "metadata"} />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            s.src && <img src={s.src} alt="" loading="lazy" referrerPolicy="no-referrer" />
+          )}
           <div className="s-af-shade" />
-          {"end" in s ? (
+          {s.end ? (
             <div className="s-af-end">
               <p className="s-display">{brand}</p>
               {sign && <span>{sign}</span>}
@@ -472,7 +494,10 @@ export function AutoFilm({ photos, lines, brand, sign }: { photos: string[]; lin
         </div>
       ))}
       <div className="s-af-bars" aria-hidden>
-        {all.map((_, k) => <i key={`${k}-${k === i ? i : "x"}`} className={k < i ? "done" : k === i ? "run" : ""} />)}
+        {all.map((s, k) => (
+          <i key={`${k}-${k === i ? i : "x"}`} className={k < i ? "done" : k === i ? "run" : ""}
+            style={{ "--af-d": `${s.clip ? 5200 : 4200}ms` } as React.CSSProperties} />
+        ))}
       </div>
     </div>
   );

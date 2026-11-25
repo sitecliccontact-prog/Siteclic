@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const content = {
       ...generated,
       ...(brief.instagram || brief.facebook ? { links } : {}),
-      ...(brief.video !== "non" ? { video: { enabled: true, url: videoUrl } } : {}),
+      ...(brief.video !== "non" ? { video: { enabled: true, url: videoUrl, clips: brief.video === "auto" ? brief.videoClips.filter(isOwnVideo) : [] } } : {}),
     };
     const { data, error } = await supabase
       .from("sites")
