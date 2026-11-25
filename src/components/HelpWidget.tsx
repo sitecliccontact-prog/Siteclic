@@ -140,7 +140,7 @@ export function HelpWidget() {
             <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="flex items-center gap-2 border-t border-white/10 p-3">
               {voice.supported && (
                 <button type="button" aria-label={voice.listening ? "Arrêter" : "Parler"}
-                  onClick={() => { if (voice.listening) voice.stop(); else { usedMic.current = true; stopSpeaking(); voice.start(""); } }}
+                  onClick={() => { if (voice.listening) voice.stop(); else { usedMic.current = true; stopSpeaking(); voice.start("", "attendre"); } }}
                   className={`grid h-12 w-12 shrink-0 place-items-center rounded-full border transition ${voice.listening ? "animate-pulse border-[#ff5b1f] bg-[#ff5b1f] text-white" : "border-white/15 text-white/70"}`}>
                   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     {voice.listening ? <rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" /> : <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></>}

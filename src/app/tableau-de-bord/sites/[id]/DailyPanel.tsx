@@ -77,7 +77,7 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
             placeholder={voice.listening ? "Je vous écoute…" : "Ex.\nEntrée : velouté de potimarron\nPlat : daube provençale\nDessert : tarte au citron\nFormule 18 €"}
             className="w-full resize-y rounded-xl border border-line bg-cream px-3 py-2.5 pr-14 text-[15px] leading-relaxed outline-none focus:border-ink/60" />
           {voice.supported && (
-            <button type="button" onClick={() => (voice.listening ? voice.stop() : voice.start(text))}
+            <button type="button" onClick={() => (voice.listening ? voice.stop() : voice.start(text, "long"))}
               aria-label={voice.listening ? "Arrêter la dictée" : "Dicter le menu"}
               className={`absolute right-2 top-2 grid h-10 w-10 place-items-center rounded-full border transition ${voice.listening ? "border-clic bg-clic text-white" : "border-line text-muted hover:text-ink"}`}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

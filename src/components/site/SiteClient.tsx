@@ -210,17 +210,10 @@ export function AssistantWidget({ slug, siteId, brand, booking, special }: Assis
   const callOn = useRef(false);
   const history = useRef<Msg[]>([]);
   history.current = msgs;
-  const silent = useRef(0);
   const ear = useDictation(setHeard, (said) => {
     if (!callOn.current) return;
-    if (said.trim()) {
-      silent.current = 0;
-      void callAsk(said);
-    } else if (++silent.current < 2) {
-      window.setTimeout(listen, 250);
-    } else {
-      setCall("paused");
-    }
+    if (said.trim()) void callAsk(said);
+    else setCall("paused"); // plus rien entendu depuis un moment : on attend qu'on touche le cercle
   });
 
   const earRef = useRef(ear);
@@ -230,7 +223,7 @@ export function AssistantWidget({ slug, siteId, brand, booking, special }: Assis
     if (!callOn.current) return;
     setHeard("");
     setCall("listening");
-    earRef.current.start("");
+    earRef.current.start("", "attendre");
   }
 
   function talk(t: string) {
@@ -250,7 +243,6 @@ export function AssistantWidget({ slug, siteId, brand, booking, special }: Assis
 
   function startCall() {
     callOn.current = true;
-    silent.current = 0;
     setSeconds(0);
     setOpen(false);
     const hello = booking
@@ -263,7 +255,7 @@ export function AssistantWidget({ slug, siteId, brand, booking, special }: Assis
   function hangUp(toChat = false) {
     callOn.current = false;
     stopSpeaking();
-    ear.stop();
+    ear.cancel();
     setCall(null);
     if (toChat) setOpen(true);
   }
@@ -385,7 +377,7 @@ export function AssistantWidget({ slug, siteId, brand, booking, special }: Assis
             <p className="s-call-time">Assistant · {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}</p>
           </div>
           <button type="button" className="s-call-orb" aria-label={call === "listening" ? "J'ai fini de parler" : "Parler"}
-            onClick={() => { if (call === "listening") ear.stop(); else if (call === "paused" || call === "speaking") { stopSpeaking(); listen(); } }}>
+            onClick={() => { if (call === "listening") ear.stop(); else if (call === "paused" || call === "speaking") { stopSpeaking(); window.setTimeout(listen, 80); } }}>
             <i /><i /><i />
             <span><PhoneIcon size={34} /></span>
           </button>

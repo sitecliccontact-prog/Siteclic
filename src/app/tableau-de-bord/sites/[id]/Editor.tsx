@@ -190,22 +190,33 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
     if (said.trim()) {
       send(said);
     } else {
+      // Plus rien entendu depuis un moment : on met en pause, sans rien casser.
       talkOn.current = false;
       setTalk("off");
+      setMsgs((m) => [...m, { from: "ia", text: "Je ne vous entends plus. Touchez « Parler à l'IA » pour reprendre." }]);
     }
   });
+  const box = useRef<HTMLTextAreaElement>(null);
+  // La case grandit avec le texte (jusqu'à environ 40 % de l'écran), pour écrire ou dicter de longues demandes.
+  useEffect(() => {
+    const t = box.current;
+    if (!t) return;
+    t.style.height = "auto";
+    t.style.height = `${Math.min(t.scrollHeight, Math.round(window.innerHeight * 0.4))}px`;
+  }, [text]);
   const fileInput = useRef<HTMLInputElement>(null);
 
   function startTalk() {
     talkOn.current = true;
     setTalk("listening");
     stopSpeaking();
-    voice.start("");
+    setText("");
+    voice.start("", "attendre");
   }
   function stopTalk() {
     talkOn.current = false;
     setTalk("off");
-    voice.stop();
+    voice.cancel();
     stopSpeaking();
   }
   function answer(reply: string) {
@@ -243,8 +254,11 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
 
   async function send(instruction: string) {
     if (!instruction.trim() || busy) return;
-    voice.stop();
-    if (talkOn.current) setTalk("thinking");
+    if (!talkOn.current) voice.cancel();
+    if (talkOn.current) {
+      setTalk("thinking");
+      speak("D'accord, je m'en occupe."); // réponse immédiate pendant que l'IA travaille
+    }
     setMsgs((m) => [...m, { from: "moi", text: instruction }]);
     setText("");
     setBusy(true);
@@ -328,7 +342,15 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
             </button>
           ))}
         </div>
-        <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="flex items-end gap-2">
+        <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="rounded-3xl border border-line bg-card p-2 focus-within:border-ink/50">
+          <textarea ref={box} value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={3500}
+            placeholder={voice.listening ? "Je vous écoute… parlez aussi longtemps que vous voulez" : "Que voulez-vous changer ? Vous pouvez écrire plusieurs choses à la fois."}
+            onKeyDown={(e) => {
+              // Sur ordinateur, Entrée envoie (Maj+Entrée = nouvelle ligne). Sur téléphone, Entrée va à la ligne.
+              if (e.key === "Enter" && !e.shiftKey && !window.matchMedia("(pointer: coarse)").matches) { e.preventDefault(); send(text); }
+            }}
+            className="block max-h-[40vh] min-h-[52px] w-full resize-none overflow-y-auto bg-transparent px-3 py-2.5 text-[15px] leading-relaxed outline-none" />
+          <div className="flex items-center gap-2">
           <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={(e) => attach(e.target.files)} />
           <button type="button" onClick={() => fileInput.current?.click()} disabled={busy} aria-label="Ajouter une photo" title="Ajouter une photo"
             className="grid h-[48px] w-[48px] shrink-0 place-items-center rounded-full border border-line text-muted transition hover:border-ink/40 hover:text-ink disabled:opacity-30">
@@ -337,7 +359,7 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
             </svg>
           </button>
           {voice.supported && (
-            <button type="button" disabled={busy} onClick={() => (voice.listening ? voice.stop() : voice.start(text))}
+            <button type="button" disabled={busy} onClick={() => (voice.listening ? voice.stop() : voice.start(text, "long"))}
               aria-label={voice.listening ? "Arrêter la dictée" : "Parler"} title={voice.listening ? "Arrêter la dictée" : "Parler"}
               aria-pressed={voice.listening}
               className={`relative grid h-[48px] w-[48px] shrink-0 place-items-center rounded-full border transition disabled:opacity-30 ${
@@ -350,15 +372,14 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
               </svg>
             </button>
           )}
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder={voice.listening ? "Je vous écoute…" : "Que voulez-vous changer ?"}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(text); } }}
-            className="min-h-[48px] min-w-0 flex-1 resize-none rounded-2xl border border-line bg-card px-4 py-3 text-[15px] outline-none focus:border-ink/60" />
+            <span className="flex-1 truncate text-right text-[11px] text-muted">{text.length > 2800 ? `${3500 - text.length} caractères restants` : ""}</span>
           <button disabled={busy || !text.trim()} aria-label="Envoyer"
             className="grid h-[48px] w-[48px] shrink-0 place-items-center rounded-full bg-clic text-xl text-white disabled:opacity-30">
             ↑
           </button>
+          </div>
         </form>
-        {voice.listening && talk === "off" && <p className="mt-2 text-center text-xs text-clic">Parlez, puis touchez ■ ou attendez un instant. Vous pourrez corriger le texte avant d&apos;envoyer.</p>}
+        {voice.listening && talk === "off" && <p className="mt-2 text-center text-xs text-clic">Je vous écoute. Prenez votre temps, puis touchez ■ quand vous avez fini. Vous pourrez corriger avant d&apos;envoyer.</p>}
         {voice.error && <p className="mt-2 text-center text-xs text-red-400">{voice.error}</p>}
       </div>
     </div>
