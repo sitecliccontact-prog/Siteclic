@@ -214,7 +214,7 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
     setTalk("listening");
     stopSpeaking();
     setText("");
-    voice.start("", "attendre");
+    voice.start("", "conversation");
   }
   function stopTalk() {
     talkOn.current = false;

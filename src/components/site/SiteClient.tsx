@@ -211,14 +211,9 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
   }, [msgs, busy, open]);
 
   function say(t: string) {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(t);
-    u.lang = "fr-FR";
-    const fr = window.speechSynthesis.getVoices().find((v) => v.lang.startsWith("fr"));
-    if (fr) u.voice = fr;
-    window.speechSynthesis.speak(u);
+    sayAloud(t, undefined, "homme");
   }
+
 
   /* ---------- Appel vocal : l'assistant parle et écoute à tour de rôle, comme au téléphone ---------- */
   const [call, setCall] = useState<null | "listening" | "thinking" | "speaking" | "paused">(null);
@@ -240,12 +235,12 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
     if (!callOn.current) return;
     setHeard("");
     setCall("listening");
-    earRef.current.start("", "attendre");
+    earRef.current.start("", "conversation");
   }
 
   function talk(t: string) {
     setCall("speaking");
-    sayAloud(t, () => { if (callOn.current) window.setTimeout(listen, 150); });
+    sayAloud(t, () => { if (callOn.current) window.setTimeout(listen, 350); }, "homme");
   }
 
   async function callAsk(q: string) {
@@ -262,9 +257,11 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
     callOn.current = true;
     setSeconds(0);
     setOpen(false);
-    const hello = booking
-      ? `Bonjour, ici l'assistant de ${brand}. Je peux prendre votre réservation : pour quel jour, à quelle heure, et pour combien de personnes ?`
-      : `Bonjour, ici l'assistant de ${brand}. Que puis-je faire pour vous ?`;
+    const hellos = booking
+      ? [`Bonjour, ${brand}, je vous écoute ! C'est pour une réservation ?`, `${brand}, bonsoir… ou bonjour ! Qu'est-ce que je peux faire pour vous ?`, `Bienvenue chez ${brand} ! Vous voulez réserver une table, ou vous avez une question ?`]
+      : [`Bonjour, ${brand}, je vous écoute !`, `${brand}, bonjour ! Qu'est-ce que je peux faire pour vous ?`];
+    const hour = new Date().getHours();
+    const hello = hellos[Math.floor(Math.random() * hellos.length)].replace("bonsoir… ou bonjour", hour >= 18 ? "bonsoir" : "bonjour");
     setMsgs((m) => [...m, { role: "assistant", text: hello }]);
     talk(hello);
   }
@@ -298,7 +295,7 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
       const res = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug: siteId ? undefined : slug, siteId, messages: all.slice(Math.max(first, all.length - 12)) }),
+        body: JSON.stringify({ slug: siteId ? undefined : slug, siteId, messages: all.slice(Math.max(first, all.length - 16)) }),
       });
       const data = await res.json().catch(() => ({}));
       return data.reply || data.error || "Je n'ai pas pu répondre. Réessayez dans un instant.";
@@ -353,13 +350,13 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
                 <PhoneIcon size={17} />
               </button>
             )}
-            <button type="button" onClick={() => { setSpeak((v) => !v); window.speechSynthesis?.cancel(); }}
+            <button type="button" onClick={() => { setSpeak((v) => !v); stopSpeaking(); }}
               className={`s-ai-icon ${speak ? "on" : ""}`} aria-pressed={speak} aria-label={speak ? "Ne plus lire les réponses" : "Lire les réponses à voix haute"}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M4 9v6h4l5 4V5L8 9z" />{speak ? <path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" /> : <path d="m17 9 4 6M21 9l-4 6" />}
               </svg>
             </button>
-            <button type="button" onClick={() => { setOpen(false); window.speechSynthesis?.cancel(); }} className="s-ai-icon" aria-label="Fermer">×</button>
+            <button type="button" onClick={() => { setOpen(false); stopSpeaking(); }} className="s-ai-icon" aria-label="Fermer">×</button>
           </header>
           <div className="s-ai-body">
             <p className="s-ai-msg bot">Bonjour ! Je suis l&apos;assistant de {brand}. Horaires, carte{booking ? ", réservation" : ""} : posez-moi votre question, par écrit ou au micro.</p>

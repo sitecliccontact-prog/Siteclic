@@ -7,7 +7,9 @@ import { useEffect, useRef, useState } from "react";
    Le navigateur coupe le micro après chaque phrase (surtout sur Android). Pour que ce soit agréable :
    - mode "phrase"   : une phrase, puis ça s'arrête (questions rapides) ;
    - mode "attendre" : on relance tout seul tant que la personne n'a rien dit, puis une phrase (conversation) ;
-   - mode "long"     : on relance tout seul après chaque phrase jusqu'à ce que la personne touche ■ (longues demandes). */
+   - mode "long"     : on relance tout seul après chaque phrase jusqu'à ce que la personne touche ■ (longues demandes) ;
+   - mode "conversation" : comme au téléphone. On attend que la personne parle, et si elle fait une petite pause
+     au milieu de sa phrase, on continue d'écouter ; on ne s'arrête qu'après ~1,5 s de vrai silence. */
 
 type Result = { isFinal: boolean; 0: { transcript: string } };
 type Recognition = {
@@ -23,7 +25,7 @@ type Recognition = {
   abort: () => void;
 };
 
-export type DictationMode = "phrase" | "attendre" | "long";
+export type DictationMode = "phrase" | "attendre" | "long" | "conversation";
 
 function getRecognition(): (new () => Recognition) | null {
   if (typeof window === "undefined") return null;
@@ -64,6 +66,7 @@ export function useDictation(onText: (text: string) => void, onEnd?: (text: stri
   const acc = useRef(""); // texte des phrases précédentes
   const last = useRef(""); // texte complet actuel
   const silent = useRef(0);
+  const pause = useRef<number | null>(null);
 
   useEffect(() => {
     setSupported(!!getRecognition());
@@ -73,7 +76,13 @@ export function useDictation(onText: (text: string) => void, onEnd?: (text: stri
     };
   }, []);
 
+  function clearPause() {
+    if (pause.current) window.clearTimeout(pause.current);
+    pause.current = null;
+  }
+
   function finish() {
+    clearPause();
     active.current = false;
     rec.current = null;
     setListening(false);
@@ -95,6 +104,7 @@ export function useDictation(onText: (text: string) => void, onEnd?: (text: stri
       for (let i = 0; i < e.results.length; i++) said += e.results[i][0].transcript;
       if (!said.trim()) return;
       heard = true;
+      clearPause(); // la personne reprend la parole
       last.current = join(prefix, said);
       cb.current(last.current);
     };
@@ -107,10 +117,26 @@ export function useDictation(onText: (text: string) => void, onEnd?: (text: stri
       if (rec.current !== r) return;
       acc.current = last.current;
       silent.current = heard ? 0 : silent.current + 1;
+      if (mode.current === "conversation" && active.current) {
+        if (heard) {
+          // Petite pause : on réécoute, et si rien ne vient dans 1,5 s, la phrase est finie.
+          pause.current = window.setTimeout(() => {
+            pause.current = null;
+            if (!active.current || rec.current === null) return;
+            const cur = rec.current;
+            rec.current = null;
+            cur.abort();
+            finish();
+          }, 1500);
+          window.setTimeout(() => (active.current && rec.current === r ? session() : undefined), 80);
+          return;
+        }
+        if (last.current.trim()) return finish();
+      }
       const again =
         active.current &&
         silent.current < MAX_SILENT &&
-        (mode.current === "long" || (mode.current === "attendre" && !heard));
+        (mode.current === "long" || ((mode.current === "attendre" || mode.current === "conversation") && !heard));
       if (again) {
         window.setTimeout(() => (active.current && rec.current === r ? session() : undefined), 120);
       } else {
@@ -148,6 +174,7 @@ export function useDictation(onText: (text: string) => void, onEnd?: (text: stri
 
   /** Tout arrêter sans rien envoyer. */
   function cancel() {
+    clearPause();
     active.current = false;
     const r = rec.current;
     rec.current = null;
