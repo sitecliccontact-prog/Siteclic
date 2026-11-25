@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { uploadVideo } from "@/lib/site/videos";
 
 const TRADES = [
   "Restaurant", "Boulangerie", "Pâtisserie", "Café", "Coiffeur", "Barbier",
@@ -26,12 +27,14 @@ type Brief = {
   offer: string; hours: string; story: string; mood: string;
   specialties: string; services: string[]; payments: string[]; audience: string; since: string;
   languages: string; instagram: string; facebook: string;
+  video: "non" | "auto" | "perso"; videoUrl: string;
 };
-type TextKey = Exclude<keyof Brief, "services" | "payments">;
+type TextKey = Exclude<keyof Brief, "services" | "payments" | "video">;
 
 const EMPTY: Brief = {
   trade: "", name: "", city: "", address: "", phone: "", email: "", offer: "", hours: "", story: "", mood: "",
   specialties: "", services: [], payments: [], audience: "", since: "", languages: "", instagram: "", facebook: "",
+  video: "non", videoUrl: "",
 };
 
 const STEPS = ["Votre métier", "Votre commerce", "Ce que vous proposez", "Plus de détails", "Horaires et contact", "L'ambiance"];
@@ -153,6 +156,7 @@ export function Wizard({ defaultName }: { defaultName: string }) {
               <Input label="Langues parlées" optional value={b.languages} onChange={set("languages")} placeholder="Ex. anglais, italien" />
             </div>
             <Input label="Vos clients" optional value={b.audience} onChange={set("audience")} placeholder="Ex. familles du quartier, touristes l'été, travailleurs le midi" />
+            <VideoChoice b={b} setB={setB} />
           </Section>
         )}
 
@@ -198,7 +202,7 @@ export function Wizard({ defaultName }: { defaultName: string }) {
         {step < STEPS.length - 1 ? (
           <button disabled={!canNext} onClick={() => setStep(step + 1)}
             className="rounded-full bg-ink px-7 py-3.5 font-medium text-cream transition disabled:opacity-30">
-            {step === 3 && !b.specialties && !b.services.length && !b.payments.length && !b.since && !b.languages && !b.audience ? "Passer" : "Continuer"}
+            {step === 3 && !b.specialties && !b.services.length && !b.payments.length && !b.since && !b.languages && !b.audience && b.video === "non" ? "Passer" : "Continuer"}
           </button>
         ) : (
           <button disabled={!canNext} onClick={submit}
@@ -252,6 +256,40 @@ function Choice({ active, onClick, children }: { active: boolean; onClick: () =>
 
 const fieldCls =
   "w-full rounded-2xl border border-line bg-card px-4 py-3.5 text-base outline-none transition placeholder:text-muted/50 focus:border-ink/60 focus:ring-4 focus:ring-ink/5";
+
+function VideoChoice({ b, setB }: { b: Brief; setB: React.Dispatch<React.SetStateAction<Brief>> }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [status, setStatus] = useState("");
+  async function pick(file: File | undefined) {
+    if (!file) return;
+    setStatus("Envoi de la vidéo… (gardez l'appli ouverte)");
+    try {
+      const url = await uploadVideo(file, "creation");
+      setB((p) => ({ ...p, video: "perso", videoUrl: url }));
+      setStatus("Vidéo reçue ✓");
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Envoi impossible.");
+    }
+  }
+  return (
+    <div>
+      <Label label="Vidéo de présentation" optional />
+      <p className="mb-2 text-xs leading-relaxed text-muted">Elle se lance toute seule sur votre site, sans le son. Pas de vidéo ? Nous faisons un petit film avec vos photos.</p>
+      <div className="flex flex-wrap gap-2">
+        <Chip active={b.video === "non"} onClick={() => setB((p) => ({ ...p, video: "non" }))}>Non merci</Chip>
+        <Chip active={b.video === "auto"} onClick={() => setB((p) => ({ ...p, video: "auto" }))}>Oui, faites-la pour moi</Chip>
+        <Chip active={b.video === "perso"} onClick={() => (b.videoUrl ? setB((p) => ({ ...p, video: "perso" })) : ref.current?.click())}>
+          {b.videoUrl ? "Ma vidéo" : "Oui, j'ai ma vidéo"}
+        </Chip>
+      </div>
+      {b.video === "perso" && b.videoUrl && (
+        <button type="button" onClick={() => ref.current?.click()} className="mt-2 text-sm text-muted underline underline-offset-4">Changer de vidéo</button>
+      )}
+      {status && <p className="mt-2 text-xs text-muted" role="status">{status}</p>}
+      <input ref={ref} type="file" accept="video/*" hidden onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ""; }} />
+    </div>
+  );
+}
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (

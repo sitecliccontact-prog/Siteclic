@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { bookingEnabled, socialUrl, specialIsFresh, type SiteContent } from "@/lib/site/schema";
-import { AssistantWidget, BookingDialog, SiteMotion } from "./SiteClient";
+import { AssistantWidget, AutoFilm, BookingDialog, SiteMotion, SiteVideo } from "./SiteClient";
 import { THEMES } from "./themes";
 
 /** Affiche le site d'un client à partir de son contenu. */
@@ -150,6 +150,24 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
           </div>
         </div>
       </section>
+
+      {/* Vidéo de présentation */}
+      {content.video?.enabled && (
+        <section className="s-film" aria-label="Vidéo de présentation">
+          <div className="s-wrap">
+            <p className="s-eyebrow s-film-eyebrow" data-r>En images</p>
+            <div data-r>
+              {content.video.url ? (
+                <SiteVideo src={content.video.url} />
+              ) : (
+                <AutoFilm photos={photos} brand={brand.name}
+                  sign={hero.eyebrow || contact.address.split(",").at(-1)?.trim() || ""}
+                  lines={[hero.title, ...highlights.map((h) => h.title), about.title].filter(Boolean).slice(0, 5)} />
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Ce qui nous distingue */}
       {highlights.length > 0 && (
@@ -444,6 +462,36 @@ const SITE_CSS = `
 .site .s-value p{color:var(--muted);margin:0;max-width:40ch}
 
 /* Galerie */
+.site .s-film{padding:0 0 clamp(72px,9cqi,140px)}
+.site .s-film .s-wrap{max-width:1240px}
+.site .s-film-eyebrow{margin-bottom:18px}
+.site .s-film-frame{position:relative;overflow:hidden;border-radius:var(--radius);background:#0b0b0b;aspect-ratio:4/5;isolation:isolate}
+@container (min-width:700px){.site .s-film-frame{aspect-ratio:16/9}}
+.site .s-film-frame video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.site .s-film-sound{position:absolute;right:14px;bottom:14px;width:44px;height:44px;border-radius:999px;display:grid;place-items:center;color:#fff;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(8px);cursor:pointer}
+.site .s-af-slide{position:absolute;inset:0;opacity:0;transition:opacity 1.1s ease}
+.site .s-af-slide.on{opacity:1;z-index:1}
+.site .s-af-slide img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scale(1.04);transition:transform 6s linear}
+.site .s-af-slide.on img{transform:scale(1.16) translate(-1.5%,-1%)}
+.site .s-af-slide:nth-child(even).on img{transform:scale(1.16) translate(1.5%,1%)}
+.site .s-af-slide.plain{background:radial-gradient(120% 90% at 20% 10%,color-mix(in srgb,var(--accent) 45%,#111),#0b0b0b 70%)}
+.site .s-af-slide.plain:nth-child(even){background:radial-gradient(110% 90% at 85% 85%,color-mix(in srgb,var(--accent) 40%,#111),#0b0b0b 70%)}
+.site .s-af-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,0) 30%,rgba(0,0,0,.15) 55%,rgba(0,0,0,.72) 100%)}
+.site .s-af-slide.end .s-af-shade{background:rgba(0,0,0,.62)}
+.site .s-af-cap{position:absolute;left:clamp(18px,4cqi,48px);right:clamp(18px,4cqi,48px);bottom:clamp(22px,5cqi,56px);margin:0;color:#fff;font-size:clamp(26px,5.2cqi,64px);line-height:1.02;letter-spacing:var(--dt);font-weight:var(--dw);max-width:18ch;opacity:0;transform:translateY(18px);transition:opacity .8s ease .35s,transform .9s cubic-bezier(.2,.7,.2,1) .35s;text-wrap:balance}
+.site .s-af-slide.on .s-af-cap{opacity:1;transform:none}
+.site .s-af-end{position:absolute;inset:0;display:grid;place-content:center;text-align:center;gap:10px;color:#fff;padding:24px}
+.site .s-af-end p{margin:0;font-size:clamp(34px,7cqi,92px);line-height:1;letter-spacing:var(--dt);font-weight:var(--dw);opacity:0;transform:scale(.94);transition:opacity 1s ease .3s,transform 1.4s cubic-bezier(.2,.7,.2,1) .3s}
+.site .s-af-end span{font-size:12px;letter-spacing:.24em;text-transform:uppercase;opacity:0;transition:opacity 1s ease .9s}
+.site .s-af-slide.on .s-af-end p{opacity:1;transform:none}
+.site .s-af-slide.on .s-af-end span{opacity:.8}
+.site .s-af-bars{position:absolute;z-index:2;left:14px;right:14px;top:14px;display:flex;gap:6px}
+.site .s-af-bars i{flex:1;height:2px;border-radius:2px;background:rgba(255,255,255,.3);overflow:hidden;position:relative}
+.site .s-af-bars i::after{content:"";position:absolute;inset:0;background:#fff;transform-origin:left;transform:scaleX(0)}
+.site .s-af-bars i.done::after{transform:scaleX(1)}
+.site .s-af-bars i.run::after{animation:s-af-run 4.2s linear forwards}
+@keyframes s-af-run{to{transform:scaleX(1)}}
+@media (prefers-reduced-motion:reduce){.site .s-af-slide img,.site .s-af-slide.on img{transition:none;transform:none}}
 .site .s-gallery{padding:0 var(--pad) clamp(88px,11cqi,160px)}
 .site .s-gallery-grid{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 calc(var(--pad) * -1);padding:0 var(--pad);scrollbar-width:none}
 .site .s-gallery-grid::-webkit-scrollbar{display:none}

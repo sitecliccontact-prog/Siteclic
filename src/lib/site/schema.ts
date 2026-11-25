@@ -76,6 +76,8 @@ export const SiteExtrasSchema = z.object({
   assistant: z.object({ enabled: z.boolean() }).optional(),
   /** Réseaux sociaux, affichés en bas du site. */
   links: z.object({ instagram: z.string().max(200), facebook: z.string().max(200) }).partial().optional(),
+  /** Vidéo de présentation : celle du commerçant (url) ou, sans url, un petit film animé fait à partir de ses photos. */
+  video: z.object({ enabled: z.boolean(), url: z.string().max(400).default("") }).optional(),
 });
 
 /** Contenu enregistré = contenu écrit par l'IA + réglages du commerçant. */
@@ -86,7 +88,7 @@ export type SiteExtras = z.infer<typeof SiteExtrasSchema>;
 
 /** Garde les réglages du commerçant quand l'IA réécrit le site. */
 export function keepExtras(from: SiteContent, to: SiteContent): SiteContent {
-  return { ...to, special: from.special, booking: from.booking, assistant: from.assistant, links: from.links };
+  return { ...to, special: from.special, booking: from.booking, assistant: from.assistant, links: from.links, video: from.video };
 }
 
 /** Le formulaire de réservation est-il proposé ? (par défaut : oui si le bouton principal parle de réserver) */
@@ -122,6 +124,9 @@ export const BriefSchema = z.object({
   languages: z.string().max(120).default(""),
   instagram: z.string().max(200).default(""),
   facebook: z.string().max(200).default(""),
+  // Vidéo de présentation : "non", "auto" (faite par SiteClic) ou "perso" (videoUrl envoyée)
+  video: z.enum(["non", "auto", "perso"]).default("non"),
+  videoUrl: z.string().max(400).default(""),
 });
 
 export type Brief = z.infer<typeof BriefSchema>;
@@ -141,4 +146,9 @@ export function socialUrl(kind: "instagram" | "facebook", raw: string | undefine
   if (/^(www\.)?(instagram|facebook)\.com\//i.test(v)) return `https://${v.replace(/^www\./i, "")}`;
   const handle = v.replace(/^@/, "").replace(/[^\w.-]/g, "");
   return handle ? `https://${kind}.com/${handle}` : null;
+}
+
+/** Adresse d'une vidéo hébergée chez nous (on n'accepte que celles-là). */
+export function isOwnVideo(url: string) {
+  return /^https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/public\/videos\/[\w./-]+$/.test(url);
 }

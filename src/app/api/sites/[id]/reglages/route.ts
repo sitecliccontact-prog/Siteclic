@@ -1,17 +1,18 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { parseStoredContent, type SiteContent } from "@/lib/site/schema";
+import { isOwnVideo, parseStoredContent, type SiteContent } from "@/lib/site/schema";
 import { publicPath } from "@/lib/site/slug";
 import { createClient } from "@/lib/supabase/server";
 
-/* Menu du jour et réservations : visibles tout de suite sur le site en ligne, sans « Publier les modifications ».
+/* Menu du jour, réservations, assistant, vidéo : visibles tout de suite sur le site en ligne, sans « Publier les modifications ».
    Gratuit (pas d'IA). */
 
 const Body = z.object({
   special: z.object({ title: z.string().trim().max(80), text: z.string().trim().max(1200) }).nullable().optional(),
   booking: z.object({ enabled: z.boolean() }).optional(),
   assistant: z.object({ enabled: z.boolean() }).optional(),
+  video: z.object({ enabled: z.boolean(), url: z.string().max(400).refine((u) => !u || isOwnVideo(u)) }).optional(),
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -34,6 +35,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   if (parsed.data.booking) patch.booking = parsed.data.booking;
   if (parsed.data.assistant) patch.assistant = parsed.data.assistant;
+  if (parsed.data.video) patch.video = parsed.data.video;
 
   const next = { ...content, ...patch };
   const published = parseStoredContent(row.published_content);

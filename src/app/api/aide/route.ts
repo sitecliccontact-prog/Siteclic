@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export const maxDuration = 60;
 
-/* Assistant d'aide de l'appli SiteClic (pour les commerçants). Modèle rapide et peu cher, 30 messages par jour et par compte. */
+/* Assistant d'aide de l'appli SiteClic (pour les commerçants). Modèle rapide et peu cher, 10 questions par jour et par compte. */
 
 const Body = z.object({
   page: z.string().max(200).default(""),
@@ -24,10 +24,11 @@ export async function POST(request: Request) {
   const { page, error, messages } = parsed.data;
   if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ reply: "L'aide n'est pas disponible pour le moment. Écrivez-nous à siteclic.contact@gmail.com." });
 
-  // Limite d'usage (réutilise le compteur de l'assistant). Si le compteur n'est pas encore installé, on laisse passer : le coût est minime.
-  const { data: ok, error: limitErr } = await supabase.rpc("assistant_hit", { p_slug: `aide:${user.id}`, p_visitor: user.id });
+  // Limite : 10 questions par jour et par compte (aide_hit). Ancien compteur (30/jour) si le SQL 08 n'est pas encore passé.
+  let { data: ok, error: limitErr } = await supabase.rpc("aide_hit");
+  if (limitErr) ({ data: ok, error: limitErr } = await supabase.rpc("assistant_hit", { p_slug: `aide:${user.id}`, p_visitor: user.id }));
   if (!limitErr && ok === false) {
-    return NextResponse.json({ reply: "Vous avez beaucoup utilisé l'aide aujourd'hui. Revenez demain, ou écrivez-nous à siteclic.contact@gmail.com." });
+    return NextResponse.json({ reply: "Vous avez posé vos 10 questions du jour à l'aide. Revenez demain, ou écrivez-nous à siteclic.contact@gmail.com." });
   }
 
   const system = `Tu es l'aide de l'application SiteClic. Tu aides des commerçants (souvent peu à l'aise avec la technique, sur téléphone) à utiliser l'appli et à résoudre leurs problèmes.

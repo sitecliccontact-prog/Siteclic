@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { BriefSchema } from "@/lib/site/schema";
+import { BriefSchema, isOwnVideo } from "@/lib/site/schema";
 import { generateSiteContent, explainError } from "@/lib/site/generate";
 import { createClient } from "@/lib/supabase/server";
 import { consumeAi } from "@/lib/site/limits";
@@ -23,7 +23,12 @@ export async function POST(request: Request) {
   try {
     const generated = await generateSiteContent(brief);
     const links = { instagram: brief.instagram, facebook: brief.facebook };
-    const content = brief.instagram || brief.facebook ? { ...generated, links } : generated;
+    const videoUrl = brief.video === "perso" && isOwnVideo(brief.videoUrl) ? brief.videoUrl : "";
+    const content = {
+      ...generated,
+      ...(brief.instagram || brief.facebook ? { links } : {}),
+      ...(brief.video !== "non" ? { video: { enabled: true, url: videoUrl } } : {}),
+    };
     const { data, error } = await supabase
       .from("sites")
       .insert({ name: brief.name, trade: brief.trade, brief, content })

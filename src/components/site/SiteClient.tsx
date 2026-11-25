@@ -270,3 +270,69 @@ export function AssistantWidget({ slug, siteId, brand, booking, special }: Assis
     </>
   );
 }
+
+/** Vidéo de présentation du commerçant : lecture automatique sans le son, en boucle, bouton pour mettre le son. */
+export function SiteVideo({ src }: { src: string }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const [muted, setMuted] = useState(true);
+  // Les téléphones ne lancent une vidéo toute seule que si elle est muette : on s'en assure.
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    v.muted = true;
+    void v.play().catch(() => {});
+  }, [src]);
+  return (
+    <div className="s-film-frame">
+      <video ref={ref} src={src} autoPlay muted={muted} loop playsInline preload="metadata" />
+      <button type="button" className="s-film-sound" aria-label={muted ? "Mettre le son" : "Couper le son"}
+        onClick={() => { const v = ref.current; setMuted(!muted); if (v) { v.muted = !muted; void v.play().catch(() => {}); } }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M11 5 6 9H3v6h3l5 4z" />
+          {muted ? <path d="m16 9 5 6m0-6-5 6" /> : <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />}
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+/** Film de présentation fait automatiquement à partir des photos et des textes du site (aucun coût d'IA). */
+export function AutoFilm({ photos, lines, brand, sign }: { photos: string[]; lines: string[]; brand: string; sign: string }) {
+  // Avec photos : une photo par plan. Sans photo : un plan par phrase, sur fond de couleur.
+  const base = photos.length ? photos.slice(0, 5) : lines.slice(0, 4).map(() => "");
+  const slides = (base.length ? base : [""]).map((src, i) => ({ src, text: lines[i % Math.max(lines.length, 1)] ?? "" }));
+  const all = [...slides, { src: photos[0] ?? "", text: "", end: true }];
+  const [i, setI] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let visible = true;
+    const io = "IntersectionObserver" in window
+      ? new IntersectionObserver(([e]) => { visible = e.isIntersecting; }, { threshold: 0.2 })
+      : null;
+    if (io && ref.current) io.observe(ref.current);
+    const t = window.setInterval(() => { if (visible) setI((n) => (n + 1) % all.length); }, 4200);
+    return () => { window.clearInterval(t); io?.disconnect(); };
+  }, [all.length]);
+  return (
+    <div ref={ref} className="s-film-frame s-autofilm" aria-label={`Présentation de ${brand}`} role="img">
+      {all.map((s, k) => (
+        <div key={k} className={`s-af-slide${k === i ? " on" : ""}${"end" in s ? " end" : ""}${s.src ? "" : " plain"}`}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {s.src && <img src={s.src} alt="" loading="lazy" referrerPolicy="no-referrer" />}
+          <div className="s-af-shade" />
+          {"end" in s ? (
+            <div className="s-af-end">
+              <p className="s-display">{brand}</p>
+              {sign && <span>{sign}</span>}
+            </div>
+          ) : (
+            s.text && <p className="s-af-cap s-display">{s.text}</p>
+          )}
+        </div>
+      ))}
+      <div className="s-af-bars" aria-hidden>
+        {all.map((_, k) => <i key={`${k}-${k === i ? i : "x"}`} className={k < i ? "done" : k === i ? "run" : ""} />)}
+      </div>
+    </div>
+  );
+}

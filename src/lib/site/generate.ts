@@ -39,16 +39,19 @@ type UserContent = string | Anthropic.Beta.Messages.BetaContentBlockParam[];
 
 type Effort = "low" | "medium" | "high";
 
-export async function ask<T extends z.ZodType>(schema: T, system: string, user: UserContent, effort: Effort = "medium"): Promise<z.infer<T>> {
+/* Coût : la création (rare) utilise le modèle le plus fort ; les modifications (fréquentes) un modèle 2 fois moins cher. */
+type Tier = "fort" | "eco";
+
+export async function ask<T extends z.ZodType>(schema: T, system: string, user: UserContent, effort: Effort = "medium", tier: Tier = "fort"): Promise<z.infer<T>> {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new GenerationError("La clé de l'IA n'est pas encore configurée.");
   }
   const client = new Anthropic();
   const response = await client.beta.messages.parse({
-    model: "claude-opus-5-5",
+    ...(tier === "fort"
+      ? { model: "claude-opus-5-5", betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }
+      : { model: "claude-sonnet-5-5" }),
     max_tokens: 16000,
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
     output_config: { effort, format: betaZodOutputFormat(schema) },
     system,
     messages: [{ role: "user", content: user }],
@@ -154,6 +157,8 @@ export async function editSiteContent(current: SiteContent, instruction: string)
 - Si la demande est floue ou impossible, ne change rien et explique-le gentiment dans reply.
 - Pour changer l'ambiance ou les couleurs, choisis le thème le plus proche parmi : bistrot, atelier, terracotta, minuit, jardin.\n\n${WRITING_RULES}`,
     blocks.length ? [...blocks, { type: "text", text }] : text,
+    "low",
+    "eco",
   );
   const allowed = new Set(current.photos);
   return {

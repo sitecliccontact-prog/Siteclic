@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { celebrate } from "@/components/Celebration";
 import { useDictation } from "@/lib/hooks/useDictation";
 import { bookingEnabled, specialIsFresh, type SiteContent } from "@/lib/site/schema";
+import { uploadVideo } from "@/lib/site/videos";
 
 /* Menu du jour + réservations : mis en ligne tout de suite, sans IA (gratuit). */
 
@@ -24,13 +25,29 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
   const fresh = specialIsFresh(content);
   const [title, setTitle] = useState(content.special?.title || "Menu du jour");
   const [text, setText] = useState(fresh ? content.special?.text ?? "" : "");
-  const [busy, setBusy] = useState<"menu" | "booking" | "assistant" | null>(null);
+  const [busy, setBusy] = useState<"menu" | "booking" | "assistant" | "video" | null>(null);
   const [msg, setMsg] = useState("");
   const voice = useDictation(setText);
   const booking = bookingEnabled(content);
   const assistant = content.assistant?.enabled ?? false;
+  const video = content.video ?? { enabled: false, url: "" };
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  async function run(kind: "menu" | "booking" | "assistant", body: object, ok: string) {
+  async function sendVideo(file: File | undefined) {
+    if (!file) return;
+    setBusy("video");
+    setMsg("Envoi de la vidéo… (gardez l'appli ouverte)");
+    try {
+      const url = await uploadVideo(file, id);
+      setBusy(null);
+      await run("video", { video: { enabled: true, url } }, "Vidéo en ligne ✓");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Envoi impossible.");
+      setBusy(null);
+    }
+  }
+
+  async function run(kind: "menu" | "booking" | "assistant" | "video", body: object, ok: string) {
     setBusy(kind);
     setMsg("");
     try {
@@ -89,6 +106,36 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
       <Switch title="Assistant IA pour vos clients" on={assistant} disabled={busy !== null}
         text="Un bouton « Une question ? » sur votre site : l'IA répond à l'écrit ou à l'oral (horaires, carte) et prend les réservations."
         onToggle={() => run("assistant", { assistant: { enabled: !assistant } }, assistant ? "Assistant désactivé." : "Assistant activé ✓ Essayez-le dans « Voir ».")} />
+      <div className="rounded-2xl border border-line bg-card p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="font-medium">Vidéo de présentation</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted">Une vidéo qui se lance toute seule sur votre site, sans le son. Pas de vidéo ? SiteClic fait un petit film avec vos photos.</p>
+          </div>
+          <button type="button" role="switch" aria-checked={video.enabled} aria-label="Vidéo de présentation" disabled={busy !== null}
+            onClick={() => run("video", { video: { enabled: !video.enabled, url: video.url } }, video.enabled ? "Vidéo retirée du site." : "Vidéo ajoutée ✓ Regardez dans « Voir ».")}
+            className={`relative h-7 w-12 shrink-0 rounded-full transition ${video.enabled ? "bg-clic" : "bg-white/15"}`}>
+            <span className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${video.enabled ? "left-6" : "left-1"}`} />
+          </button>
+        </div>
+        {video.enabled && (
+          <div className="mt-3 space-y-2">
+            <p className="text-sm">{video.url ? "Votre vidéo est sur le site." : "Film automatique avec vos photos (gratuit)."}</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <button type="button" disabled={busy !== null} onClick={() => fileRef.current?.click()}
+                className="rounded-full border border-line px-4 py-2 text-sm hover:border-ink/60 disabled:opacity-40">
+                {busy === "video" ? "Envoi…" : video.url ? "Changer de vidéo" : "Mettre ma propre vidéo"}
+              </button>
+              {video.url && (
+                <button type="button" disabled={busy !== null} onClick={() => run("video", { video: { enabled: true, url: "" } }, "Film automatique remis ✓")}
+                  className="text-sm text-muted underline underline-offset-4">Utiliser le film automatique</button>
+              )}
+            </div>
+            <p className="text-xs text-muted">Conseil : une vidéo courte (15 à 30 secondes), filmée à l&apos;horizontale. 50 Mo maximum.</p>
+            <input ref={fileRef} type="file" accept="video/*" hidden onChange={(e) => { void sendVideo(e.target.files?.[0]); e.target.value = ""; }} />
+          </div>
+        )}
+      </div>
       {msg && <p className="px-1 text-xs text-muted" role="status">{msg}</p>}
     </div>
   );
