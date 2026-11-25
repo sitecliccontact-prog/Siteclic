@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useDictation } from "@/lib/hooks/useDictation";
+import { speak as sayAloud, stopSpeaking } from "@/lib/hooks/speak";
 
 /* Parties interactives des sites clients : animations au défilement et formulaire de réservation. */
 
@@ -49,11 +50,23 @@ export function SiteMotion() {
   return <span ref={ref} hidden />;
 }
 
-type BookingProps = { slug?: string; brand: string; phone?: string; phoneHref?: string };
+type BookingProps = { slug?: string; brand: string; phone?: string; phoneHref?: string; voice?: boolean };
+
+/** Ouvre l'appel vocal avec l'assistant (écouté par AssistantWidget). */
+export function startAssistantCall() {
+  window.dispatchEvent(new Event("siteclic:appel"));
+}
+
+function canTalk() {
+  const w = window as unknown as Record<string, unknown>;
+  return Boolean((w.SpeechRecognition || w.webkitSpeechRecognition) && "speechSynthesis" in window);
+}
 
 /** Fenêtre « Réserver une table ». S'ouvre avec tout lien vers #reserver. */
-export function BookingDialog({ slug, brand, phone, phoneHref }: BookingProps) {
+export function BookingDialog({ slug, brand, phone, phoneHref, voice = false }: BookingProps) {
   const [open, setOpen] = useState(false);
+  const [talk, setTalk] = useState(false);
+  useEffect(() => setTalk(voice && canTalk()), [voice]);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState("");
   const [error, setError] = useState("");
@@ -125,6 +138,15 @@ export function BookingDialog({ slug, brand, phone, phoneHref }: BookingProps) {
               <form onSubmit={submit}>
                 <p className="s-eyebrow">Réservation</p>
                 <h2 className="s-display s-modal-title">Réserver une table</h2>
+                {talk && (
+                  <>
+                    <button type="button" className="s-call-cta" onClick={() => { setOpen(false); startAssistantCall(); }}>
+                      <span className="s-call-cta-icon" aria-hidden><PhoneIcon /></span>
+                      <span><b>Réserver en parlant</b><small>Notre assistant vous répond à voix haute</small></span>
+                    </button>
+                    <p className="s-modal-or"><span>ou remplissez le formulaire</span></p>
+                  </>
+                )}
                 <div className="s-field-row">
                   <label className="s-field"><span>Date</span><input name="day" type="date" min={today} defaultValue={today} required /></label>
                   <label className="s-field"><span>Heure</span><input name="time" type="time" defaultValue="20:00" step={900} required /></label>
@@ -181,6 +203,101 @@ export function AssistantWidget({ slug, siteId, brand, booking, special }: Assis
     window.speechSynthesis.speak(u);
   }
 
+  /* ---------- Appel vocal : l'assistant parle et écoute à tour de rôle, comme au téléphone ---------- */
+  const [call, setCall] = useState<null | "listening" | "thinking" | "speaking" | "paused">(null);
+  const [heard, setHeard] = useState("");
+  const [seconds, setSeconds] = useState(0);
+  const callOn = useRef(false);
+  const history = useRef<Msg[]>([]);
+  history.current = msgs;
+  const silent = useRef(0);
+  const ear = useDictation(setHeard, (said) => {
+    if (!callOn.current) return;
+    if (said.trim()) {
+      silent.current = 0;
+      void callAsk(said);
+    } else if (++silent.current < 2) {
+      window.setTimeout(listen, 250);
+    } else {
+      setCall("paused");
+    }
+  });
+
+  const earRef = useRef(ear);
+  earRef.current = ear;
+
+  function listen() {
+    if (!callOn.current) return;
+    setHeard("");
+    setCall("listening");
+    earRef.current.start("");
+  }
+
+  function talk(t: string) {
+    setCall("speaking");
+    sayAloud(t, () => { if (callOn.current) window.setTimeout(listen, 150); });
+  }
+
+  async function callAsk(q: string) {
+    setCall("thinking");
+    const next = [...history.current, { role: "user" as const, text: q }];
+    setMsgs(next);
+    const reply = await ask(next);
+    if (!callOn.current) return;
+    setMsgs((m) => [...m, { role: "assistant", text: reply }]);
+    talk(reply);
+  }
+
+  function startCall() {
+    callOn.current = true;
+    silent.current = 0;
+    setSeconds(0);
+    setOpen(false);
+    const hello = booking
+      ? `Bonjour, ici l'assistant de ${brand}. Je peux prendre votre réservation : pour quel jour, à quelle heure, et pour combien de personnes ?`
+      : `Bonjour, ici l'assistant de ${brand}. Que puis-je faire pour vous ?`;
+    setMsgs((m) => [...m, { role: "assistant", text: hello }]);
+    talk(hello);
+  }
+
+  function hangUp(toChat = false) {
+    callOn.current = false;
+    stopSpeaking();
+    ear.stop();
+    setCall(null);
+    if (toChat) setOpen(true);
+  }
+
+  useEffect(() => {
+    const onCall = () => startCall();
+    window.addEventListener("siteclic:appel", onCall);
+    return () => window.removeEventListener("siteclic:appel", onCall);
+  });
+
+  useEffect(() => {
+    if (!call) return;
+    const t = window.setInterval(() => setSeconds((n) => n + 1), 1000);
+    return () => window.clearInterval(t);
+  }, [call === null]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => () => { callOn.current = false; stopSpeaking(); }, []);
+
+  async function ask(all: Msg[]): Promise<string> {
+    // L'IA reçoit la conversation à partir de la première question du visiteur.
+    const first = all.findIndex((m) => m.role === "user");
+    try {
+      const res = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: siteId ? undefined : slug, siteId, messages: all.slice(Math.max(first, all.length - 12)) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      return data.reply || data.error || "Je n'ai pas pu répondre. Réessayez dans un instant.";
+    } catch {
+      return "Pas de connexion. Réessayez dans un instant.";
+    }
+  }
+
   async function send(q: string) {
     const question = q.trim();
     if (!question || busy) return;
@@ -191,21 +308,10 @@ export function AssistantWidget({ slug, siteId, brand, booking, special }: Assis
     setBusy(true);
     const aloud = speak || usedVoice.current;
     usedVoice.current = false;
-    try {
-      const res = await fetch("/api/assistant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug: siteId ? undefined : slug, siteId, messages: history.slice(-12) }),
-      });
-      const data = await res.json().catch(() => ({}));
-      const reply: string = data.reply || data.error || "Je n'ai pas pu répondre. Réessayez dans un instant.";
-      setMsgs((m) => [...m, { role: "assistant", text: reply }]);
-      if (aloud) say(reply);
-    } catch {
-      setMsgs((m) => [...m, { role: "assistant", text: "Pas de connexion. Réessayez dans un instant." }]);
-    } finally {
-      setBusy(false);
-    }
+    const reply = await ask(history);
+    setMsgs((m) => [...m, { role: "assistant", text: reply }]);
+    if (aloud) say(reply);
+    setBusy(false);
   }
 
   const chips = [
@@ -231,6 +337,11 @@ export function AssistantWidget({ slug, siteId, brand, booking, special }: Assis
               <p className="s-ai-title">{brand}</p>
               <p className="s-ai-sub">Assistant · répond tout de suite</p>
             </div>
+            {voice.supported && (
+              <button type="button" onClick={startCall} className="s-ai-icon" aria-label="Appeler l'assistant (parler à voix haute)">
+                <PhoneIcon size={17} />
+              </button>
+            )}
             <button type="button" onClick={() => { setSpeak((v) => !v); window.speechSynthesis?.cancel(); }}
               className={`s-ai-icon ${speak ? "on" : ""}`} aria-pressed={speak} aria-label={speak ? "Ne plus lire les réponses" : "Lire les réponses à voix haute"}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -267,7 +378,45 @@ export function AssistantWidget({ slug, siteId, brand, booking, special }: Assis
           </form>
         </div>
       )}
+      {call && (
+        <div className={`s-call is-${call}`} role="dialog" aria-label={`Appel avec l'assistant de ${brand}`}>
+          <div className="s-call-top">
+            <p className="s-call-brand">{brand}</p>
+            <p className="s-call-time">Assistant · {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}</p>
+          </div>
+          <button type="button" className="s-call-orb" aria-label={call === "listening" ? "J'ai fini de parler" : "Parler"}
+            onClick={() => { if (call === "listening") ear.stop(); else if (call === "paused" || call === "speaking") { stopSpeaking(); listen(); } }}>
+            <i /><i /><i />
+            <span><PhoneIcon size={34} /></span>
+          </button>
+          <p className="s-call-state">
+            {call === "listening" ? "Je vous écoute…" : call === "thinking" ? "Un instant…" : call === "speaking" ? "L'assistant vous répond" : "Touchez le cercle pour parler"}
+          </p>
+          <p className="s-call-line">
+            {call === "listening" ? heard || "Parlez normalement, comme au téléphone." : [...msgs].reverse().find((m) => m.role === (call === "thinking" ? "user" : "assistant"))?.text}
+          </p>
+          {ear.error && <p className="s-call-error">{ear.error}</p>}
+          <div className="s-call-actions">
+            <button type="button" className="s-call-small" onClick={() => hangUp(true)} aria-label="Continuer par écrit">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10" /></svg>
+              <span>Écrire</span>
+            </button>
+            <button type="button" className="s-call-end" onClick={() => hangUp()} aria-label="Raccrocher">
+              <PhoneIcon size={26} />
+            </button>
+            <span className="s-call-small s-call-ghost" aria-hidden />
+          </div>
+        </div>
+      )}
     </>
+  );
+}
+
+function PhoneIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" />
+    </svg>
   );
 }
 
