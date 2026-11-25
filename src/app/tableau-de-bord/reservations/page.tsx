@@ -3,6 +3,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
+import { AgendaCard } from "./AgendaCard";
 import { Board, type Resa } from "./Board";
 
 export const metadata: Metadata = { title: "Réservations · SiteClic" };
@@ -18,6 +20,12 @@ export default async function ReservationsPage() {
     supabase.from("sites").select("id, name"),
     supabase.from("reservations").select("*").gte("day", since).order("day").order("time").limit(300),
   ]);
+  // Liens d'agenda (colonne ajoutée par le texte SQL 09 ; sans elle, la carte ne s'affiche pas).
+  const { data: tokens } = await supabase.from("sites").select("id, name, agenda_token");
+  const agenda = ((tokens ?? []) as { id: string; name: string; agenda_token: string | null }[])
+    .filter((s) => s.agenda_token).map((s) => ({ id: s.id, name: s.name, token: s.agenda_token! }));
+  const h = await headers();
+  const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host") ?? "siteclic.vercel.app"}`;
   const names = Object.fromEntries((sites ?? []).map((s) => [s.id, s.name as string]));
   const list: Resa[] = (data ?? []).map((r) => ({ ...r, status: r.status ?? "nouvelle", site: names[r.site_id] ?? "" }));
 
@@ -37,6 +45,7 @@ export default async function ReservationsPage() {
           </p>
         )}
         <Board initial={list} multiSite={(sites ?? []).length > 1} />
+        <AgendaCard sites={agenda} origin={origin} />
       </section>
     </main>
   );

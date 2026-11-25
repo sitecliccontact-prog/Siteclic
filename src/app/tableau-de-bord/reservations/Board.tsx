@@ -5,7 +5,7 @@ import { celebrate } from "@/components/Celebration";
 
 export type Resa = {
   id: string; site_id: string; site: string; name: string; phone: string; day: string; time: string;
-  people: number; message: string; status: "nouvelle" | "confirmee" | "refusee"; created_at: string;
+  people: number; message: string; status: "nouvelle" | "confirmee" | "refusee"; created_at: string; table_label?: string;
 };
 
 const fmtDay = (d: string) =>
@@ -89,7 +89,7 @@ function Group({ title, empty, items, multiSite, faded, onStatus, onRemove }: Gr
 }
 
 function Card({ r, multiSite, onStatus, onRemove }: { r: Resa; multiSite: boolean; onStatus: GroupProps["onStatus"]; onRemove: GroupProps["onRemove"] }) {
-  const sms = `Bonjour ${r.name.split(" ")[0]}, votre réservation du ${fmtDay(r.day)} à ${r.time.replace(":", "h")} pour ${r.people} ${r.people > 1 ? "personnes" : "personne"}${r.site ? ` chez ${r.site}` : ""} est confirmée. À bientôt !`;
+  const sms = `Bonjour ${r.name.split(" ")[0]}, votre réservation du ${fmtDay(r.day)} à ${r.time.replace(":", "h")} pour ${r.people} ${r.people > 1 ? "personnes" : "personne"}${r.table_label ? ` (table ${r.table_label})` : ""}${r.site ? ` chez ${r.site}` : ""} est confirmée. À bientôt !`;
   return (
     <li className="rounded-2xl border border-line bg-card p-4">
       <div className="flex items-start gap-4">
@@ -98,7 +98,7 @@ function Card({ r, multiSite, onStatus, onRemove }: { r: Resa; multiSite: boolea
           <span className="text-[11px] text-muted">{r.people} pers.</span>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-medium">{r.name}</p>
+          <p className="font-medium">{r.name}{r.table_label && <span className="ml-2 rounded-full bg-clic/15 px-2 py-0.5 text-xs text-clic">Table {r.table_label}</span>}</p>
           <a href={`tel:${tel(r.phone)}`} className="text-sm text-muted underline-offset-4 hover:underline">{r.phone}</a>
           {(r.message || (multiSite && r.site)) && (
             <p className="mt-1 text-sm text-ink/70">{[multiSite ? r.site : "", r.message].filter(Boolean).join(" · ")}</p>

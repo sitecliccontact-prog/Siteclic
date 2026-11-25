@@ -332,7 +332,8 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
         <AssistantWidget slug={slug} siteId={siteId} brand={brand.name} booking={booking} special={Boolean(special)}
           launcher={content.assistant?.enabled ?? false} />
       )}
-      {booking && <BookingDialog slug={slug} brand={brand.name} phone={contact.phone} phoneHref={phoneHref} />}
+      {booking && <BookingDialog slug={slug} brand={brand.name} phone={contact.phone} phoneHref={phoneHref}
+        floor={content.floor?.enabled ? content.floor.tables : []} />}
     </div>
   );
 }
@@ -604,6 +605,28 @@ const SITE_CSS = `
 .site .s-field input,.site .s-field textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:13px 14px;outline:none;color-scheme:light dark;min-width:0;max-width:100%;-webkit-appearance:none;appearance:none;min-height:50px}
 .site .s-field input:focus,.site .s-field textarea:focus{border-color:var(--accent)}
 .site .s-field-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.site .s-floor{position:relative;aspect-ratio:4/3;border:1px solid var(--line);border-radius:var(--radius);background:
+  radial-gradient(circle at 1px 1px,color-mix(in srgb,var(--ink) 14%,transparent) 1px,transparent 0) 0 0/18px 18px,var(--surface);overflow:hidden}
+.site .s-tbl{position:absolute;transform:translate(-50%,-50%);display:grid;place-content:center;gap:0;text-align:center;border:1.5px solid color-mix(in srgb,var(--ink) 35%,transparent);background:var(--bg);color:var(--ink);font:inherit;cursor:pointer;transition:transform .2s,background .2s,border-color .2s}
+.site .s-tbl.is-rond{width:15%;aspect-ratio:1;border-radius:50%}
+.site .s-tbl.is-carre{width:16%;aspect-ratio:1;border-radius:8px}
+.site .s-tbl.is-long{width:28%;aspect-ratio:2/1;border-radius:10px}
+.site .s-tbl b{font-size:12px;line-height:1}.site .s-tbl small{font-size:9px;opacity:.65;line-height:1.2}
+.site .s-tbl i{position:absolute;inset:-10px;transform:rotate(var(--a));pointer-events:none}
+.site .s-tbl i::before{content:"";position:absolute;left:50%;top:0;width:7px;height:7px;margin-left:-3.5px;border-radius:50%;background:color-mix(in srgb,var(--ink) 30%,transparent)}
+.site .s-tbl.is-long i,.site .s-tbl.is-carre i{display:none}
+.site .s-tbl:hover:not(:disabled){transform:translate(-50%,-50%) scale(1.06);border-color:var(--accent)}
+.site .s-tbl.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent);transform:translate(-50%,-50%) scale(1.08);box-shadow:0 8px 24px color-mix(in srgb,var(--accent) 45%,transparent)}
+.site .s-tbl.busy{cursor:not-allowed;background:repeating-linear-gradient(45deg,var(--surface) 0 5px,color-mix(in srgb,var(--ink) 12%,var(--surface)) 5px 10px);opacity:.7}
+.site .s-tbl.small{cursor:not-allowed;opacity:.35}
+.site .s-floor-legend{display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--muted);text-transform:none;letter-spacing:0}
+.site .s-floor-legend span{display:inline-flex;align-items:center;gap:6px}
+.site .s-floor-legend i{width:10px;height:10px;border-radius:3px;border:1px solid var(--line);background:var(--bg)}
+.site .s-floor-legend .l-on{background:var(--accent);border-color:var(--accent)}
+.site .s-floor-legend .l-busy{background:repeating-linear-gradient(45deg,var(--surface) 0 3px,color-mix(in srgb,var(--ink) 25%,var(--surface)) 3px 6px)}
+.site .s-floor-pick{margin:6px 0 0;font-size:13px;color:var(--muted);text-transform:none;letter-spacing:0}
+.site .s-floor-pick b{color:var(--ink)}
+.site .s-floor-pick button{margin-left:6px;border:0;background:none;color:var(--accent);font:inherit;text-decoration:underline;cursor:pointer}
 .site .s-stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);width:max-content}
 .site .s-stepper button{width:48px;height:46px;border:0;background:transparent;color:var(--ink);font-size:20px;cursor:pointer}
 .site .s-stepper output{min-width:40px;text-align:center;font-weight:600;font-size:17px}

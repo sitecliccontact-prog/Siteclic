@@ -5,6 +5,7 @@ import { celebrate } from "@/components/Celebration";
 import { useDictation } from "@/lib/hooks/useDictation";
 import { bookingEnabled, specialIsFresh, type SiteContent } from "@/lib/site/schema";
 import { uploadVideo } from "@/lib/site/videos";
+import { FloorEditor } from "./FloorEditor";
 
 /* Menu du jour + réservations : mis en ligne tout de suite, sans IA (gratuit). */
 
@@ -25,7 +26,7 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
   const fresh = specialIsFresh(content);
   const [title, setTitle] = useState(content.special?.title || "Menu du jour");
   const [text, setText] = useState(fresh ? content.special?.text ?? "" : "");
-  const [busy, setBusy] = useState<"menu" | "booking" | "assistant" | "video" | null>(null);
+  const [busy, setBusy] = useState<"menu" | "booking" | "assistant" | "video" | "floor" | "notes" | null>(null);
   const [msg, setMsg] = useState("");
   const voice = useDictation(setText);
   const booking = bookingEnabled(content);
@@ -69,7 +70,9 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
     }
   }
 
-  async function run(kind: "menu" | "booking" | "assistant" | "video", body: object, ok: string) {
+  const [notes, setNotes] = useState(content.assistant?.notes ?? "");
+  const notesVoice = useDictation(setNotes);
+  async function run(kind: "menu" | "booking" | "assistant" | "video" | "floor" | "notes", body: object, ok: string) {
     setBusy(kind);
     setMsg("");
     try {
@@ -128,6 +131,42 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
       <Switch title="Assistant IA pour vos clients" on={assistant} disabled={busy !== null}
         text="Un bouton « Une question ? » sur votre site : l'IA répond à l'écrit ou à l'oral (horaires, carte) et prend les réservations."
         onToggle={() => run("assistant", { assistant: { enabled: !assistant } }, assistant ? "Assistant désactivé." : "Assistant activé ✓ Essayez-le dans « Voir ».")} />
+      {(assistant || booking) && (
+        <div className="rounded-2xl border border-line bg-card p-4">
+          <p className="font-medium">Ce que l&apos;assistant doit savoir</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">
+            L&apos;assistant connaît déjà tout votre site : carte, prix, horaires, menu du jour. Ajoutez ici le reste, comme vous l&apos;expliqueriez à un nouveau serveur : allergènes, parking, groupes, chiens, plats végétariens…
+          </p>
+          {content.hours.length === 0 && (
+            <p className="mt-2 rounded-lg bg-amber-400/10 px-3 py-2 text-xs text-amber-200">
+              Votre site n&apos;a pas encore d&apos;horaires. Ajoutez-les dans « Horaires » plus bas (ou écrivez-les ici) pour que l&apos;assistant puisse répondre et vérifier les réservations.
+            </p>
+          )}
+          <div className="relative mt-3">
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} maxLength={3000}
+              placeholder={"Ex.\nOuvert du mardi au dimanche, 12h-14h30 et 19h-22h30.\nParking gratuit à 50 m.\nPlats sans gluten sur demande.\nGroupes jusqu'à 20 personnes."}
+              className="w-full resize-y rounded-xl border border-line bg-cream px-3 py-2.5 pr-14 text-[15px] leading-relaxed outline-none focus:border-ink/60" />
+            {notesVoice.supported && (
+              <button type="button" onClick={() => (notesVoice.listening ? notesVoice.stop() : notesVoice.start(notes, "long"))}
+                aria-label={notesVoice.listening ? "Arrêter la dictée" : "Dicter"}
+                className={`absolute right-2 top-2 grid h-10 w-10 place-items-center rounded-full border transition ${notesVoice.listening ? "border-clic bg-clic text-white" : "border-line text-muted hover:text-ink"}`}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  {notesVoice.listening ? <rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" /> : <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></>}
+                </svg>
+              </button>
+            )}
+          </div>
+          <button type="button" disabled={busy !== null || notes === (content.assistant?.notes ?? "")}
+            onClick={() => run("notes", { assistant: { notes } }, "C'est noté ✓ L'assistant le sait maintenant.")}
+            className="mt-2 w-full rounded-full bg-clic py-2.5 text-sm font-medium text-white disabled:opacity-40">
+            {busy === "notes" ? "Enregistrement…" : "Enregistrer"}
+          </button>
+        </div>
+      )}
+      {booking && (
+        <FloorEditor enabled={content.floor?.enabled ?? false} tables={content.floor?.tables ?? []} busy={busy !== null}
+          onSave={(floor) => run("floor", { floor }, floor.enabled ? "Plan de salle en ligne ✓" : "Plan de salle retiré.")} />
+      )}
       <div className="rounded-2xl border border-line bg-card p-4">
         <div className="flex items-center justify-between gap-4">
           <div>

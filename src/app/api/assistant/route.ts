@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { assistantReply } from "@/lib/site/assistant";
+import { assistantReply, type Load } from "@/lib/site/assistant";
+import { bookTable } from "@/lib/site/booking";
 import { getPublishedSite } from "@/lib/site/published";
 import { bookingEnabled, parseStoredContent, type SiteContent } from "@/lib/site/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -56,15 +57,19 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { reply, reservation } = await assistantReply(content, messages);
+    const load = liveSlug ? await upcomingLoad(supabase, liveSlug) : [];
+    const { reply, reservation } = await assistantReply(content, messages, load);
     if (!reservation) return NextResponse.json({ reply, booked: false });
     if (!liveSlug) {
       return NextResponse.json({ reply: `${reply} (Aperçu : sur votre site en ligne, cette réservation arrivera dans votre tableau.)`, booked: false });
     }
-    const { error } = await supabase.rpc("request_reservation", {
-      p_slug: liveSlug, p_name: reservation.name, p_phone: reservation.phone, p_day: reservation.day,
-      p_time: reservation.time, p_people: reservation.people, p_message: `${reservation.message ? `${reservation.message} · ` : ""}via l'assistant`,
+    const { error } = await bookTable(supabase, {
+      slug: liveSlug, name: reservation.name, phone: reservation.phone, day: reservation.day, time: reservation.time,
+      people: reservation.people, message: `${reservation.message ? `${reservation.message} · ` : ""}via l'assistant`, table: reservation.table,
     });
+    if (error?.message?.includes("table_prise")) {
+      return NextResponse.json({ reply: `Ah, la table ${reservation.table} vient d'être prise à cette heure-là. Je vous en propose une autre ?`, booked: false });
+    }
     if (error) {
       console.error("Réservation par l'assistant impossible", error);
       const phone = content.contact.phone ? ` au ${content.contact.phone}` : "";
@@ -75,4 +80,15 @@ export async function POST(request: Request) {
     console.error("Assistant en panne", err);
     return NextResponse.json({ error: "L'assistant ne répond pas pour le moment. Appelez-nous directement." }, { status: 500 });
   }
+}
+
+/** Réservations des 7 prochains jours (sans nom ni téléphone), pour que l'assistant sache ce qui est libre. */
+async function upcomingLoad(supabase: Awaited<ReturnType<typeof createClient>>, slug: string): Promise<Load[]> {
+  const days = Array.from({ length: 7 }, (_, k) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(new Date(Date.now() + k * 86400000)));
+  const rows = await Promise.all(days.map(async (day) => {
+    const { data, error } = await supabase.rpc("booking_load", { p_slug: slug, p_day: day });
+    if (error || !Array.isArray(data)) return [];
+    return (data as { at_time: string; people: number; table_label: string }[]).map((r) => ({ day, time: r.at_time, people: r.people, table: r.table_label }));
+  }));
+  return rows.flat();
 }

@@ -11,7 +11,15 @@ import { createClient } from "@/lib/supabase/server";
 const Body = z.object({
   special: z.object({ title: z.string().trim().max(80), text: z.string().trim().max(1200) }).nullable().optional(),
   booking: z.object({ enabled: z.boolean() }).optional(),
-  assistant: z.object({ enabled: z.boolean() }).optional(),
+  assistant: z.object({ enabled: z.boolean().optional(), notes: z.string().max(3000).optional() }).optional(),
+  floor: z.object({
+    enabled: z.boolean(),
+    tables: z.array(z.object({
+      id: z.string().max(20), label: z.string().trim().min(1).max(20), seats: z.number().int().min(1).max(20),
+      x: z.number().min(0).max(100), y: z.number().min(0).max(100), shape: z.enum(["rond", "carre", "long"]),
+      zone: z.string().max(30).default(""),
+    })).max(60),
+  }).optional(),
   video: z.object({
     enabled: z.boolean(),
     url: z.string().max(400).refine((u) => !u || isOwnVideo(u)),
@@ -38,7 +46,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     patch.special = s && s.text ? { title: s.title || "Menu du jour", text: s.text, date: new Date().toISOString() } : null;
   }
   if (parsed.data.booking) patch.booking = parsed.data.booking;
-  if (parsed.data.assistant) patch.assistant = parsed.data.assistant;
+  if (parsed.data.assistant) {
+    const a = parsed.data.assistant;
+    patch.assistant = { enabled: a.enabled ?? content.assistant?.enabled ?? false, notes: a.notes ?? content.assistant?.notes ?? "" };
+  }
+  if (parsed.data.floor) patch.floor = parsed.data.floor;
   if (parsed.data.video) patch.video = parsed.data.video;
 
   const next = { ...content, ...patch };

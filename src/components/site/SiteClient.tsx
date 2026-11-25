@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useDictation } from "@/lib/hooks/useDictation";
 import { speak as sayAloud, stopSpeaking } from "@/lib/hooks/speak";
+import type { FloorTable } from "@/lib/site/schema";
 
 /* Parties interactives des sites clients : animations au défilement et formulaire de réservation. */
 
@@ -50,7 +51,7 @@ export function SiteMotion() {
   return <span ref={ref} hidden />;
 }
 
-type BookingProps = { slug?: string; brand: string; phone?: string; phoneHref?: string };
+type BookingProps = { slug?: string; brand: string; phone?: string; phoneHref?: string; floor?: FloorTable[] };
 
 /** Ouvre l'appel vocal avec l'assistant (écouté par AssistantWidget). */
 export function startAssistantCall() {
@@ -63,7 +64,7 @@ function canTalk() {
 }
 
 /** Fenêtre « Réserver une table ». S'ouvre avec tout lien vers #reserver. */
-export function BookingDialog({ slug, brand, phone, phoneHref }: BookingProps) {
+export function BookingDialog({ slug, brand, phone, phoneHref, floor = [] }: BookingProps) {
   const [open, setOpen] = useState(false);
   const [noVoice, setNoVoice] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -72,6 +73,22 @@ export function BookingDialog({ slug, brand, phone, phoneHref }: BookingProps) {
   const [people, setPeople] = useState(2);
   const ref = useRef<HTMLDivElement>(null);
   const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const [day, setDay] = useState(today);
+  const [time, setTime] = useState("20:00");
+  const [table, setTable] = useState("");
+  const [taken, setTaken] = useState<{ time: string; table: string }[]>([]);
+  const live = Boolean(slug && !slug.startsWith("exemple-"));
+
+  // Tables déjà réservées ce jour-là (pour les griser sur le plan).
+  useEffect(() => {
+    if (!open || !floor.length || !live) return;
+    let stop = false;
+    fetch(`/api/reservation/plan?slug=${encodeURIComponent(slug!)}&day=${day}`)
+      .then((r) => r.json())
+      .then((d) => { if (!stop) setTaken(Array.isArray(d.taken) ? d.taken : []); })
+      .catch(() => {});
+    return () => { stop = true; };
+  }, [open, day, slug, live, floor.length]);
 
   useEffect(() => {
     const root = ref.current?.closest(".site");
@@ -100,7 +117,7 @@ export function BookingDialog({ slug, brand, phone, phoneHref }: BookingProps) {
     const body = {
       slug, people,
       name: String(f.get("name") ?? ""), phone: String(f.get("phone") ?? ""),
-      day: String(f.get("day") ?? ""), time: String(f.get("time") ?? ""), message: String(f.get("message") ?? ""),
+      day, time, message: String(f.get("message") ?? ""), table,
     };
     setError("");
     if (!slug || slug.startsWith("exemple-")) {
@@ -112,7 +129,7 @@ export function BookingDialog({ slug, brand, phone, phoneHref }: BookingProps) {
       const res = await fetch("/api/reservation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "La demande n'est pas passée. Merci d'appeler directement.");
-      setDone(`Merci ${body.name.split(" ")[0]} ! Votre demande est bien envoyée. ${brand} vous rappelle pour confirmer.`);
+      setDone(`Merci ${body.name.split(" ")[0]} ! Votre demande${table ? ` pour la table ${table}` : ""} est bien envoyée. ${brand} vous rappelle pour confirmer.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "La demande n'est pas passée.");
     } finally {
@@ -144,8 +161,8 @@ export function BookingDialog({ slug, brand, phone, phoneHref }: BookingProps) {
                 {noVoice && <p className="s-modal-error" role="alert">Votre navigateur ne permet pas de parler à l&apos;assistant. Ouvrez ce site dans Google Chrome, ou remplissez le formulaire ci-dessous.</p>}
                 <p className="s-modal-or"><span>ou remplissez le formulaire</span></p>
                 <div className="s-field-row">
-                  <label className="s-field"><span>Date</span><input name="day" type="date" min={today} defaultValue={today} required /></label>
-                  <label className="s-field"><span>Heure</span><input name="time" type="time" defaultValue="20:00" step={900} required /></label>
+                  <label className="s-field"><span>Date</span><input name="day" type="date" min={today} value={day} onChange={(e) => { setDay(e.target.value); setTable(""); }} required /></label>
+                  <label className="s-field"><span>Heure</span><input name="time" type="time" value={time} onChange={(e) => { setTime(e.target.value); setTable(""); }} step={900} required /></label>
                 </div>
                 <div className="s-field">
                   <span>Personnes</span>
@@ -155,6 +172,10 @@ export function BookingDialog({ slug, brand, phone, phoneHref }: BookingProps) {
                     <button type="button" onClick={() => setPeople((n) => Math.min(30, n + 1))} aria-label="Une personne de plus">+</button>
                   </div>
                 </div>
+                {floor.length > 0 && (
+                  <FloorPicker tables={floor} people={people} value={table} onChange={setTable}
+                    taken={taken.filter((t) => Math.abs(minutes(t.time) - minutes(time)) < 120).map((t) => t.table)} />
+                )}
                 <label className="s-field"><span>Nom</span><input name="name" autoComplete="name" required maxLength={80} /></label>
                 <label className="s-field"><span>Téléphone</span><input name="phone" type="tel" autoComplete="tel" required minLength={6} maxLength={30} /></label>
                 <label className="s-field"><span>Message <em>(facultatif)</em></span><textarea name="message" rows={2} maxLength={500} placeholder="Terrasse, anniversaire, allergie…" /></label>
@@ -497,6 +518,45 @@ export function AutoFilm({ photos, clips = [], lines, brand, sign }: { photos: s
             style={{ "--af-d": `${s.clip ? 5200 : 4200}ms` } as React.CSSProperties} />
         ))}
       </div>
+    </div>
+  );
+}
+
+function minutes(t: string) {
+  const [h, m] = t.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+/** Plan de salle : le visiteur touche la table qu'il veut, comme pour choisir sa place au cinéma. */
+function FloorPicker({ tables, people, taken, value, onChange }: { tables: FloorTable[]; people: number; taken: string[]; value: string; onChange: (t: string) => void }) {
+  return (
+    <div className="s-field">
+      <span>Votre table <em>(facultatif)</em></span>
+      <div className="s-floor" role="radiogroup" aria-label="Plan de salle">
+        {tables.map((t) => {
+          const busy = taken.includes(t.label);
+          const small = t.seats < people;
+          const on = value === t.label;
+          return (
+            <button key={t.id} type="button" role="radio" aria-checked={on} disabled={busy || small}
+              aria-label={`Table ${t.label}, ${t.seats} places${t.zone ? `, ${t.zone}` : ""}${busy ? ", déjà réservée" : small ? ", trop petite" : ""}`}
+              onClick={() => onChange(on ? "" : t.label)}
+              className={`s-tbl is-${t.shape}${on ? " on" : ""}${busy ? " busy" : ""}${small && !busy ? " small" : ""}`}
+              style={{ left: `${t.x}%`, top: `${t.y}%` }}>
+              <b>{t.label}</b><small>{t.seats} pl.</small>
+              {Array.from({ length: Math.min(t.seats, 8) }, (_, k) => (
+                <i key={k} style={{ "--a": `${(360 / Math.min(t.seats, 8)) * k}deg` } as React.CSSProperties} />
+              ))}
+            </button>
+          );
+        })}
+      </div>
+      <div className="s-floor-legend">
+        <span><i className="l-free" />Libre</span><span><i className="l-on" />Votre choix</span><span><i className="l-busy" />Réservée</span>
+      </div>
+      <p className="s-floor-pick">
+        {value ? <>Table <b>{value}</b>{tables.find((t) => t.label === value)?.zone ? ` · ${tables.find((t) => t.label === value)?.zone}` : ""} <button type="button" onClick={() => onChange("")}>Changer</button></> : "Touchez une table sur le plan, ou laissez-nous choisir."}
+      </p>
     </div>
   );
 }

@@ -73,7 +73,24 @@ export const SiteExtrasSchema = z.object({
   /** Bouton « Réserver une table » avec formulaire. */
   booking: z.object({ enabled: z.boolean() }).optional(),
   /** Assistant IA qui répond aux visiteurs (texte et voix). */
-  assistant: z.object({ enabled: z.boolean() }).optional(),
+  assistant: z.object({
+    enabled: z.boolean(),
+    /** Ce que le commerçant veut que l'assistant sache en plus (allergènes, parking, groupes…). */
+    notes: z.string().max(3000).default(""),
+  }).optional(),
+  /** Plan de salle : le visiteur choisit sa table en réservant (positions en % du plan). */
+  floor: z.object({
+    enabled: z.boolean(),
+    tables: z.array(z.object({
+      id: z.string().max(20),
+      label: z.string().max(20),
+      seats: z.number().int().min(1).max(20),
+      x: z.number().min(0).max(100),
+      y: z.number().min(0).max(100),
+      shape: z.enum(["rond", "carre", "long"]),
+      zone: z.string().max(30).default(""),
+    })).max(60),
+  }).optional(),
   /** Réseaux sociaux, affichés en bas du site. */
   links: z.object({ instagram: z.string().max(200), facebook: z.string().max(200) }).partial().optional(),
   /** Vidéo de présentation : celle du commerçant (url) ou, sans url, un petit film animé fait à partir de ses photos. */
@@ -93,7 +110,7 @@ export type SiteExtras = z.infer<typeof SiteExtrasSchema>;
 
 /** Garde les réglages du commerçant quand l'IA réécrit le site. */
 export function keepExtras(from: SiteContent, to: SiteContent): SiteContent {
-  return { ...to, special: from.special, booking: from.booking, assistant: from.assistant, links: from.links, video: from.video };
+  return { ...to, special: from.special, booking: from.booking, assistant: from.assistant, links: from.links, video: from.video, floor: from.floor };
 }
 
 /** Le formulaire de réservation est-il proposé ? (par défaut : oui si le bouton principal parle de réserver) */
@@ -158,3 +175,5 @@ export function socialUrl(kind: "instagram" | "facebook", raw: string | undefine
 export function isOwnVideo(url: string) {
   return /^https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/public\/videos\/[\w./-]+$/.test(url);
 }
+
+export type FloorTable = NonNullable<SiteContent["floor"]>["tables"][number];
