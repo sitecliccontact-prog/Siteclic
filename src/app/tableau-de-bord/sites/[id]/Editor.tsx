@@ -81,10 +81,10 @@ export function Editor({ id, initial, publish }: { id: string; initial: SiteCont
   }
 
   // Ajoute des photos envoyées par le client et les enregistre tout de suite.
-  async function addPhotos(urls: string[]) {
+  async function addPhotos(urls: string[], asCover = false) {
     remember(true);
     const next = structuredClone(content);
-    next.photos = [...next.photos, ...urls].slice(0, MAX_PHOTOS);
+    next.photos = (asCover ? [...urls, ...next.photos] : [...next.photos, ...urls]).slice(0, MAX_PHOTOS);
     setContent(next);
     queueSave(next);
     await flush();
@@ -167,7 +167,7 @@ type AiProps = {
   photoCount: number;
   onResult: (c: SiteContent) => void;
   beforeSend: () => Promise<void>;
-  addPhotos: (urls: string[]) => Promise<void>;
+  addPhotos: (urls: string[], asCover?: boolean) => Promise<void>;
 };
 
 function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
@@ -371,7 +371,7 @@ type ManualProps = {
   id: string;
   content: SiteContent;
   edit: (fn: (d: SiteContent) => void) => void;
-  addPhotos: (urls: string[]) => Promise<void>;
+  addPhotos: (urls: string[], asCover?: boolean) => Promise<void>;
   daily: React.ReactNode;
 };
 
@@ -379,7 +379,7 @@ function ManualPanel({ id, content: c, edit, addPhotos, daily }: ManualProps) {
   const [upload, setUpload] = useState<{ done: number; total: number } | null>(null);
   const [photoError, setPhotoError] = useState("");
 
-  async function addFiles(files: FileList | null) {
+  async function addFiles(files: FileList | null, asCover = false) {
     if (!files?.length || upload) return;
     const list = Array.from(files).slice(0, Math.max(0, MAX_PHOTOS - c.photos.length));
     if (!list.length) return setPhotoError(`${MAX_PHOTOS} photos au maximum. Retirez-en une pour en ajouter une autre.`);
@@ -395,8 +395,8 @@ function ManualPanel({ id, content: c, edit, addPhotos, daily }: ManualProps) {
       setUpload({ done: urls.length, total: list.length });
     }
     if (urls.length) {
-      await addPhotos(urls);
-      celebrate(urls.length > 1 ? `${urls.length} photos ajoutées` : "Photo ajoutée");
+      await addPhotos(urls, asCover);
+      celebrate(asCover ? "Photo de fond changée" : urls.length > 1 ? `${urls.length} photos ajoutées` : "Photo ajoutée");
     }
     setUpload(null);
   }
@@ -429,15 +429,31 @@ function ManualPanel({ id, content: c, edit, addPhotos, daily }: ManualProps) {
       </Block>
 
       <Block title="Photos" open>
+        <div className="relative overflow-hidden rounded-2xl border border-line">
+          {c.photos[0] ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={c.photos[0]} alt="" referrerPolicy="no-referrer" className="h-36 w-full object-cover" />
+          ) : (
+            <div className="h-36 w-full bg-gradient-to-br from-white/[.06] to-transparent" />
+          )}
+          <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/30 to-transparent p-3">
+            <p className="text-sm font-medium text-white">Photo de fond</p>
+            <p className="text-xs text-white/70">{c.photos[0] ? "En grand, tout en haut de votre site." : "Ajoutez une belle photo de votre commerce : elle s'affiche en grand, tout en haut."}</p>
+            <label className={`mt-2 inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-full bg-clic px-3.5 py-1.5 text-xs font-medium text-white ${upload ? "pointer-events-none opacity-60" : ""}`}>
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => { addFiles(e.target.files, true); e.target.value = ""; }} />
+              {c.photos[0] ? "Changer la photo de fond" : "Choisir une photo de fond"}
+            </label>
+          </div>
+        </div>
         <div className="grid grid-cols-3 gap-2">
           {c.photos.map((src, i) => (
             <div key={src} className="relative">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={src} alt="" referrerPolicy="no-referrer" className="aspect-square w-full rounded-xl object-cover" />
-              {i === 0 && <span className="absolute left-1.5 top-1.5 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-white">En grand</span>}
+              {i === 0 && <span className="absolute left-1.5 top-1.5 rounded-full bg-clic px-2 py-0.5 text-[10px] font-medium text-white">Fond</span>}
               <div className="absolute bottom-1.5 right-1.5 flex gap-1">
                 {i > 0 && (
-                  <button title="Mettre en grand" onClick={() => edit((d) => { d.photos.splice(i, 1); d.photos.unshift(src); })}
+                  <button title="Mettre en photo de fond" aria-label="Mettre en photo de fond" onClick={() => edit((d) => { d.photos.splice(i, 1); d.photos.unshift(src); })}
                     className="rounded-full bg-black/60 px-2 py-0.5 text-[11px] text-white">★</button>
                 )}
                 <button title="Retirer" onClick={() => edit((d) => { d.photos.splice(i, 1); })}
@@ -462,7 +478,7 @@ function ManualPanel({ id, content: c, edit, addPhotos, daily }: ManualProps) {
             </label>
           )}
         </div>
-        <p className="text-xs text-muted">La photo marquée « En grand » s&apos;affiche en haut de votre site. Touchez ★ pour la changer.</p>
+        <p className="text-xs text-muted">La photo marquée « Fond » s&apos;affiche en grand en haut de votre site, avec un voile sombre pour que le texte reste lisible. Touchez ★ sur une autre photo pour la mettre en fond.</p>
         {photoError && <p role="alert" className="text-sm text-red-400">{photoError}</p>}
       </Block>
 
