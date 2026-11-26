@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useDictation } from "@/lib/hooks/useDictation";
 import { speak as sayAloud, stopSpeaking } from "@/lib/hooks/speak";
+import { listenOnce, naturalVoiceAvailable, releaseMic, speakNatural, stopVoice, transcribe, type Listening } from "@/lib/hooks/voice";
 import type { FloorTable } from "@/lib/site/schema";
 
 /* Parties interactives des sites clients : animations au défilement et formulaire de réservation. */
@@ -194,9 +195,9 @@ export function BookingDialog({ slug, brand, phone, phoneHref, floor = [] }: Boo
 /* ---------- Assistant IA pour les visiteurs ---------- */
 
 type Msg = { role: "user" | "assistant"; text: string };
-type AssistantProps = { slug?: string; siteId?: string; brand: string; booking: boolean; special: boolean; launcher?: boolean };
+type AssistantProps = { slug?: string; siteId?: string; brand: string; booking: boolean; special: boolean; launcher?: boolean; voiceKind?: "homme" | "femme" };
 
-export function AssistantWidget({ slug, siteId, brand, booking, special, launcher = true }: AssistantProps) {
+export function AssistantWidget({ slug, siteId, brand, booking, special, launcher = true, voiceKind = "homme" }: AssistantProps) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState("");
@@ -210,8 +211,8 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
     end.current?.scrollIntoView({ block: "end" });
   }, [msgs, busy, open]);
 
-  function say(t: string) {
-    sayAloud(t, undefined, "homme");
+  function say(t: string, sig?: string) {
+    void speakNatural(t, sig, voiceKind);
   }
 
 
@@ -230,46 +231,79 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
 
   const earRef = useRef(ear);
   earRef.current = ear;
+  // Voix naturelle (serveur) si disponible ; sinon voix et dictée du téléphone.
+  const natural = useRef(false);
+  const mic = useRef<Listening | null>(null);
+  const misses = useRef(0);
+  const orb = useRef<HTMLButtonElement>(null);
 
   function listen() {
     if (!callOn.current) return;
     setHeard("");
     setCall("listening");
-    earRef.current.start("", "conversation");
+    if (!natural.current) {
+      earRef.current.start("", "conversation");
+      return;
+    }
+    void listenOnce(async (audio) => {
+      mic.current = null;
+      if (!callOn.current) return;
+      if (!audio) {
+        if (++misses.current < 3) return listen();
+        return setCall("paused");
+      }
+      setCall("thinking");
+      const said = await transcribe(audio, { slug: siteId ? undefined : slug, siteId });
+      if (!callOn.current) return;
+      if (said === null) { natural.current = false; return listen(); } // transcription indisponible : dictée du téléphone
+      if (!said.trim()) return listen();
+      misses.current = 0;
+      setHeard(said);
+      void callAsk(said);
+    }, (v) => orb.current?.style.setProperty("--lvl", v.toFixed(2))).then((h) => { mic.current = h; });
   }
 
-  function talk(t: string) {
+  function talk(t: string, sig?: string) {
     setCall("speaking");
-    sayAloud(t, () => { if (callOn.current) window.setTimeout(listen, 350); }, "homme");
+    const next = () => { if (callOn.current) window.setTimeout(listen, 300); };
+    if (natural.current) void speakNatural(t, sig, voiceKind, next);
+    else sayAloud(t, next, voiceKind);
   }
 
   async function callAsk(q: string) {
     setCall("thinking");
     const next = [...history.current, { role: "user" as const, text: q }];
     setMsgs(next);
-    const reply = await ask(next);
+    const { reply, sig } = await ask(next);
     if (!callOn.current) return;
     setMsgs((m) => [...m, { role: "assistant", text: reply }]);
-    talk(reply);
+    talk(reply, sig);
   }
 
-  function startCall() {
+  async function startCall() {
     callOn.current = true;
+    misses.current = 0;
     setSeconds(0);
     setOpen(false);
-    const hellos = booking
-      ? [`Bonjour, ${brand}, je vous écoute ! C'est pour une réservation ?`, `${brand}, bonsoir… ou bonjour ! Qu'est-ce que je peux faire pour vous ?`, `Bienvenue chez ${brand} ! Vous voulez réserver une table, ou vous avez une question ?`]
-      : [`Bonjour, ${brand}, je vous écoute !`, `${brand}, bonjour ! Qu'est-ce que je peux faire pour vous ?`];
-    const hour = new Date().getHours();
-    const hello = hellos[Math.floor(Math.random() * hellos.length)].replace("bonsoir… ou bonjour", hour >= 18 ? "bonsoir" : "bonjour");
-    setMsgs((m) => [...m, { role: "assistant", text: hello }]);
-    talk(hello);
+    setCall("thinking");
+    natural.current = await naturalVoiceAvailable();
+    let hello = { text: `Bonjour, ${brand}, je vous écoute !`, sig: "" };
+    try {
+      const r = await fetch("/api/voix/bonjour", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brand: brand.slice(0, 60), booking }) });
+      if (r.ok) hello = await r.json();
+    } catch { /* phrase par défaut */ }
+    if (!callOn.current) return;
+    setMsgs((m) => [...m, { role: "assistant", text: hello.text }]);
+    talk(hello.text, hello.sig);
   }
 
   function hangUp(toChat = false) {
     callOn.current = false;
-    stopSpeaking();
+    stopVoice();
     ear.cancel();
+    mic.current?.cancel();
+    mic.current = null;
+    releaseMic();
     setCall(null);
     if (toChat) setOpen(true);
   }
@@ -286,9 +320,9 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
     return () => window.clearInterval(t);
   }, [call === null]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => () => { callOn.current = false; stopSpeaking(); }, []);
+  useEffect(() => () => { callOn.current = false; stopVoice(); releaseMic(); }, []);
 
-  async function ask(all: Msg[]): Promise<string> {
+  async function ask(all: Msg[]): Promise<{ reply: string; sig?: string }> {
     // L'IA reçoit la conversation à partir de la première question du visiteur.
     const first = all.findIndex((m) => m.role === "user");
     try {
@@ -298,9 +332,9 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
         body: JSON.stringify({ slug: siteId ? undefined : slug, siteId, messages: all.slice(Math.max(first, all.length - 16)) }),
       });
       const data = await res.json().catch(() => ({}));
-      return data.reply || data.error || "Je n'ai pas pu répondre. Réessayez dans un instant.";
+      return data.reply ? { reply: data.reply, sig: data.sig } : { reply: data.error || "Je n'ai pas pu répondre. Réessayez dans un instant." };
     } catch {
-      return "Pas de connexion. Réessayez dans un instant.";
+      return { reply: "Pas de connexion. Réessayez dans un instant." };
     }
   }
 
@@ -314,9 +348,9 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
     setBusy(true);
     const aloud = speak || usedVoice.current;
     usedVoice.current = false;
-    const reply = await ask(history);
+    const { reply, sig } = await ask(history);
     setMsgs((m) => [...m, { role: "assistant", text: reply }]);
-    if (aloud) say(reply);
+    if (aloud) say(reply, sig);
     setBusy(false);
   }
 
@@ -392,8 +426,11 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
             <p className="s-call-brand">{brand}</p>
             <p className="s-call-time">Assistant · {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}</p>
           </div>
-          <button type="button" className="s-call-orb" aria-label={call === "listening" ? "J'ai fini de parler" : "Parler"}
-            onClick={() => { if (call === "listening") ear.stop(); else if (call === "paused" || call === "speaking") { stopSpeaking(); window.setTimeout(listen, 80); } }}>
+          <button ref={orb} type="button" className="s-call-orb" aria-label={call === "listening" ? "J'ai fini de parler" : "Parler"}
+            onClick={() => {
+              if (call === "listening") { if (natural.current) mic.current?.finish(); else ear.stop(); }
+              else if (call === "paused" || call === "speaking") { stopVoice(); misses.current = 0; window.setTimeout(listen, 80); }
+            }}>
             <i /><i /><i />
             <span><PhoneIcon size={34} /></span>
           </button>

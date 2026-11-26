@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 const Body = z.object({
   special: z.object({ title: z.string().trim().max(80), text: z.string().trim().max(1200) }).nullable().optional(),
   booking: z.object({ enabled: z.boolean() }).optional(),
-  assistant: z.object({ enabled: z.boolean().optional(), notes: z.string().max(3000).optional() }).optional(),
+  assistant: z.object({ enabled: z.boolean().optional(), notes: z.string().max(3000).optional(), voice: z.enum(["homme", "femme"]).optional() }).optional(),
   floor: z.object({
     enabled: z.boolean(),
     tables: z.array(z.object({
@@ -48,7 +48,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (parsed.data.booking) patch.booking = parsed.data.booking;
   if (parsed.data.assistant) {
     const a = parsed.data.assistant;
-    patch.assistant = { enabled: a.enabled ?? content.assistant?.enabled ?? false, notes: a.notes ?? content.assistant?.notes ?? "" };
+    patch.assistant = {
+      enabled: a.enabled ?? content.assistant?.enabled ?? false,
+      notes: a.notes ?? content.assistant?.notes ?? "",
+      voice: a.voice ?? content.assistant?.voice ?? "homme",
+    };
   }
   if (parsed.data.floor) patch.floor = parsed.data.floor;
   if (parsed.data.video) patch.video = parsed.data.video;

@@ -330,7 +330,7 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
       <SiteMotion />
       {(content.assistant?.enabled || booking) && (
         <AssistantWidget slug={slug} siteId={siteId} brand={brand.name} booking={booking} special={Boolean(special)}
-          launcher={content.assistant?.enabled ?? false} />
+          launcher={content.assistant?.enabled ?? false} voiceKind={content.assistant?.voice ?? "homme"} />
       )}
       {booking && <BookingDialog slug={slug} brand={brand.name} phone={contact.phone} phoneHref={phoneHref}
         floor={content.floor?.enabled ? content.floor.tables : []} />}
@@ -688,6 +688,7 @@ const SITE_CSS = `
 .site .s-call-orb span{position:absolute;inset:22px;border-radius:50%;display:grid;place-items:center;background:var(--accent);box-shadow:0 20px 60px color-mix(in srgb,var(--accent) 45%,transparent);transition:transform .4s ease}
 .site .s-call-orb i{position:absolute;inset:22px;border-radius:50%;border:1.5px solid color-mix(in srgb,var(--accent) 70%,#fff);opacity:0}
 .site .s-call.is-listening .s-call-orb i{animation:s-wave 2s ease-out infinite}
+.site .s-call.is-listening .s-call-orb span{transform:scale(calc(1 + var(--lvl,0) * .14));transition:transform .08s linear}
 .site .s-call.is-listening .s-call-orb i:nth-child(2){animation-delay:.66s}
 .site .s-call.is-listening .s-call-orb i:nth-child(3){animation-delay:1.33s}
 @keyframes s-wave{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.9);opacity:0}}

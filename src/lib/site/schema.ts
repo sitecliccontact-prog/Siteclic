@@ -77,6 +77,8 @@ export const SiteExtrasSchema = z.object({
     enabled: z.boolean(),
     /** Ce que le commerçant veut que l'assistant sache en plus (allergènes, parking, groupes…). */
     notes: z.string().max(3000).default(""),
+    /** Voix de l'assistant au téléphone. */
+    voice: z.enum(["homme", "femme"]).default("homme"),
   }).optional(),
   /** Plan de salle : le visiteur choisit sa table en réservant (positions en % du plan). */
   floor: z.object({

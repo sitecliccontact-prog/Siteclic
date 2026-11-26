@@ -15,6 +15,7 @@ export async function GET(request: Request) {
     branche: process.env.VERCEL_GIT_COMMIT_REF ?? null,
     cleIA: Boolean(process.env.ANTHROPIC_API_KEY),
     stripe: Boolean(process.env.STRIPE_SECRET_KEY),
+    voixNaturelle: Boolean(process.env.OPENAI_API_KEY),
     limitesIA: await limitsReady(),
     videosEtAide: await videosReady(),
   };

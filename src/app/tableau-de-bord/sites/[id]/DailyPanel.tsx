@@ -6,6 +6,7 @@ import { useDictation } from "@/lib/hooks/useDictation";
 import { bookingEnabled, specialIsFresh, type SiteContent } from "@/lib/site/schema";
 import { uploadVideo } from "@/lib/site/videos";
 import { FloorEditor } from "./FloorEditor";
+import { speakNatural } from "@/lib/hooks/voice";
 
 /* Menu du jour + réservations : mis en ligne tout de suite, sans IA (gratuit). */
 
@@ -133,7 +134,25 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
         onToggle={() => run("assistant", { assistant: { enabled: !assistant } }, assistant ? "Assistant désactivé." : "Assistant activé ✓ Essayez-le dans « Voir ».")} />
       {(assistant || booking) && (
         <div className="rounded-2xl border border-line bg-card p-4">
-          <p className="font-medium">Ce que l&apos;assistant doit savoir</p>
+          <p className="font-medium">Voix de l&apos;assistant</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {(["homme", "femme"] as const).map((v) => (
+              <button key={v} type="button" disabled={busy !== null}
+                onClick={() => run("notes", { assistant: { voice: v } }, v === "homme" ? "Voix d'homme choisie ✓" : "Voix de femme choisie ✓")}
+                className={`rounded-full border px-4 py-2 text-sm ${(content.assistant?.voice ?? "homme") === v ? "border-clic bg-clic/15 text-ink" : "border-line text-muted"}`}>
+                {v === "homme" ? "Homme" : "Femme"}
+              </button>
+            ))}
+            <button type="button" className="ml-auto rounded-full border border-line px-4 py-2 text-sm hover:border-ink/50"
+              onClick={async () => {
+                const r = await fetch("/api/voix/bonjour", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brand: content.brand.name.slice(0, 60), booking }) }).catch(() => null);
+                const d = r?.ok ? await r.json() : { text: `Bonjour, ${content.brand.name}, je vous écoute !`, sig: "" };
+                void speakNatural(d.text, d.sig, content.assistant?.voice ?? "homme");
+              }}>
+              ▶ Écouter
+            </button>
+          </div>
+          <p className="mt-5 font-medium">Ce que l&apos;assistant doit savoir</p>
           <p className="mt-1 text-xs leading-relaxed text-muted">
             L&apos;assistant connaît déjà tout votre site : carte, prix, horaires, menu du jour. Ajoutez ici le reste, comme vous l&apos;expliqueriez à un nouveau serveur : allergènes, parking, groupes, chiens, plats végétariens…
           </p>

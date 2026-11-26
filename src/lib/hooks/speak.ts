@@ -7,7 +7,7 @@
    - chaque phrase a un minuteur de secours : si le téléphone « oublie » de dire qu'il a fini,
      on continue quand même (sinon la conversation restait bloquée).
 
-   Voix : « homme » = une voix masculine si le téléphone en a une, un peu plus grave et posée. */
+   Voix : « homme » = une voix masculine si le téléphone en a une. (La voix naturelle de qualité passe par voice.ts.) */
 
 export type VoiceKind = "homme" | "femme";
 
@@ -34,7 +34,7 @@ function pickVoice(voices: SpeechSynthesisVoice[], kind: VoiceKind) {
     list.find((v) => /fr-FR/i.test(v.lang)) ?? list[0];
   const wanted = kind === "homme" ? fr.filter((v) => MALE.test(v.name) && !FEMALE.test(v.name)) : fr.filter((v) => !MALE.test(v.name));
   const voice = best(wanted) ?? best(fr);
-  return { voice, isMale: Boolean(voice && MALE.test(voice.name) && !FEMALE.test(voice.name)) };
+  return { voice };
 }
 
 /** Coupe le texte en phrases courtes (pas plus de ~180 caractères chacune). */
@@ -72,7 +72,7 @@ export function speak(text: string, onDone?: () => void, kind: VoiceKind = "femm
 
   void loadVoices().then((voices) => {
     if (id !== run) return;
-    const { voice, isMale } = pickVoice(voices, kind);
+    const { voice } = pickVoice(voices, kind);
     const next = (k: number) => {
       if (id !== run) return;
       if (k >= list.length) return finish();
@@ -80,8 +80,9 @@ export function speak(text: string, onDone?: () => void, kind: VoiceKind = "femm
       u.lang = "fr-FR";
       if (voice) u.voice = voice;
       // Voix d'homme : grave et posée. Si le téléphone n'a qu'une voix de femme, on la rend plus grave.
-      u.pitch = kind === "homme" ? (isMale ? 0.85 : 0.6) : 1;
-      u.rate = kind === "homme" ? 0.97 : 1.03;
+      // Voix naturelle, sans la rendre artificiellement grave (sinon elle sonne enrouée).
+      u.pitch = 1;
+      u.rate = 1.02;
       let moved = false;
       const go = () => { if (!moved) { moved = true; window.clearTimeout(watch); next(k + 1); } };
       // Minuteur de secours : environ 90 ms par caractère + 2,5 s.

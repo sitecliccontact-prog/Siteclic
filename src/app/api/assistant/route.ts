@@ -6,6 +6,12 @@ import { bookTable } from "@/lib/site/booking";
 import { getPublishedSite } from "@/lib/site/published";
 import { bookingEnabled, parseStoredContent, type SiteContent } from "@/lib/site/schema";
 import { createClient } from "@/lib/supabase/server";
+import { signVoice } from "@/lib/voice-server";
+
+/** Réponse JSON ; une réponse de l'assistant est signée pour pouvoir être lue avec la voix naturelle. */
+function out(body: { reply?: string } & Record<string, unknown>, init?: ResponseInit) {
+  return NextResponse.json(body.reply ? { ...body, sig: signVoice(body.reply) } : body, init);
+}
 
 export const maxDuration = 60;
 
@@ -21,7 +27,7 @@ const BUSY = "L'assistant est très demandé aujourd'hui. Pour toute question, a
 export async function POST(request: Request) {
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success || parsed.data.messages.at(-1)?.role !== "user") {
-    return NextResponse.json({ error: "Message invalide." }, { status: 400 });
+    return out({ error: "Message invalide." }, { status: 400 });
   }
   const { slug, siteId, messages } = parsed.data;
   const supabase = await createClient();
@@ -30,7 +36,7 @@ export async function POST(request: Request) {
   let liveSlug: string | null = null;
   if (siteId) {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Connectez-vous pour tester l'assistant." }, { status: 401 });
+    if (!user) return out({ error: "Connectez-vous pour tester l'assistant." }, { status: 401 });
     const { data } = await supabase.from("sites").select("content").eq("id", siteId).maybeSingle();
     content = parseStoredContent(data?.content);
   } else if (slug) {
@@ -41,7 +47,7 @@ export async function POST(request: Request) {
       liveSlug = slug;
     }
   }
-  if (!content) return NextResponse.json({ error: "L'assistant n'est pas disponible." }, { status: 404 });
+  if (!content) return out({ error: "L'assistant n'est pas disponible." }, { status: 404 });
 
   // Limite d'usage (protège le crédit IA) : par site et par visiteur.
   const visitorKey = siteId ? `owner:${siteId}` : slug!;
@@ -51,34 +57,34 @@ export async function POST(request: Request) {
     const { data: ok, error } = await supabase.rpc("assistant_hit", { p_slug: visitorKey, p_visitor: visitor });
     if (error) {
       console.error("Compteur de l'assistant indisponible", error);
-      return NextResponse.json({ error: "L'assistant n'est pas encore activé." }, { status: 503 });
+      return out({ error: "L'assistant n'est pas encore activé." }, { status: 503 });
     }
-    if (!ok) return NextResponse.json({ reply: BUSY, booked: false });
+    if (!ok) return out({ reply: BUSY, booked: false });
   }
 
   try {
     const load = liveSlug ? await upcomingLoad(supabase, liveSlug) : [];
     const { reply, reservation } = await assistantReply(content, messages, load);
-    if (!reservation) return NextResponse.json({ reply, booked: false });
+    if (!reservation) return out({ reply, booked: false });
     if (!liveSlug) {
-      return NextResponse.json({ reply: `${reply} (Aperçu : sur votre site en ligne, cette réservation arrivera dans votre tableau.)`, booked: false });
+      return out({ reply: `${reply} (Aperçu : sur votre site en ligne, cette réservation arrivera dans votre tableau.)`, booked: false });
     }
     const { error } = await bookTable(supabase, {
       slug: liveSlug, name: reservation.name, phone: reservation.phone, day: reservation.day, time: reservation.time,
       people: reservation.people, message: `${reservation.message ? `${reservation.message} · ` : ""}via l'assistant`, table: reservation.table,
     });
     if (error?.message?.includes("table_prise")) {
-      return NextResponse.json({ reply: `Ah, la table ${reservation.table} vient d'être prise à cette heure-là. Je vous en propose une autre ?`, booked: false });
+      return out({ reply: `Ah, la table ${reservation.table} vient d'être prise à cette heure-là. Je vous en propose une autre ?`, booked: false });
     }
     if (error) {
       console.error("Réservation par l'assistant impossible", error);
       const phone = content.contact.phone ? ` au ${content.contact.phone}` : "";
-      return NextResponse.json({ reply: `Je n'ai pas pu enregistrer la réservation (vérifiez la date, l'heure et le téléphone). Vous pouvez aussi appeler${phone}.`, booked: false });
+      return out({ reply: `Je n'ai pas pu enregistrer la réservation (vérifiez la date, l'heure et le téléphone). Vous pouvez aussi appeler${phone}.`, booked: false });
     }
-    return NextResponse.json({ reply, booked: true });
+    return out({ reply, booked: true });
   } catch (err) {
     console.error("Assistant en panne", err);
-    return NextResponse.json({ error: "L'assistant ne répond pas pour le moment. Appelez-nous directement." }, { status: 500 });
+    return out({ error: "L'assistant ne répond pas pour le moment. Appelez-nous directement." }, { status: 500 });
   }
 }
 

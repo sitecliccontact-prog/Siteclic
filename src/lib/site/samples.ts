@@ -3,7 +3,7 @@ import type { SiteContent } from "./schema";
 // Exemples fictifs, utilisés seulement pour tester l'affichage en développement.
 const restaurant: SiteContent = {
   theme: "bistrot",
-  assistant: { enabled: true, notes: "" },
+  assistant: { enabled: true, notes: "", voice: "homme" },
   floor: {
     enabled: true,
     tables: [
