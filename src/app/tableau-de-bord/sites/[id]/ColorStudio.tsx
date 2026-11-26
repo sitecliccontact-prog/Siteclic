@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CURATED, applyLook, harmony, hsl, isHex, readability, toHsl, type Look, type Palette, type Relief } from "@/lib/site/colors";
+import { CURATED, RELIEFS, RELIEF_STYLES, applyLook, harmony, hsl, isHex, readability, toHsl, type Look, type Palette, type Relief } from "@/lib/site/colors";
 
 /* Atelier des couleurs : spectre complet (des millions de teintes), nuancier de 264 couleurs,
    palettes de créateur, « Propose-moi des couleurs », dégradés et relief du fond.
@@ -15,15 +15,6 @@ const TARGETS: { id: Target; label: string }[] = [
   { id: "accent2", label: "Dégradé" },
 ];
 
-const RELIEF_LIST: { id: Relief; label: string; bg: (p: Palette, a2: string) => string }[] = [
-  { id: "aucun", label: "Uni", bg: (p) => p.bg },
-  { id: "grain", label: "Papier", bg: (p) => `radial-gradient(circle at 30% 30%, ${p.surface}, ${p.bg})` },
-  { id: "lueur", label: "Lueur", bg: (p, a2) => `radial-gradient(70% 60% at 10% 10%, ${p.accent}55, transparent 70%), radial-gradient(70% 60% at 95% 80%, ${a2}44, transparent 70%), ${p.bg}` },
-  { id: "points", label: "Points", bg: (p) => `radial-gradient(circle at 1px 1px, ${p.ink}33 1px, transparent 0) 0 0/8px 8px, ${p.bg}` },
-  { id: "ondes", label: "Ondes", bg: (p) => `repeating-radial-gradient(circle at 90% 0%, transparent 0 7px, ${p.accent}33 7px 8px), ${p.bg}` },
-  { id: "profondeur", label: "Profondeur", bg: (p) => `radial-gradient(120% 70% at 50% -10%, ${p.ink}22, transparent 60%), radial-gradient(140% 90% at 50% 120%, #00000066, transparent 60%), ${p.bg}` },
-  { id: "marbre", label: "Marbre", bg: (p) => `linear-gradient(115deg, transparent 40%, ${p.ink}18 45%, transparent 52%), linear-gradient(35deg, transparent 60%, ${p.ink}12 63%, transparent 68%), ${p.bg}` },
-];
 
 /** 24 teintes × 10 nuances + 48 gris, crèmes et ardoises = 288 couleurs. */
 const SWATCHES: string[] = (() => {
@@ -166,12 +157,14 @@ export function ColorStudio({ base, look, onChange }: { base: Palette; look: Loo
       <div>
         <p className="mb-2 text-xs text-muted">Relief du fond</p>
         <div className="grid grid-cols-4 gap-2">
-          {RELIEF_LIST.map((r) => {
-            const on = (look?.relief ?? "aucun") === r.id;
+          {RELIEFS.map((id) => {
+            const r = RELIEF_STYLES[id];
+            const on = (look?.relief ?? "aucun") === id;
             return (
-              <button key={r.id} type="button" onClick={() => onChange({ ...(look ?? {}), relief: r.id })}
+              <button key={id} type="button" onClick={() => onChange({ ...(look ?? {}), relief: id })}
                 className={`rounded-xl border p-1 text-[10px] ${on ? "border-clic" : "border-line"}`}>
-                <span className="mb-1 block h-12 rounded-lg" style={{ background: r.bg(p, a2 || p.accent) }} />
+                <span className="mb-1 block h-12 rounded-lg border border-black/5"
+                  style={{ "--accent": p.accent, "--accent2": a2 || p.accent, "--ink": p.ink, backgroundColor: p.bg, backgroundImage: r.image, backgroundSize: r.size?.includes("px") && !r.size.startsWith("100%") ? r.size.split(" ").map((v) => `${Math.max(6, parseFloat(v) / 2)}px`).join(" ") : "cover" } as React.CSSProperties} />
                 {r.label}
               </button>
             );

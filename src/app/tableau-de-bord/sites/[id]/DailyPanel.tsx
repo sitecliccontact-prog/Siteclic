@@ -78,7 +78,7 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
   // Réservation déjà active mais jamais de plan de salle : on met un plan d'exemple (modifiable).
   const autoFloor = useRef(false);
   useEffect(() => {
-    if (autoFloor.current || !booking || content.floor) return;
+    if (autoFloor.current || !booking || content.floor?.tables.length) return;
     autoFloor.current = true;
     void run("floor", { floor: { enabled: true, tables: SAMPLE_FLOOR } }, "Plan de salle d'exemple ajouté ✓ Modifiez-le plus bas.");
   }); // eslint-disable-line react-hooks/exhaustive-deps

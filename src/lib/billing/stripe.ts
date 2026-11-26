@@ -1,6 +1,7 @@
 import "server-only";
 import Stripe from "stripe";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { isTeam } from "@/lib/team";
 
 /** Prix de l'abonnement (en centimes) : 29 €/mois. */
 export const PRICE_CENTS = 2900;
@@ -61,6 +62,8 @@ export async function getOrCreateCustomer(supabase: SupabaseClient, user: User):
 
 /** État de l'abonnement, lu directement chez Stripe (impossible à falsifier depuis l'appli). */
 export async function getSubscription(user: User): Promise<Subscription> {
+  // Équipe SiteClic (propriétaire) : tout est débloqué.
+  if (isTeam(user)) return { active: true, status: "equipe", periodEnd: null, cancelAtPeriodEnd: false };
   if (!billingEnabled()) return { ...NONE, active: true, status: "gratuit_pour_le_moment" };
   return readSubscription(await ownCustomerId(user));
 }

@@ -1,4 +1,4 @@
-import type { FloorTable } from "./schema";
+import type { FloorTable, SiteContent } from "./schema";
 
 /** Plan de salle d'exemple, prêt à l'emploi pour tout restaurant (modifiable ensuite dans l'éditeur).
     Positions en % du plan (centre de la table). */
@@ -26,4 +26,12 @@ export function floorZones(tables: FloorTable[]) {
     y: Math.min(...list.map((t) => t.y)),
     outside: /terrasse|jardin|patio|extérieur|exterieur/i.test(name),
   }));
+}
+
+/** Tables affichées dans la fenêtre de réservation : le plan du commerçant,
+    ou le plan d'exemple tant qu'il n'a pas dessiné le sien (sauf s'il a retiré son plan). */
+export function siteFloor(c: SiteContent): FloorTable[] {
+  const f = c.floor;
+  if (!f || !f.tables.length) return SAMPLE_FLOOR;
+  return f.enabled ? f.tables : [];
 }

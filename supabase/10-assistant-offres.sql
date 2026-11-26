@@ -115,3 +115,14 @@ end;
 $$;
 revoke all on function public.assistant_offer(uuid) from public;
 grant execute on function public.assistant_offer(uuid) to authenticated;
+
+-- 7) Sites de l'équipe SiteClic : toujours en ligne, même sans abonnement.
+create or replace function public.site_owner_is_team(p_slug text)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (select 1 from public.sites s join auth.users u on u.id = s.user_id
+                 where s.slug = p_slug and u.email ~* '^siteclic\.contact(\+[^@]*)?@gmail\.com$');
+$$;
+revoke all on function public.site_owner_is_team(text) from public;
+grant execute on function public.site_owner_is_team(text) to anon, authenticated;

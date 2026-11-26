@@ -25,6 +25,8 @@ export const getPublishedSite = cache(async (slug: string): Promise<Published | 
   let available = true;
   try {
     available = await ownerIsSubscribed(data[0].billing_customer, data[0].user_id);
+    // Sites de l'équipe SiteClic : toujours en ligne.
+    if (!available) available = (await supabase.rpc("site_owner_is_team", { p_slug: slug })).data === true;
   } catch (err) {
     console.error("Vérification de l'abonnement impossible", err); // en cas de panne Stripe, on laisse le site visible
   }

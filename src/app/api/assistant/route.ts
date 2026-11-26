@@ -7,6 +7,7 @@ import { getPublishedSite } from "@/lib/site/published";
 import { bookingEnabled, parseStoredContent, type SiteContent } from "@/lib/site/schema";
 import { createClient } from "@/lib/supabase/server";
 import { signVoice } from "@/lib/voice-server";
+import { isTeam } from "@/lib/team";
 
 /** Réponse JSON ; une réponse de l'assistant est signée pour pouvoir être lue avec la voix naturelle. */
 function out(body: { reply?: string } & Record<string, unknown>, init?: ResponseInit) {
@@ -36,10 +37,12 @@ export async function POST(request: Request) {
   const supabase = await createClient();
 
   let content: SiteContent | null = null;
+  let team = false;
   let liveSlug: string | null = null;
   if (siteId) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return out({ error: "Connectez-vous pour tester l'assistant." }, { status: 401 });
+    team = isTeam(user);
     const { data } = await supabase.from("sites").select("content").eq("id", siteId).maybeSingle();
     content = parseStoredContent(data?.content);
   } else if (slug) {
@@ -59,10 +62,17 @@ export async function POST(request: Request) {
     if (liveSlug) {
       // Site en ligne : option payante du commerçant (Essentiel 300 / Pro 1000 conversations par mois).
       const { data: state, error } = await supabase.rpc("assistant_conv", { p_slug: liveSlug, p_conv: conv ?? "", p_visitor: visitor, p_kind: "msg" });
-      if (error) console.error("Compteur des conversations indisponible", error);
-      if (error || state === "off" || state === "quota") return out({ reply: FALLBACK, booked: false, fallback: true });
-      if (state !== "ok") return out({ reply: BUSY, booked: false });
-    } else {
+      const missing = error && /assistant_conv|PGRST202|42883/.test(`${error.code} ${error.message}`);
+      if (missing) {
+        // SQL 10 pas encore installé : ancien compteur (40 messages par jour et par site).
+        const { data: ok } = await supabase.rpc("assistant_hit", { p_slug: liveSlug, p_visitor: visitor });
+        if (ok === false) return out({ reply: BUSY, booked: false });
+      } else {
+        if (error) console.error("Compteur des conversations indisponible", error);
+        if (error || state === "off" || state === "quota") return out({ reply: FALLBACK, booked: false, fallback: true });
+        if (state !== "ok") return out({ reply: BUSY, booked: false });
+      }
+    } else if (!team) {
       // Aperçu dans l'éditeur : le commerçant teste gratuitement, dans une petite limite par jour.
       const { data: ok, error } = await supabase.rpc("assistant_hit", { p_slug: `owner:${siteId}`, p_visitor: visitor });
       if (error) {

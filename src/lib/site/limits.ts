@@ -11,12 +11,9 @@ export const FREE_SITES = 2;
 export const FREE_EDITS = 10;
 /* Abonnés : pas de limite pour l'instant (choix du 23/11, la formule de prix peut changer). */
 
-/** Comptes de l'équipe SiteClic : jamais bloqués (tests). */
-const TEAM_EMAIL = /^siteclic\.contact(\+[^@]*)?@gmail\.com$/i;
-
-export function isTeam(user: User) {
-  return TEAM_EMAIL.test(user.email ?? "");
-}
+/** Comptes de l'équipe SiteClic : jamais bloqués. */
+export { isTeam } from "@/lib/team";
+import { isTeam } from "@/lib/team";
 
 async function isPaying(user: User) {
   if (!billingEnabled()) return false;

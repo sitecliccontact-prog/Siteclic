@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RELIEFS } from "./colors";
 
 /** Les styles visuels disponibles pour les sites des clients. */
 export const THEMES = ["bistrot", "atelier", "terracotta", "minuit", "jardin", "riviera", "galerie", "retro"] as const;
@@ -99,7 +100,7 @@ export const SiteExtrasSchema = z.object({
     ink: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
     accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
     accent2: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-    relief: z.enum(["aucun", "grain", "lueur", "points", "ondes", "profondeur", "marbre"]).optional(),
+    relief: z.enum(RELIEFS).optional(),
   }).optional(),
   /** Réseaux sociaux, affichés en bas du site. */
   links: z.object({ instagram: z.string().max(200), facebook: z.string().max(200) }).partial().optional(),

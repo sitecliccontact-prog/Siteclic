@@ -8,5 +8,7 @@ export async function GET(request: Request) {
   if (slug.startsWith("exemple-") && process.env.NODE_ENV !== "production") return NextResponse.json({ ok: true });
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("assistant_status", { p_slug: slug });
-  return NextResponse.json({ ok: !error && data === true }, { headers: { "Cache-Control": "no-store" } });
+  // Tant que le SQL 10 n'est pas installé : on garde l'ancien fonctionnement (assistant disponible, avec limites par jour).
+  const missing = error && /assistant_status|PGRST202|42883/.test(`${error.code} ${error.message}`);
+  return NextResponse.json({ ok: missing ? true : !error && data === true }, { headers: { "Cache-Control": "no-store" } });
 }

@@ -3,7 +3,7 @@
 
 export type Palette = { bg: string; surface: string; ink: string; muted: string; line: string; accent: string; onAccent: string; band: string; onBand: string };
 export type Look = { bg?: string; ink?: string; accent?: string; accent2?: string; relief?: Relief };
-export const RELIEFS = ["aucun", "grain", "lueur", "points", "ondes", "profondeur", "marbre"] as const;
+export const RELIEFS = ["aucun", "grain", "lin", "lueur", "aurore", "halo", "bokeh", "brume", "soie", "profondeur", "points", "grille", "rayures", "losanges", "damier", "ondes", "vagues", "artdeco", "terrazzo", "marbre"] as const;
 export type Relief = (typeof RELIEFS)[number];
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -123,4 +123,40 @@ export function harmony(seedHue?: number): { name: string; bg: string; ink: stri
   const accent = ensureContrast(hsl(k.a, 55 + Math.random() * 30, dark ? 60 : 42), bg, 3);
   const accent2 = k.a2 === undefined ? undefined : hsl(k.a2, 55 + Math.random() * 25, dark ? 62 : 50);
   return { name: k.name, bg, ink, accent, accent2 };
+}
+
+/* ---------- Relief du fond : motifs en CSS pur (aucune image à charger), basés sur les couleurs du site ---------- */
+const NOISE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`;
+const MARBLE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='turbulence' baseFrequency='.004 .012' numOctaves='4' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 -1.6 1.05'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)' opacity='.16'/%3E%3C/svg%3E")`;
+const A = (n: number, v = "--accent") => `color-mix(in srgb,var(${v}) ${n}%,transparent)`;
+const I = (n: number) => A(n, "--ink");
+
+export const RELIEF_STYLES: Record<Relief, { label: string; image: string; size?: string }> = {
+  aucun: { label: "Uni", image: "none" },
+  grain: { label: "Papier", image: NOISE },
+  lin: { label: "Lin", image: `repeating-linear-gradient(0deg,${I(4)} 0 1px,transparent 1px 3px),repeating-linear-gradient(90deg,${I(4)} 0 1px,transparent 1px 4px),${NOISE}` },
+  lueur: { label: "Lueur", image: `radial-gradient(70% 50% at 8% 6%,${A(22)},transparent 70%),radial-gradient(60% 50% at 95% 40%,${A(18, "--accent2")},transparent 70%),radial-gradient(70% 50% at 20% 95%,${A(14)},transparent 70%)` },
+  aurore: { label: "Aurore", image: `conic-gradient(from 200deg at 70% 0%,${A(16)},${A(14, "--accent2")},transparent 40%,${A(10)} 70%,${A(16)})` },
+  halo: { label: "Halo", image: `radial-gradient(55% 38% at 50% 18%,${A(20)},transparent 70%),radial-gradient(90% 60% at 50% 50%,${I(4)},transparent 80%)` },
+  bokeh: { label: "Bokeh", image: `radial-gradient(circle at 12% 18%,${A(18)} 0 34px,transparent 36px),radial-gradient(circle at 82% 12%,${A(12, "--accent2")} 0 60px,transparent 62px),radial-gradient(circle at 70% 46%,${A(10)} 0 24px,transparent 26px),radial-gradient(circle at 22% 66%,${A(10, "--accent2")} 0 48px,transparent 50px),radial-gradient(circle at 88% 84%,${A(14)} 0 30px,transparent 32px)`, size: "100% 1400px" },
+  brume: { label: "Brume", image: `linear-gradient(180deg,${A(14)},transparent 35%,${A(8, "--accent2")} 70%,transparent)`, size: "100% 1800px" },
+  soie: { label: "Soie", image: `linear-gradient(125deg,transparent 20%,${I(5)} 35%,transparent 45%,${I(4)} 62%,transparent 75%)`, size: "100% 1200px" },
+  profondeur: { label: "Profondeur", image: `radial-gradient(120% 70% at 50% -10%,${I(9)},transparent 60%),radial-gradient(140% 90% at 50% 120%,color-mix(in srgb,#000 35%,transparent),transparent 60%)` },
+  points: { label: "Points", image: `radial-gradient(circle at 1px 1px,${I(16)} 1px,transparent 0)`, size: "22px 22px" },
+  grille: { label: "Grille", image: `linear-gradient(${I(7)} 1px,transparent 1px),linear-gradient(90deg,${I(7)} 1px,transparent 1px)`, size: "44px 44px" },
+  rayures: { label: "Rayures", image: `repeating-linear-gradient(135deg,${I(4)} 0 1px,transparent 1px 14px)` },
+  losanges: { label: "Losanges", image: `linear-gradient(135deg,${I(5)} 25%,transparent 25%),linear-gradient(225deg,${I(5)} 25%,transparent 25%),linear-gradient(45deg,${I(5)} 25%,transparent 25%),linear-gradient(315deg,${I(5)} 25%,transparent 25%)`, size: "40px 40px" },
+  damier: { label: "Damier", image: `conic-gradient(${I(4)} 25%,transparent 0 50%,${I(4)} 0 75%,transparent 0)`, size: "56px 56px" },
+  ondes: { label: "Ondes", image: `repeating-radial-gradient(circle at 85% -10%,transparent 0 38px,${A(12)} 38px 39px)` },
+  vagues: { label: "Vagues", image: `radial-gradient(circle at 50% 100%,transparent 14px,${A(14)} 15px 16px,transparent 17px)`, size: "40px 22px" },
+  artdeco: { label: "Art déco", image: `repeating-conic-gradient(from 0deg at 50% 100%,${A(10)} 0 2deg,transparent 2deg 12deg)`, size: "120px 60px" },
+  terrazzo: { label: "Terrazzo", image: `radial-gradient(circle at 20% 30%,${A(30)} 0 3px,transparent 4px),radial-gradient(circle at 70% 60%,${A(24, "--accent2")} 0 2px,transparent 3px),radial-gradient(circle at 45% 80%,${I(14)} 0 2.5px,transparent 3.5px),radial-gradient(circle at 85% 20%,${I(10)} 0 4px,transparent 5px)`, size: "90px 90px" },
+  marbre: { label: "Marbre", image: MARBLE, size: "700px 700px" },
+};
+
+/** CSS du relief choisi, appliqué au fond du site. */
+export function reliefCss(r: Relief) {
+  const st = RELIEF_STYLES[r];
+  if (!st || r === "aucun") return "";
+  return `.site.rl-${r}{background-image:${st.image}${st.size ? `;background-size:${st.size}` : ""}}`;
 }
