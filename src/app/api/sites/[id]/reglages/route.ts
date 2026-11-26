@@ -51,7 +51,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     patch.assistant = {
       enabled: a.enabled ?? content.assistant?.enabled ?? false,
       notes: a.notes ?? content.assistant?.notes ?? "",
-      voice: a.voice ?? content.assistant?.voice ?? "homme",
+      voice: a.voice ?? content.assistant?.voice ?? "femme",
     };
   }
   if (parsed.data.floor) patch.floor = parsed.data.floor;

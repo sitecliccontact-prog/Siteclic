@@ -138,10 +138,10 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
         <div className="rounded-2xl border border-line bg-card p-4">
           <p className="font-medium">Voix de l&apos;assistant</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            {(["homme", "femme"] as const).map((v) => (
+            {(["femme", "homme"] as const).map((v) => (
               <button key={v} type="button" disabled={busy !== null}
                 onClick={() => run("notes", { assistant: { voice: v } }, v === "homme" ? "Voix d'homme choisie ✓" : "Voix de femme choisie ✓")}
-                className={`rounded-full border px-4 py-2 text-sm ${(content.assistant?.voice ?? "homme") === v ? "border-clic bg-clic/15 text-ink" : "border-line text-muted"}`}>
+                className={`rounded-full border px-4 py-2 text-sm ${(content.assistant?.voice ?? "femme") === v ? "border-clic bg-clic/15 text-ink" : "border-line text-muted"}`}>
                 {v === "homme" ? "Homme" : "Femme"}
               </button>
             ))}
@@ -149,7 +149,7 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
               onClick={async () => {
                 const r = await fetch("/api/voix/bonjour", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brand: content.brand.name.slice(0, 60), booking }) }).catch(() => null);
                 const d = r?.ok ? await r.json() : { text: `Bonjour, ${content.brand.name}, je vous écoute !`, sig: "" };
-                void speakNatural(d.text, d.sig, content.assistant?.voice ?? "homme");
+                void speakNatural(d.text, d.sig, content.assistant?.voice ?? "femme");
               }}>
               ▶ Écouter
             </button>

@@ -7,7 +7,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
    Pour éviter qu'on utilise notre synthèse vocale pour lire n'importe quoi, seuls les textes
    écrits par notre assistant (signés ici) peuvent être lus. */
 
-export const VOICES = { homme: "ash", femme: "coral" } as const;
+export const VOICES = { homme: "ash", femme: "nova" } as const;
 export type VoiceName = keyof typeof VOICES;
 
 export function voiceEnabled() {

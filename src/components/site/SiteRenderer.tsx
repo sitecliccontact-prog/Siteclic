@@ -330,7 +330,7 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
       <SiteMotion />
       {(content.assistant?.enabled || booking) && (
         <AssistantWidget slug={slug} siteId={siteId} brand={brand.name} booking={booking} special={Boolean(special)}
-          launcher={content.assistant?.enabled ?? false} voiceKind={content.assistant?.voice ?? "homme"} />
+          launcher={content.assistant?.enabled ?? false} voiceKind={content.assistant?.voice ?? "femme"} />
       )}
       {booking && <BookingDialog slug={slug} brand={brand.name} phone={contact.phone} phoneHref={phoneHref}
         floor={content.floor?.enabled ? content.floor.tables : []} />}

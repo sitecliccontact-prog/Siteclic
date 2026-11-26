@@ -9,7 +9,7 @@ export const maxDuration = 30;
 const Body = z.object({
   text: z.string().trim().min(1).max(900),
   sig: z.string().max(64),
-  voice: z.enum(["homme", "femme"]).default("homme"),
+  voice: z.enum(["homme", "femme"]).default("femme"),
 });
 
 export async function POST(request: Request) {
@@ -26,8 +26,9 @@ export async function POST(request: Request) {
       model: "gpt-4o-mini-tts",
       voice: VOICES[voice],
       input: text,
-      instructions:
-        "Parle en français de France, sans accent étranger. Voix claire, naturelle et chaleureuse, comme une personne souriante à l'accueil d'un restaurant au téléphone. Débit normal, articulation nette.",
+      instructions: voice === "femme"
+        ? "Parle en français de France, sans accent étranger. Jeune femme à la voix claire, lumineuse et souriante, dynamique et chaleureuse, comme une voix off moderne. Ton enjoué mais naturel, débit fluide, articulation nette."
+        : "Parle en français de France, sans accent étranger. Voix claire, naturelle et chaleureuse, comme une personne souriante à l'accueil d'un restaurant au téléphone. Débit normal, articulation nette.",
       response_format: "mp3",
     }),
   });

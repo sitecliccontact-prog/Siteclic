@@ -231,7 +231,7 @@ export function BookingDialog({ slug, brand, phone, phoneHref, floor = [] }: Boo
 type Msg = { role: "user" | "assistant"; text: string };
 type AssistantProps = { slug?: string; siteId?: string; brand: string; booking: boolean; special: boolean; launcher?: boolean; voiceKind?: "homme" | "femme" };
 
-export function AssistantWidget({ slug, siteId, brand, booking, special, launcher = true, voiceKind = "homme" }: AssistantProps) {
+export function AssistantWidget({ slug, siteId, brand, booking, special, launcher = true, voiceKind = "femme" }: AssistantProps) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState("");
