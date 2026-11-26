@@ -2,8 +2,8 @@
    on calcule tout le reste et on garantit que ça reste lisible. Aucun appel à l'IA (gratuit, instantané). */
 
 export type Palette = { bg: string; surface: string; ink: string; muted: string; line: string; accent: string; onAccent: string; band: string; onBand: string };
-export type Look = { bg?: string; ink?: string; accent?: string; accent2?: string; relief?: Relief };
-export const RELIEFS = ["aucun", "grain", "lin", "lueur", "aurore", "halo", "bokeh", "brume", "soie", "profondeur", "points", "grille", "rayures", "losanges", "damier", "ondes", "vagues", "artdeco", "terrazzo", "marbre"] as const;
+export type Look = { bg?: string; ink?: string; accent?: string; accent2?: string; relief?: Relief; custom?: { label: string; image: string; size?: string } };
+export const RELIEFS = ["aucun", "grain", "lin", "lueur", "aurore", "halo", "bokeh", "brume", "soie", "profondeur", "points", "grille", "rayures", "losanges", "damier", "ondes", "vagues", "artdeco", "terrazzo", "marbre", "toile", "pluie", "etoiles", "chevrons", "tartan", "beton", "nuages", "spirale", "rideau", "pois", "horizon", "perso"] as const;
 export type Relief = (typeof RELIEFS)[number];
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -152,10 +152,43 @@ export const RELIEF_STYLES: Record<Relief, { label: string; image: string; size?
   artdeco: { label: "Art déco", image: `repeating-conic-gradient(from 0deg at 50% 100%,${A(10)} 0 2deg,transparent 2deg 12deg)`, size: "120px 60px" },
   terrazzo: { label: "Terrazzo", image: `radial-gradient(circle at 20% 30%,${A(30)} 0 3px,transparent 4px),radial-gradient(circle at 70% 60%,${A(24, "--accent2")} 0 2px,transparent 3px),radial-gradient(circle at 45% 80%,${I(14)} 0 2.5px,transparent 3.5px),radial-gradient(circle at 85% 20%,${I(10)} 0 4px,transparent 5px)`, size: "90px 90px" },
   marbre: { label: "Marbre", image: MARBLE, size: "700px 700px" },
+  toile: { label: "Toile", image: `repeating-linear-gradient(45deg,${I(5)} 0 1px,transparent 1px 6px),repeating-linear-gradient(-45deg,${I(5)} 0 1px,transparent 1px 6px)` },
+  pluie: { label: "Pluie", image: `repeating-linear-gradient(100deg,transparent 0 18px,${A(10)} 18px 19px,transparent 19px 31px)` },
+  etoiles: { label: "Étoiles", image: `radial-gradient(1.2px 1.2px at 20px 30px,${I(80)},transparent),radial-gradient(1.4px 1.4px at 120px 80px,${I(60)},transparent),radial-gradient(1.5px 1.5px at 70px 150px,${A(90)},transparent),radial-gradient(1.4px 1.4px at 170px 190px,${I(70)},transparent),radial-gradient(1.4px 1.4px at 40px 210px,${I(50)},transparent)`, size: "200px 240px" },
+  chevrons: { label: "Chevrons", image: `linear-gradient(135deg,${I(6)} 25%,transparent 25%),linear-gradient(225deg,${I(6)} 25%,transparent 25%)`, size: "40px 20px" },
+  tartan: { label: "Tartan", image: `repeating-linear-gradient(0deg,${A(8)} 0 8px,transparent 8px 40px,${I(5)} 40px 42px,transparent 42px 64px),repeating-linear-gradient(90deg,${A(8)} 0 8px,transparent 8px 40px,${I(5)} 40px 42px,transparent 42px 64px)` },
+  beton: { label: "Béton", image: `${NOISE},radial-gradient(80% 60% at 30% 20%,${I(6)},transparent 70%),radial-gradient(70% 60% at 80% 80%,${I(5)},transparent 70%)`, size: "160px 160px,100% 100%,100% 100%" },
+  nuages: { label: "Nuages", image: `radial-gradient(40% 18% at 20% 12%,${I(7)},transparent 70%),radial-gradient(35% 16% at 78% 30%,${I(6)},transparent 70%),radial-gradient(45% 20% at 35% 62%,${I(6)},transparent 70%),radial-gradient(40% 18% at 85% 85%,${I(7)},transparent 70%)` },
+  spirale: { label: "Spirale", image: `repeating-conic-gradient(from 0deg at 100% 0%,${A(9)} 0 3deg,transparent 3deg 9deg)` },
+  rideau: { label: "Rideau", image: `repeating-linear-gradient(90deg,transparent 0,${I(6)} 22px,transparent 44px,${I(3)} 66px,transparent 88px)` },
+  pois: { label: "Pois", image: `radial-gradient(circle,${A(14)} 0 4px,transparent 5px)`, size: "36px 36px" },
+  horizon: { label: "Horizon", image: `linear-gradient(180deg,${A(16)} 0%,transparent 22%,transparent 60%,${A(12, "--accent2")} 85%,${A(18)} 100%)`, size: "100% 1600px" },
+  perso: { label: "Mon relief", image: "none" },
 };
 
+const BG_WORDS = new Set(["linear-gradient", "radial-gradient", "conic-gradient", "repeating-linear-gradient", "repeating-radial-gradient", "repeating-conic-gradient",
+  "color-mix", "in", "srgb", "oklab", "var", "--accent", "--accent2", "--ink", "--bg", "accent", "accent2", "ink", "bg", "transparent", "at", "to", "top", "bottom", "left", "right", "center",
+  "circle", "ellipse", "closest-side", "closest-corner", "farthest-side", "farthest-corner", "from", "deg", "turn", "px", "em", "rem", "rgb", "rgba", "hsl", "hsla", "auto", "white", "black"]);
+
+/** Vérifie un fond créé par l'IA : uniquement des dégradés et des couleurs (pas d'image externe, pas de code). */
+export function safeBackground(css: unknown, max = 2000): string | null {
+  if (typeof css !== "string") return null;
+  const s = css.trim();
+  if (!s || s.length > max || /url|expression|javascript|[@\\;{}<>"'`!]|\/\*/i.test(s)) return null;
+  const words = s.replace(/#[0-9a-f]{3,8}\b/gi, " ").match(/-{0,2}[a-z][a-z0-9-]*/gi) ?? [];
+  return words.every((w) => BG_WORDS.has(w.toLowerCase())) ? s : null;
+}
+export function safeSize(css: unknown): string | undefined {
+  return typeof css === "string" && /^[\d.\s%a-z,]{1,80}$/i.test(css) && !/[a-z]{5,}/i.test(css.replace(/auto/g, "")) ? css : undefined;
+}
+
 /** CSS du relief choisi, appliqué au fond du site. */
-export function reliefCss(r: Relief) {
+export function reliefCss(r: Relief, custom?: Look["custom"]) {
+  if (r === "perso") {
+    const image = safeBackground(custom?.image);
+    const size = safeSize(custom?.size);
+    return image ? `.site.rl-perso{background-image:${image}${size ? `;background-size:${size}` : ""}}` : "";
+  }
   const st = RELIEF_STYLES[r];
   if (!st || r === "aucun") return "";
   return `.site.rl-${r}{background-image:${st.image}${st.size ? `;background-size:${st.size}` : ""}}`;

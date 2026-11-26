@@ -446,7 +446,7 @@ function ManualPanel({ id, content: c, edit, addPhotos, daily }: ManualProps) {
       </Block>
 
       <Block title="Couleurs et relief">
-        <ColorStudio base={THEMES[c.theme]?.colors ?? THEMES.bistrot.colors} look={c.look}
+        <ColorStudio siteId={id} base={THEMES[c.theme]?.colors ?? THEMES.bistrot.colors} look={c.look}
           onChange={(look) => edit((d) => { d.look = look; })} />
       </Block>
 

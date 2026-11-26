@@ -25,7 +25,7 @@ const SWATCHES: string[] = (() => {
   return out;
 })();
 
-export function ColorStudio({ base, look, onChange }: { base: Palette; look: Look | undefined; onChange: (l: Look | undefined) => void }) {
+export function ColorStudio({ siteId, base, look, onChange }: { siteId: string; base: Palette; look: Look | undefined; onChange: (l: Look | undefined) => void }) {
   const [target, setTarget] = useState<Target>("accent");
   const [sat, setSat] = useState(70);
   const [hex, setHex] = useState("");
@@ -157,8 +157,8 @@ export function ColorStudio({ base, look, onChange }: { base: Palette; look: Loo
       <div>
         <p className="mb-2 text-xs text-muted">Relief du fond</p>
         <div className="grid grid-cols-4 gap-2">
-          {RELIEFS.map((id) => {
-            const r = RELIEF_STYLES[id];
+          {RELIEFS.filter((id) => id !== "perso" || look?.custom).map((id) => {
+            const r = id === "perso" && look?.custom ? { label: look.custom.label, image: look.custom.image, size: look.custom.size } : RELIEF_STYLES[id];
             const on = (look?.relief ?? "aucun") === id;
             return (
               <button key={id} type="button" onClick={() => onChange({ ...(look ?? {}), relief: id })}
@@ -171,6 +171,8 @@ export function ColorStudio({ base, look, onChange }: { base: Palette; look: Loo
           })}
         </div>
       </div>
+
+      <AiRelief siteId={siteId} onCreated={(custom) => onChange({ ...(look ?? {}), relief: "perso", custom })} />
 
       {look && (
         <button type="button" onClick={() => onChange(undefined)} className="w-full rounded-full border border-line py-2.5 text-xs text-muted">
@@ -218,6 +220,65 @@ function Spectrum({ sat, value, onPick }: { sat: number; value: string; onPick: 
       <span className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,.4)]"
         style={{ left: `${(h / 360) * 100}%`, top: `${Math.max(0, Math.min(100, ((96 - l) / 90) * 100))}%`, background: value }} />
       <p className="mt-1 text-[10px] text-muted">Des millions de teintes : glissez le doigt sur le spectre.</p>
+    </div>
+  );
+}
+
+/** « Créer mon relief avec l'IA » : la personne décrit le fond qu'elle veut, l'IA le dessine (1 € = 5 créations). */
+function AiRelief({ siteId, onCreated }: { siteId: string; onCreated: (c: NonNullable<Look["custom"]>) => void }) {
+  const [prompt, setPrompt] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [buy, setBuy] = useState(false);
+  const [left, setLeft] = useState<number | null>(null);
+  const [unlimited, setUnlimited] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/sites/${siteId}/relief`).then((r) => r.json()).then((d) => { setUnlimited(!!d.unlimited); setLeft(typeof d.left === "number" ? d.left : null); }).catch(() => {});
+  }, [siteId]);
+
+  async function create() {
+    if (prompt.trim().length < 3 || busy) return;
+    setBusy(true); setMsg(""); setBuy(false);
+    const res = await fetch(`/api/sites/${siteId}/relief`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }) }).catch(() => null);
+    const d = await res?.json().catch(() => ({}));
+    setBusy(false);
+    if (res?.ok && d?.custom) {
+      onCreated(d.custom);
+      if (typeof d.left === "number") setLeft(d.left);
+      setMsg(`« ${d.custom.label} » est sur votre site ✓`);
+      return;
+    }
+    setMsg(d?.error || "La création n'a pas marché. Réessayez.");
+    setBuy(Boolean(d?.needsPurchase));
+  }
+  async function purchase() {
+    const res = await fetch("/api/relief/acheter", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ retour: `/tableau-de-bord/sites/${siteId}` }) }).catch(() => null);
+    const d = await res?.json().catch(() => ({}));
+    if (res?.ok && d?.url) window.location.href = d.url;
+    else setMsg(d?.error || "Paiement indisponible pour le moment.");
+  }
+
+  return (
+    <div className="rounded-2xl border border-clic/40 bg-gradient-to-br from-clic/10 to-transparent p-4">
+      <p className="font-medium">✨ Créer mon relief avec l&apos;IA</p>
+      <p className="mt-1 text-xs text-muted">
+        Décrivez le fond de vos rêves, l&apos;IA le dessine dans vos couleurs.{" "}
+        {unlimited ? "Illimité sur votre compte." : left !== null && left > 0 ? `Il vous reste ${left} création${left > 1 ? "s" : ""}.` : "1 € pour 5 créations."}
+      </p>
+      <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2} maxLength={300}
+        placeholder="Ex. des vagues dorées style art déco, des feuilles d'olivier très discrètes, un ciel étoilé…"
+        className="mt-3 w-full resize-none rounded-xl border border-line bg-cream px-3 py-2.5 text-[15px] outline-none focus:border-ink/60" />
+      <button type="button" onClick={create} disabled={busy || prompt.trim().length < 3}
+        className="mt-2 w-full rounded-full bg-clic py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+        {busy ? "L'IA dessine votre relief…" : "Créer mon relief"}
+      </button>
+      {msg && <p className="mt-2 text-xs">{msg}</p>}
+      {buy && (
+        <button type="button" onClick={purchase} className="mt-2 w-full rounded-full border border-clic py-2.5 text-sm font-medium text-clic">
+          Acheter 5 créations pour 1 €
+        </button>
+      )}
     </div>
   );
 }

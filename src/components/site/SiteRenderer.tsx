@@ -62,7 +62,7 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
   return (
     <div className={cls} style={style}>
       <style>{SITE_CSS}</style>
-      {relief !== "aucun" && <style>{reliefCss(relief)}</style>}
+      {relief !== "aucun" && <style>{reliefCss(relief, content.look?.custom)}</style>}
 
       {/* Navigation */}
       <header className="s-nav">

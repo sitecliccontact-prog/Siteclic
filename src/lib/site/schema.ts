@@ -110,6 +110,8 @@ export const SiteExtrasSchema = z.object({
     accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
     accent2: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
     relief: z.enum(RELIEFS).optional(),
+    /** Relief créé par l'IA à la demande du commerçant (dégradés CSS vérifiés). */
+    custom: z.object({ label: z.string().max(40), image: z.string().max(2000), size: z.string().max(80).optional() }).optional(),
   }).optional(),
   /** Réseaux sociaux, affichés en bas du site. */
   links: z.object({ instagram: z.string().max(200), facebook: z.string().max(200) }).partial().optional(),

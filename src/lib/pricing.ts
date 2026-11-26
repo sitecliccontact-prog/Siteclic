@@ -26,6 +26,9 @@ export const OFFERS = [
 /** Commission SiteClic sur les paiements des réservations (empreinte prélevée ou acompte). */
 export const BOOKING_FEE = 0.02;
 
+/** Relief de fond créé par l'IA : 1 € = 5 créations (coût IA ≈ 1 centime chacune, bien sous 30 centimes par achat). */
+export const RELIEF_PACK = { price: "1 €", cents: 100, tries: 5 };
+
 /** Hébergement pour garder le site en ligne. */
 export const HOSTING = { year: "30 €", yearMonthly: "2,50 €", month: "2,90 €" };
 
