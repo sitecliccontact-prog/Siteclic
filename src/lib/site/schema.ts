@@ -113,6 +113,17 @@ export const SiteExtrasSchema = z.object({
     /** Relief créé par l'IA à la demande du commerçant (dégradés CSS vérifiés). */
     custom: z.object({ label: z.string().max(40), image: z.string().max(2000), size: z.string().max(80).optional() }).optional(),
   }).optional(),
+  /** Avis clients affichés sur le site + lien pour laisser un avis Google. */
+  reviews: z.object({
+    googleUrl: z.string().max(400).default(""),
+    items: z.array(z.object({ name: z.string().max(60), text: z.string().max(400), stars: z.number().int().min(1).max(5) })).max(12).default([]),
+  }).optional(),
+  /** Version anglaise du site (traduite une fois par l'IA, gardée). */
+  translations: z.object({ en: z.unknown().optional(), enAt: z.string().optional() }).optional(),
+  /** Commande à emporter (click & collect). */
+  order: z.object({ enabled: z.boolean(), online: z.boolean().default(false), account: z.string().max(60).optional() }).optional(),
+  /** Cartes cadeaux à acheter en ligne. */
+  gift: z.object({ enabled: z.boolean(), amounts: z.array(z.number().int().min(10).max(500)).max(5).default([30, 50, 100]), account: z.string().max(60).optional() }).optional(),
   /** Réseaux sociaux, affichés en bas du site. */
   links: z.object({ instagram: z.string().max(200), facebook: z.string().max(200) }).partial().optional(),
   /** Vidéo de présentation : celle du commerçant (url) ou, sans url, un petit film animé fait à partir de ses photos. */
@@ -132,7 +143,7 @@ export type SiteExtras = z.infer<typeof SiteExtrasSchema>;
 
 /** Garde les réglages du commerçant quand l'IA réécrit le site. */
 export function keepExtras(from: SiteContent, to: SiteContent): SiteContent {
-  return { ...to, special: from.special, booking: from.booking, assistant: from.assistant, links: from.links, video: from.video, floor: from.floor, look: from.look };
+  return { ...to, special: from.special, booking: from.booking, assistant: from.assistant, links: from.links, video: from.video, floor: from.floor, look: from.look, reviews: from.reviews, translations: from.translations, order: from.order, gift: from.gift };
 }
 
 /** Le formulaire de réservation est-il proposé ? (par défaut : oui si le bouton principal parle de réserver) */
@@ -199,3 +210,11 @@ export function isOwnVideo(url: string) {
 }
 
 export type FloorTable = NonNullable<SiteContent["floor"]>["tables"][number];
+
+/** Prix lu dans le texte de la carte (« 12 € », « 12,50€ », « 9.90 ») → centimes, ou null. */
+export function priceCents(price: string): number | null {
+  const m = price.replace(/\s/g, "").match(/(\d+(?:[.,]\d{1,2})?)/);
+  if (!m) return null;
+  const v = Math.round(parseFloat(m[1].replace(",", ".")) * 100);
+  return v > 0 && v < 100000 ? v : null;
+}

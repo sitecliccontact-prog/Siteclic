@@ -17,7 +17,7 @@ export default async function ReservationsPage() {
 
   const since = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString().slice(0, 10);
   const [{ data: sites }, { data, error }] = await Promise.all([
-    supabase.from("sites").select("id, name"),
+    supabase.from("sites").select("id, name, content"),
     supabase.from("reservations").select("*").gte("day", since).order("day").order("time").limit(300),
   ]);
   // Liens d'agenda (colonne ajoutée par le texte SQL 09 ; sans elle, la carte ne s'affiche pas).
@@ -27,7 +27,12 @@ export default async function ReservationsPage() {
   const h = await headers();
   const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host") ?? "siteclic.vercel.app"}`;
   const names = Object.fromEntries((sites ?? []).map((s) => [s.id, s.name as string]));
-  const list: Resa[] = (data ?? []).map((r) => ({ ...r, status: r.status ?? "nouvelle", site: names[r.site_id] ?? "" }));
+  // Lien « Laisser un avis Google » de chaque site (pour demander un avis après la visite).
+  const reviewUrls = Object.fromEntries((sites ?? []).map((s) => {
+    const u = (s.content as { reviews?: { googleUrl?: string } } | null)?.reviews?.googleUrl ?? "";
+    return [s.id, /^https:\/\/\S+$/.test(u) ? u : ""];
+  }));
+  const list: Resa[] = (data ?? []).map((r) => ({ ...r, status: r.status ?? "nouvelle", site: names[r.site_id] ?? "", review: reviewUrls[r.site_id] || undefined }));
 
   return (
     <main className="min-h-dvh px-5 py-6">
@@ -38,7 +43,7 @@ export default async function ReservationsPage() {
       <section className="rise mx-auto mt-10 max-w-3xl pb-20">
         <p className="text-sm font-medium uppercase tracking-[0.18em] text-clic">Tableau</p>
         <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight">Réservations</h1>
-        <p className="mt-3 text-muted">Les demandes de vos clients, depuis votre site ou votre assistant IA. Confirmez, puis prévenez le client par SMS en un geste.</p>
+        <p className="mt-3 text-muted">Les demandes de vos clients, depuis votre site ou votre assistant IA. Confirmez, prévenez le client par SMS, envoyez le rappel la veille et demandez un avis après sa venue, en un geste.</p>
         {error && (
           <p className="mt-6 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
             Le tableau n&apos;est pas encore activé (code BDD-{error.code}).

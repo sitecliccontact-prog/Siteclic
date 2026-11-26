@@ -25,6 +25,12 @@ const Body = z.object({
       zone: z.string().max(30).default(""),
     })).max(60),
   }).optional(),
+  reviews: z.object({
+    googleUrl: z.string().trim().max(400).refine((u) => !u || /^https:\/\/[^\s]+$/.test(u)),
+    items: z.array(z.object({ name: z.string().trim().min(1).max(60), text: z.string().trim().min(1).max(400), stars: z.number().int().min(1).max(5) })).max(12),
+  }).optional(),
+  order: z.object({ enabled: z.boolean(), online: z.boolean() }).optional(),
+  gift: z.object({ enabled: z.boolean(), amounts: z.array(z.number().int().min(10).max(500)).min(1).max(5) }).optional(),
   video: z.object({
     enabled: z.boolean(),
     url: z.string().max(400).refine((u) => !u || isOwnVideo(u)),
@@ -73,6 +79,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   if (parsed.data.floor) patch.floor = parsed.data.floor;
   if (parsed.data.video) patch.video = parsed.data.video;
+  if (parsed.data.reviews) patch.reviews = parsed.data.reviews;
+  // Commande et cartes cadeaux : le compte Stripe vient du compte vérifié du commerçant, jamais du navigateur.
+  if (parsed.data.order || parsed.data.gift) {
+    const acct = (parsed.data.order?.online || parsed.data.gift?.enabled) ? await ownAccount(user).catch(() => null) : null;
+    if (parsed.data.order) patch.order = { ...parsed.data.order, account: acct?.id };
+    if (parsed.data.gift) patch.gift = { enabled: parsed.data.gift.enabled, amounts: [...new Set(parsed.data.gift.amounts)].sort((a, b) => a - b), account: acct?.id };
+  }
 
   const next = { ...content, ...patch };
   const published = parseStoredContent(row.published_content);
@@ -82,6 +95,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const { error } = await supabase.from("sites").update(update).eq("id", id);
   if (error) return NextResponse.json({ error: "Enregistrement impossible. Réessayez." }, { status: 500 });
-  if (row.status === "en_ligne" && row.slug) revalidatePath(publicPath(row.slug));
+  if (row.status === "en_ligne" && row.slug) {
+    revalidatePath(publicPath(row.slug));
+    revalidatePath(`${publicPath(row.slug)}/en`);
+  }
   return NextResponse.json({ content: next });
 }

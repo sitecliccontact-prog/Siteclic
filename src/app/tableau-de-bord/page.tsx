@@ -108,7 +108,14 @@ export default async function Dashboard() {
         )}
 
         {sites.length > 0 && (
-          <div className="mt-14">
+          <div className="mt-10 flex flex-wrap gap-2 text-sm">
+            <Link href="/tableau-de-bord/reservations" className="rounded-full border border-line bg-card/80 px-4 py-2 hover:border-ink/50">Réservations</Link>
+            <Link href="/tableau-de-bord/commandes" className="rounded-full border border-line bg-card/80 px-4 py-2 hover:border-ink/50">Commandes et cartes cadeaux</Link>
+          </div>
+        )}
+
+        {sites.length > 0 && (
+          <div className="mt-10">
             <h2 className="text-xs font-medium uppercase tracking-[0.18em] text-muted">Vos sites</h2>
             <ul className="mt-4 grid gap-3 sm:grid-cols-2">
               {sites.map((s) => <SiteCard key={s.id} site={s} />)}

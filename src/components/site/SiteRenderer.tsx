@@ -1,9 +1,11 @@
 import type { CSSProperties } from "react";
-import { bookingEnabled, socialUrl, specialIsFresh, type SiteContent } from "@/lib/site/schema";
+import { bookingEnabled, priceCents, socialUrl, specialIsFresh, type SiteContent } from "@/lib/site/schema";
 import { AssistantWidget, AutoFilm, BookingDialog, SiteMotion, SiteVideo } from "./SiteClient";
+import { GiftDialog, OrderDialog, VisitBeacon, type MenuItem } from "./SiteShop";
 import { THEMES } from "./themes";
 import { applyLook, isDark, isHex, reliefCss } from "@/lib/site/colors";
 import { siteFloor } from "@/lib/site/floor";
+import { tr, type Lang } from "@/lib/site/i18n";
 
 /** Garantie de réservation affichée au visiteur (seulement si le restaurant a relié son compte Stripe). */
 function guaranteeOf(c: SiteContent) {
@@ -12,7 +14,8 @@ function guaranteeOf(c: SiteContent) {
 }
 
 /** Affiche le site d'un client à partir de son contenu. */
-export function SiteRenderer({ content, credit = false, slug, siteId }: { content: SiteContent; credit?: boolean; slug?: string; siteId?: string }) {
+export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr" }: { content: SiteContent; credit?: boolean; slug?: string; siteId?: string; lang?: Lang }) {
+  const T = (fr: string) => tr(lang, fr);
   const t = THEMES[content.theme] ?? THEMES.bistrot;
   const c = applyLook(t.colors, content.look);
   const accent2 = isHex(content.look?.accent2) ? content.look.accent2 : "";
@@ -45,6 +48,16 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
   const cats = offer.categories.filter((cat) => cat.items.length);
   const hasOffer = cats.length > 0;
   const hasInfos = hours.length > 0 || contact.address || contact.phone || contact.email;
+  // Commande à emporter : les plats de la carte qui ont un prix.
+  const menuItems: MenuItem[] = offer.categories.flatMap((cat, ci) => cat.items.flatMap((it, ii) => {
+    const price = priceCents(it.price);
+    return price ? [{ key: `${ci}-${ii}`, cat: cat.name, name: it.name, price }] : [];
+  }));
+  const ordering = Boolean(content.order?.enabled && menuItems.length);
+  const orderOnline = Boolean(content.order?.online && content.order?.account);
+  const gift = content.gift?.enabled && content.gift.account ? content.gift : null;
+  const reviews = content.reviews && (content.reviews.items.length || content.reviews.googleUrl) ? content.reviews : null;
+  const hasEn = Boolean(content.translations?.en);
   const cls = [
     "site", t.fontClasses,
     t.btnCaps ? "is-caps" : "", t.ornament ? "is-orn" : "",
@@ -68,10 +81,13 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
       <header className="s-nav">
         <a href="#top" className="s-brand">{brand.name}</a>
         <nav className="s-links">
-          <a href="#maison">La maison</a>
+          <a href="#maison">{T("La maison")}</a>
           {hasOffer && <a href="#offre">{shortTitle(offer.title)}</a>}
-          {hasInfos && <a href="#infos">Infos pratiques</a>}
+          {hasInfos && <a href="#infos">{T("Infos pratiques")}</a>}
         </nav>
+        {hasEn && slug && (
+          <a href={lang === "en" ? `/s/${slug}` : `/s/${slug}/en`} className="s-lang" hrefLang={lang === "en" ? "fr" : "en"}>{lang === "en" ? "FR" : "EN"}</a>
+        )}
         <a href={ctaHref} className="s-btn s-btn-line s-btn-sm">{hero.cta}</a>
       </header>
 
@@ -113,17 +129,17 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
           <div className="s-wrap s-strip-grid">
             {contact.address && (
               <a href={mapsHref} target="_blank" rel="noreferrer" className="s-strip-item">
-                <span>Adresse</span>{contact.address}
+                <span>{T("Adresse")}</span>{contact.address}
               </a>
             )}
             {hours.length > 0 && (
               <a href="#infos" className="s-strip-item">
-                <span>Horaires</span>{hours[0].days} · {hours[0].time}
+                <span>{T("Horaires")}</span>{hours[0].days} · {hours[0].time}
               </a>
             )}
             {contact.phone && (
               <a href={phoneHref} className="s-strip-item">
-                <span>Téléphone</span>{contact.phone}
+                <span>{T("Téléphone")}</span>{contact.phone}
               </a>
             )}
           </div>
@@ -132,17 +148,17 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
 
       {/* Menu du jour */}
       {special && (
-        <section className="s-special" aria-label={special.title}>
+        <section className="s-special" id="menu-du-jour" aria-label={special.title}>
           <div className="s-wrap">
             <div className="s-special-card" data-r>
               <div className="s-special-head">
-                <p className="s-eyebrow"><i className="s-live" aria-hidden />Aujourd&apos;hui · {dayLabel(special.date)}</p>
+                <p className="s-eyebrow"><i className="s-live" aria-hidden />{T("Aujourd'hui")} · {dayLabel(special.date)}</p>
                 <h2 className="s-display s-special-title">{special.title}</h2>
               </div>
               <div className="s-special-text">
                 {special.text.split(/\n+/).filter((l) => l.trim()).map((l, i) => <p key={i}>{l}</p>)}
               </div>
-              {booking && <a href="#reserver" className="s-link">Réserver une table</a>}
+              {booking && <a href="#reserver" className="s-link">{T("Réserver une table")}</a>}
             </div>
           </div>
         </section>
@@ -152,7 +168,7 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
       <section id="maison" className="s-section">
         <div className={`s-wrap s-about ${aboutPhoto ? "with-photo" : ""}`}>
           <div className="s-about-head" data-r>
-            <p className="s-eyebrow">La maison</p>
+            <p className="s-eyebrow">{T("La maison")}</p>
             <h2 className="s-display s-h2">{about.title}</h2>
             {aboutPhoto && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -171,7 +187,7 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
       {content.video?.enabled && (
         <section className="s-film" aria-label="Vidéo de présentation">
           <div className="s-wrap">
-            <p className="s-eyebrow s-film-eyebrow" data-r>En images</p>
+            <p className="s-eyebrow s-film-eyebrow" data-r>{T("En images")}</p>
             <div data-r>
               {content.video.url ? (
                 <SiteVideo src={content.video.url} />
@@ -252,6 +268,37 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
                 </div>
               ))}
             </div>
+            {ordering && (
+              <div className="s-order-cta" data-r>
+                <a href="#commander" className="s-btn">{T("Commander à emporter")}</a>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Avis clients */}
+      {reviews && (
+        <section className="s-section s-reviews" aria-label={T("Ils en parlent")}>
+          <div className="s-wrap">
+            <div className="s-head" data-r>
+              {ornament}
+              <h2 className="s-display s-h2">{T("Ils en parlent")}</h2>
+            </div>
+            {reviews.items.length > 0 && (
+              <div className="s-review-grid">
+                {reviews.items.map((r, i) => (
+                  <figure key={i} className="s-review" data-r style={{ "--d": `${i * 90}ms` } as CSSProperties}>
+                    <span className="s-stars" aria-label={`${r.stars} sur 5`}>{"★".repeat(r.stars)}<i>{"★".repeat(5 - r.stars)}</i></span>
+                    <blockquote className="s-display">« {r.text} »</blockquote>
+                    <figcaption>{r.name}</figcaption>
+                  </figure>
+                ))}
+              </div>
+            )}
+            {reviews.googleUrl && /^https:\/\//.test(reviews.googleUrl) && (
+              <div className="s-order-cta"><a href={reviews.googleUrl} target="_blank" rel="noreferrer" className="s-link">{T("Laisser un avis Google")}</a></div>
+            )}
           </div>
         </section>
       )}
@@ -261,13 +308,13 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
         <section id="infos" className="s-section">
           <div className="s-wrap">
             <div className="s-head s-head-left" data-r>
-              <p className="s-eyebrow">Infos pratiques</p>
-              <h2 className="s-display s-h2">Venir nous voir</h2>
+              <p className="s-eyebrow">{T("Infos pratiques")}</p>
+              <h2 className="s-display s-h2">{T("Venir nous voir")}</h2>
             </div>
             <div className="s-infos" data-r>
               {hours.length > 0 && (
                 <div className="s-info">
-                  <h3 className="s-info-title">Horaires</h3>
+                  <h3 className="s-info-title">{T("Horaires")}</h3>
                   <dl>
                     {hours.map((h, i) => (
                       <div key={i} className="s-hours-row">
@@ -280,14 +327,14 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
               )}
               {contact.address && (
                 <div className="s-info">
-                  <h3 className="s-info-title">Adresse</h3>
+                  <h3 className="s-info-title">{T("Adresse")}</h3>
                   <p className="s-info-big s-display">{contact.address}</p>
-                  {mapsHref && <a href={mapsHref} target="_blank" rel="noreferrer" className="s-link">Itinéraire</a>}
+                  {mapsHref && <a href={mapsHref} target="_blank" rel="noreferrer" className="s-link">{T("Itinéraire")}</a>}
                 </div>
               )}
               {(contact.phone || contact.email) && (
                 <div className="s-info">
-                  <h3 className="s-info-title">Contact</h3>
+                  <h3 className="s-info-title">{T("Contact")}</h3>
                   {contact.phone && <a href={phoneHref} className="s-info-big s-display">{contact.phone}</a>}
                   {contact.email && <a href={`mailto:${contact.email}`} className="s-info-mail">{contact.email}</a>}
                 </div>
@@ -310,6 +357,7 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
           <h2 className="s-display s-h2">{closing.title}</h2>
           {closing.text && <p>{closing.text}</p>}
           <a href={ctaHref} className="s-btn s-btn-inv">{hero.cta}</a>
+          {gift && <a href="#cadeau" className="s-link s-gift-link">{T("Offrir une carte cadeau")}</a>}
         </div>
       </section>
 
@@ -337,13 +385,16 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
       {/* Barre d'action sur téléphone */}
       {(booking || phoneHref || mapsHref) && (
         <div className="s-dock">
-          {booking && <a href="#reserver" className="s-dock-main">Réserver</a>}
-          {phoneHref && <a href={phoneHref} className={booking ? "" : "s-dock-main"}>Appeler</a>}
-          {mapsHref && <a href={mapsHref} target="_blank" rel="noreferrer">Itinéraire</a>}
+          {booking && <a href="#reserver" className="s-dock-main">{T("Réserver")}</a>}
+          {phoneHref && <a href={phoneHref} className={booking ? "" : "s-dock-main"}>{T("Appeler")}</a>}
+          {mapsHref && <a href={mapsHref} target="_blank" rel="noreferrer">{T("Itinéraire")}</a>}
         </div>
       )}
 
       <SiteMotion />
+      <VisitBeacon slug={slug} />
+      {ordering && <OrderDialog slug={slug} brand={brand.name} items={menuItems} online={orderOnline} lang={lang} />}
+      {gift && <GiftDialog slug={slug} brand={brand.name} amounts={gift.amounts} lang={lang} />}
       {(content.assistant?.enabled || booking) && (
         <AssistantWidget slug={slug} siteId={siteId} brand={brand.name} booking={booking} special={Boolean(special)}
           launcher={content.assistant?.enabled ?? false} voiceKind={content.assistant?.voice ?? "femme"} />
@@ -641,6 +692,31 @@ const SITE_CSS = `
 .site.has-grad .s-eyebrow{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
 .site .s-guarantee{display:flex;gap:10px;align-items:flex-start;margin:4px 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);font-size:13px;line-height:1.5;color:var(--muted);text-transform:none;letter-spacing:0}
 .site .s-guarantee b{color:var(--ink)}
+.site .s-lang{font-size:12px;letter-spacing:.14em;font-weight:600;padding:6px 10px;border:1px solid var(--line);border-radius:999px;margin-left:auto;margin-right:10px}
+.site .s-order-cta{display:flex;justify-content:center;margin-top:clamp(32px,5cqi,56px)}
+.site .s-reviews .s-review-grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));margin-top:clamp(32px,5cqi,56px)}
+.site .s-review{margin:0;padding:28px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);display:grid;gap:14px}
+.site .s-review blockquote{margin:0;font-size:clamp(19px,2.2cqi,23px);line-height:1.35}
+.site .s-review figcaption{font-size:13px;color:var(--muted);letter-spacing:.06em}
+.site .s-stars{color:var(--accent);letter-spacing:3px;font-size:15px}
+.site .s-stars i{font-style:normal;opacity:.25}
+.site .s-gift-link{margin-top:22px;color:inherit;display:inline-block}
+.site .s-order-list{display:grid;gap:18px;margin:6px 0 20px;max-height:44vh;overflow:auto;padding-right:4px}
+.site .s-order-cat{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin:0 0 6px;font-weight:600}
+.site .s-order-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.site .s-order-item.on .s-order-name{color:var(--ink);font-weight:600}
+.site .s-order-name{display:grid;font-size:15px;color:var(--ink);text-transform:none;letter-spacing:0}
+.site .s-order-name small{color:var(--muted);font-size:13px}
+.site .s-stepper-sm button{width:34px;height:34px}
+.site .s-stepper-sm output{min-width:26px}
+.site .s-gift-preview{position:relative;aspect-ratio:1.6;border-radius:calc(var(--radius) + 6px);padding:22px;display:grid;align-content:space-between;color:var(--on-accent);background:var(--btn-bg,var(--accent));box-shadow:0 24px 50px -24px color-mix(in srgb,var(--accent) 80%,transparent);margin:4px 0 18px;overflow:hidden}
+.site .s-gift-preview::after{content:"";position:absolute;inset:0;background:radial-gradient(80% 60% at 90% 0%,rgba(255,255,255,.28),transparent 60%)}
+.site .s-gift-preview span{font-size:20px}
+.site .s-gift-preview b{font-size:44px;line-height:1}
+.site .s-gift-preview small{font-size:11px;letter-spacing:.24em;text-transform:uppercase;opacity:.8}
+.site .s-gift-amounts{display:flex;gap:8px;margin-bottom:16px}
+.site .s-gift-amounts button{flex:1;padding:12px 0;border:1px solid var(--line);border-radius:var(--radius);background:transparent;color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+.site .s-gift-amounts button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
 .site .s-floor-zone{position:absolute;left:var(--zx);top:var(--zy);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);opacity:.8;pointer-events:none;white-space:nowrap}
 .site .s-floor-zone.is-out{left:0;right:0;bottom:0;padding:6px 10px;border-top:1px dashed var(--line);background:color-mix(in srgb,var(--accent) 6%,transparent);height:calc(100% - var(--zy))}
 .site .s-floor-legend{display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--muted);text-transform:none;letter-spacing:0}

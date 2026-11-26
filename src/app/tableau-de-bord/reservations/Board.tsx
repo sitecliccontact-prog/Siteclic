@@ -6,17 +6,21 @@ import { celebrate } from "@/components/Celebration";
 export type Resa = {
   id: string; site_id: string; site: string; name: string; phone: string; day: string; time: string;
   people: number; message: string; status: "nouvelle" | "confirmee" | "refusee"; created_at: string; table_label?: string;
-  pay_mode?: string; pay_amount?: number; pay_charged?: number;
+  pay_mode?: string; pay_amount?: number; pay_charged?: number; review?: string;
 };
 
 const fmtDay = (d: string) =>
   new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${d}T12:00:00Z`));
 const tel = (p: string) => p.replace(/[^\d+]/g, "");
+const parisDay = (offset = 0) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(new Date(Date.now() + offset * 86400000));
+const first = (n: string) => n.trim().split(" ")[0];
+const smsLink = (phone: string, body: string) => `sms:${tel(phone)}?&body=${encodeURIComponent(body)}`;
 
 export function Board({ initial, multiSite }: { initial: Resa[]; multiSite: boolean }) {
   const [list, setList] = useState(initial);
   const [err, setErr] = useState("");
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(new Date());
+  const today = parisDay();
+  const tomorrow = parisDay(1);
 
   async function setStatus(r: Resa, status: Resa["status"]) {
     setErr("");
@@ -39,6 +43,7 @@ export function Board({ initial, multiSite }: { initial: Resa[]; multiSite: bool
   const todo = upcoming.filter((r) => r.status === "nouvelle");
   const confirmed = upcoming.filter((r) => r.status === "confirmee");
   const past = list.filter((r) => r.day < today || r.status === "refusee").reverse();
+  const reminders = confirmed.filter((r) => r.day === tomorrow);
 
   return (
     <div className="mt-8 space-y-10">
@@ -48,6 +53,19 @@ export function Board({ initial, multiSite }: { initial: Resa[]; multiSite: bool
         <Stat n={confirmed.filter((r) => r.day === today).reduce((s, r) => s + r.people, 0)} label="couverts ce jour" />
       </div>
       {err && <p className="text-sm text-red-400">{err}</p>}
+      {reminders.length > 0 && (
+        <div className="rounded-2xl border border-clic/40 bg-clic/5 p-4">
+          <p className="font-medium">🔔 Rappels pour demain ({reminders.length})</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">Un petit SMS la veille, et presque plus aucune table vide. Touchez chaque nom : le message est déjà écrit.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {reminders.map((r) => (
+              <a key={r.id} href={smsLink(r.phone, reminderText(r))} className="rounded-full bg-clic px-4 py-2 text-sm font-medium text-white">
+                {r.time.replace(":", "h")} · {first(r.name)}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
       <Group title="À traiter" empty="Aucune nouvelle demande. Elles arrivent ici dès qu'un client réserve." items={todo} multiSite={multiSite} onStatus={setStatus} onRemove={remove} />
       <Group title="Confirmées" empty="Aucune réservation confirmée à venir." items={confirmed} multiSite={multiSite} onStatus={setStatus} onRemove={remove} />
       {past.length > 0 && (
@@ -89,8 +107,17 @@ function Group({ title, empty, items, multiSite, faded, onStatus, onRemove }: Gr
   );
 }
 
+function reminderText(r: Resa) {
+  return `Bonjour ${first(r.name)}, petit rappel : nous vous attendons demain à ${r.time.replace(":", "h")} pour ${r.people} ${r.people > 1 ? "personnes" : "personne"}${r.site ? ` chez ${r.site}` : ""}. En cas d'empêchement, merci de nous prévenir. À demain !`;
+}
+
+function reviewText(r: Resa) {
+  return `Bonjour ${first(r.name)}, merci d'être venu${r.site ? ` chez ${r.site}` : ""} ! Si vous avez passé un bon moment, un petit avis nous aiderait beaucoup : ${r.review} Merci et à bientôt !`;
+}
+
 function Card({ r, multiSite, onStatus, onRemove }: { r: Resa; multiSite: boolean; onStatus: GroupProps["onStatus"]; onRemove: GroupProps["onRemove"] }) {
-  const sms = `Bonjour ${r.name.split(" ")[0]}, votre réservation du ${fmtDay(r.day)} à ${r.time.replace(":", "h")} pour ${r.people} ${r.people > 1 ? "personnes" : "personne"}${r.table_label ? ` (table ${r.table_label})` : ""}${r.site ? ` chez ${r.site}` : ""} est confirmée. À bientôt !`;
+  const today = parisDay();
+  const sms = `Bonjour ${first(r.name)}, votre réservation du ${fmtDay(r.day)} à ${r.time.replace(":", "h")} pour ${r.people} ${r.people > 1 ? "personnes" : "personne"}${r.table_label ? ` (table ${r.table_label})` : ""}${r.site ? ` chez ${r.site}` : ""} est confirmée. À bientôt !`;
   return (
     <li className="rounded-2xl border border-line bg-card p-4">
       <div className="flex items-start gap-4">
@@ -119,8 +146,14 @@ function Card({ r, multiSite, onStatus, onRemove }: { r: Resa; multiSite: boolea
             <button onClick={() => onStatus(r, "refusee")} className="rounded-full border border-line px-4 py-2">Refuser</button>
           </>
         )}
-        {r.status === "confirmee" && (
-          <a href={`sms:${tel(r.phone)}?&body=${encodeURIComponent(sms)}`} className="rounded-full bg-emerald-500/90 px-4 py-2 font-medium text-white">Prévenir par SMS</a>
+        {r.status === "confirmee" && r.day >= today && (
+          <a href={smsLink(r.phone, sms)} className="rounded-full bg-emerald-500/90 px-4 py-2 font-medium text-white">Prévenir par SMS</a>
+        )}
+        {r.status === "confirmee" && r.day === parisDay(1) && (
+          <a href={smsLink(r.phone, reminderText(r))} className="rounded-full border border-clic/60 px-4 py-2 text-clic">Rappel de demain</a>
+        )}
+        {r.status === "confirmee" && r.day < today && r.review && (
+          <a href={smsLink(r.phone, reviewText(r))} className="rounded-full bg-clic px-4 py-2 font-medium text-white">★ Demander un avis</a>
         )}
         <a href={`tel:${tel(r.phone)}`} className="rounded-full border border-line px-4 py-2">Appeler</a>
         {r.pay_mode === "empreinte" && !r.pay_charged && r.status !== "refusee" && <NoShow r={r} />}
