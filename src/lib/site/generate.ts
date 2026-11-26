@@ -127,6 +127,29 @@ export async function generateFromImport(site: ImportedSite, photos: PreparedPho
   return { ...content, photos: [...new Set(content.photos.filter((u) => allowed.has(u)))].slice(0, 7) };
 }
 
+/* ---------- Créer un site à partir de photos (vitrine, carte, plats) ---------- */
+
+export async function generateFromPhotos(urls: string[], note: string): Promise<SiteContent> {
+  const blocks: Anthropic.Beta.Messages.BetaContentBlockParam[] = [];
+  urls.forEach((url, i) => {
+    blocks.push({ type: "text", text: `Photo n°${i + 1} : ${url}` });
+    blocks.push({ type: "image", source: { type: "url", url } });
+  });
+  blocks.push({ type: "text", text: `Voici ${urls.length} photo(s) prises par le commerçant.${note ? `\n\nCe qu'il ajoute : ${note}` : ""}\n\nCrée tout le contenu de son site.` });
+  const content = await ask(
+    SiteContentSchema,
+    `Tu es directeur de création dans une agence web haut de gamme. Un commerçant n'a pas le temps d'écrire : il photographie sa vitrine, sa carte ou son menu, ses produits. Tu lis attentivement chaque photo et tu en fais un site élégant.\n\n${WRITING_RULES}\n\nRègles pour les photos :
+- Lis tout le texte visible : nom de l'enseigne, métier, plats et prix d'une carte ou d'une ardoise, horaires sur la porte, téléphone, adresse, réseaux sociaux. Recopie les prix et horaires exactement.
+- N'invente aucun fait (prix, horaire, adresse, téléphone). Ce qui n'est pas lisible reste vide. Le nom du commerce est celui de l'enseigne ou celui donné par le commerçant.
+- Si la carte ou les prix ne sont pas visibles, fais une offre courte et générale fidèle au métier, sans prix.
+- Photos à afficher sur le site : seulement les belles photos du lieu, de la vitrine, des plats ou des produits, nettes. Jamais une photo de carte, de menu, d'ardoise, de texte ou de prix. Mets en premier la plus belle (elle s'affiche en grand en haut). Recopie les adresses exactement. Tableau vide si aucune ne convient.`,
+    blocks,
+    "high",
+  );
+  const allowed = new Set(urls);
+  return { ...content, photos: content.photos.filter((u) => allowed.has(u)) };
+}
+
 /* ---------- Étape 4 : modifier un site en écrivant à l'IA ---------- */
 
 const EditSchema = z.object({

@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
 import { bookingEnabled, priceCents, socialUrl, specialIsFresh, type SiteContent } from "@/lib/site/schema";
 import { AssistantWidget, AutoFilm, BookingDialog, SiteMotion, SiteVideo } from "./SiteClient";
-import { GiftDialog, OrderDialog, VisitBeacon, type MenuItem } from "./SiteShop";
+import { AddToBasket, GiftDialog, OrderDialog, VisitBeacon, type MenuItem } from "./SiteShop";
+import { AppointmentDialog } from "./SiteBook";
 import { THEMES } from "./themes";
 import { applyLook, isDark, isHex, reliefCss } from "@/lib/site/colors";
 import { siteFloor } from "@/lib/site/floor";
@@ -38,7 +39,17 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
   const gallery = photos.slice(aboutPhoto ? 2 : 1, 8);
   const phoneHref = contact.phone ? `tel:${contact.phone.replace(/[^\d+]/g, "")}` : undefined;
   const booking = bookingEnabled(content);
-  const ctaHref = booking ? "#reserver" : phoneHref ?? "#infos";
+  const appts = content.appointments?.enabled && content.appointments.services.length ? content.appointments : null;
+  const ctaHref = appts ? "#rendez-vous" : booking ? "#reserver" : phoneHref ?? "#infos";
+  // Annonce / fermeture exceptionnelle : affichée jusqu'à la date choisie (incluse).
+  const todayParis = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(new Date());
+  const notice = content.notice?.text && (!content.notice.until || content.notice.until >= todayParis) ? content.notice : null;
+  const shop = content.shop?.enabled ? content.shop : null;
+  const shopItems: MenuItem[] = (shop?.products ?? []).flatMap((p, i) => {
+    const price = priceCents(p.price);
+    return price ? [{ key: `p-${i}`, cat: "", name: p.name, price }] : [];
+  });
+  const loyalty = content.loyalty?.enabled ? content.loyalty : null;
   const special = specialIsFresh(content) ? content.special : null;
   const instagram = socialUrl("instagram", content.links?.instagram);
   const facebook = socialUrl("facebook", content.links?.facebook);
@@ -90,6 +101,10 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
         )}
         <a href={ctaHref} className="s-btn s-btn-line s-btn-sm">{hero.cta}</a>
       </header>
+
+      {notice && (
+        <div className="s-notice" role="status"><span className="s-live" aria-hidden />{notice.text}</div>
+      )}
 
       {/* Accroche */}
       {heroPhoto ? (
@@ -303,6 +318,70 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
         </section>
       )}
 
+      {/* Prise de rendez-vous */}
+      {appts && (
+        <section id="prestations" className="s-section s-rdv">
+          <div className="s-wrap">
+            <div className="s-head" data-r>
+              {ornament}
+              <p className="s-eyebrow">{T("Sur rendez-vous")}</p>
+              <h2 className="s-display s-h2">{T("Nos prestations")}</h2>
+            </div>
+            <ul className="s-rdv-list" data-r>
+              {appts.services.map((sv, i) => (
+                <li key={i}><span className="s-display">{sv.name}</span><small>{sv.minutes} min</small><b>{sv.price}</b></li>
+              ))}
+            </ul>
+            <div className="s-order-cta" data-r><a href="#rendez-vous" className="s-btn">{T("Prendre rendez-vous")}</a></div>
+          </div>
+        </section>
+      )}
+
+      {/* Mini-boutique */}
+      {shop && shopItems.length > 0 && (
+        <section id="la-boutique" className="s-section s-shop">
+          <div className="s-wrap">
+            <div className="s-head" data-r>
+              {ornament}
+              <p className="s-eyebrow">{shop.delivery ? T("Retrait ou livraison") : T("À retirer sur place")}</p>
+              <h2 className="s-display s-h2">{T("La boutique")}</h2>
+            </div>
+            <div className="s-shop-grid">
+              {shop.products.map((p, i) => priceCents(p.price) ? (
+                <article key={i} className="s-product" data-r style={{ "--d": `${(i % 3) * 90}ms` } as CSSProperties}>
+                  {p.photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.photo} alt="" loading="lazy" referrerPolicy="no-referrer" />
+                  ) : <div className="s-product-ph" aria-hidden>{p.name.slice(0, 1)}</div>}
+                  <div className="s-product-body">
+                    <h3 className="s-display">{p.name}</h3>
+                    {p.description && <p>{p.description}</p>}
+                    <div className="s-product-foot"><b>{p.price}</b><AddToBasket itemKey={`p-${i}`} label={T("Ajouter")} /></div>
+                  </div>
+                </article>
+              ) : null)}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Carte de fidélité */}
+      {loyalty && slug && (
+        <section className="s-section s-loyal">
+          <div className="s-wrap">
+            <div className="s-loyal-card" data-r>
+              <div>
+                <p className="s-eyebrow">{T("Carte de fidélité")}</p>
+                <h2 className="s-display s-h2">{loyalty.reward}</h2>
+                <p className="s-loyal-text">{lang === "en" ? `On your ${loyalty.goal}th visit. ` : `À votre ${loyalty.goal}e visite. `}{T("Votre carte reste sur votre téléphone. Un tampon à chaque visite, avec le code donné en caisse.")}</p>
+              </div>
+              <div className="s-loyal-dots" aria-hidden>{Array.from({ length: loyalty.goal }, (_, k) => <i key={k} className={k < 3 ? "on" : ""} />)}</div>
+              <a href={`/s/${slug}/fidelite`} className="s-btn">{T("Ouvrir ma carte")}</a>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Infos pratiques */}
       {hasInfos && (
         <section id="infos" className="s-section">
@@ -394,13 +473,15 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
       <SiteMotion />
       <VisitBeacon slug={slug} />
       {ordering && <OrderDialog slug={slug} brand={brand.name} items={menuItems} online={orderOnline} lang={lang} />}
+      {shop && shopItems.length > 0 && <OrderDialog slug={slug} brand={brand.name} items={shopItems} online={Boolean(shop.account)} lang={lang} shop={{ delivery: shop.delivery, deliveryNote: shop.deliveryNote }} />}
+      {appts && <AppointmentDialog slug={slug} brand={brand.name} appts={appts} />}
       {gift && <GiftDialog slug={slug} brand={brand.name} amounts={gift.amounts} lang={lang} />}
       {(content.assistant?.enabled || booking) && (
         <AssistantWidget slug={slug} siteId={siteId} brand={brand.name} booking={booking} special={Boolean(special)}
           launcher={content.assistant?.enabled ?? false} voiceKind={content.assistant?.voice ?? "femme"} />
       )}
       {booking && <BookingDialog slug={slug} brand={brand.name} phone={contact.phone} phoneHref={phoneHref}
-        floor={siteFloor(content)} guarantee={guaranteeOf(content)} />}
+        floor={siteFloor(content)} guarantee={guaranteeOf(content)} fullDay={content.waitlist?.fullDay || ""} />}
     </div>
   );
 }
@@ -695,6 +776,43 @@ const SITE_CSS = `
 .site .s-lang{font-size:12px;letter-spacing:.14em;font-weight:600;padding:6px 10px;border:1px solid var(--line);border-radius:999px;margin-left:auto;margin-right:10px}
 .site .s-order-cta{display:flex;justify-content:center;margin-top:clamp(32px,5cqi,56px)}
 .site .s-reviews .s-review-grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));margin-top:clamp(32px,5cqi,56px)}
+.site .s-notice{display:flex;align-items:center;justify-content:center;gap:10px;padding:11px 20px;background:var(--accent);color:var(--on-accent);font-size:14px;font-weight:600;text-align:center;line-height:1.4}
+.site .s-notice .s-live{background:currentColor}
+.site .s-rdv-list{list-style:none;margin:clamp(28px,5cqi,48px) auto 0;padding:0;max-width:720px;display:grid}
+.site .s-rdv-list li{display:grid;grid-template-columns:1fr auto auto;align-items:baseline;gap:16px;padding:18px 0;border-bottom:1px solid var(--line)}
+.site .s-rdv-list li span{font-size:clamp(19px,2.4cqi,24px)}
+.site .s-rdv-list small{color:var(--muted);font-size:13px}
+.site .s-rdv-list b{font-weight:600;min-width:56px;text-align:right}
+.site .s-rdv-services{display:grid;gap:8px;margin-bottom:18px}
+.site .s-rdv-svc{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);color:var(--ink);text-align:left;font:inherit;cursor:pointer}
+.site .s-rdv-svc span{display:grid;gap:2px;font-weight:600}.site .s-rdv-svc small{font-weight:400;color:var(--muted);font-size:12px}
+.site .s-rdv-svc.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.site .s-chips,.site .s-slots{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.site .s-chips button,.site .s-slots button{padding:10px 14px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);font:inherit;font-size:14px;cursor:pointer}
+.site .s-slots button{min-width:72px}
+.site .s-chips button.on,.site .s-slots button.on,.site .s-days button.on{background:var(--btn-bg);color:var(--on-accent);border-color:transparent}
+.site .s-slots button:disabled{opacity:.28;text-decoration:line-through;cursor:not-allowed}
+.site .s-days{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:18px;scrollbar-width:none}
+.site .s-days button{flex:0 0 auto;display:grid;justify-items:center;gap:1px;width:62px;padding:10px 0;border:1px solid var(--line);border-radius:var(--radius);background:transparent;color:var(--ink);font:inherit;cursor:pointer}
+.site .s-days small{font-size:11px;text-transform:capitalize;opacity:.75}.site .s-days b{font-size:20px}
+.site .s-seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border:1px solid var(--line);border-radius:999px;margin-bottom:14px}
+.site .s-seg button{padding:10px;border:0;border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:14px;cursor:pointer}
+.site .s-seg button.on{background:var(--btn-bg);color:var(--on-accent)}
+.site .s-shop-grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));margin-top:clamp(28px,5cqi,52px)}
+.site .s-product{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--surface);display:flex;flex-direction:column}
+.site .s-product img,.site .s-product-ph{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+.site .s-product-ph{display:grid;place-items:center;font-family:var(--display),serif;font-size:56px;color:var(--accent);background:linear-gradient(135deg,var(--surface),var(--bg))}
+.site .s-product-body{padding:18px 18px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
+.site .s-product h3{margin:0;font-size:21px}.site .s-product p{margin:0;color:var(--muted);font-size:14px;line-height:1.55}
+.site .s-product-foot{margin-top:auto;padding-top:8px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.site .s-product-foot b{font-size:18px}
+.site .s-loyal-card{display:grid;gap:22px;justify-items:start;padding:clamp(28px,5cqi,48px);border-radius:calc(var(--radius) + 10px);background:var(--band);color:var(--on-band);position:relative;overflow:hidden}
+.site .s-loyal-card::after{content:"";position:absolute;right:-80px;top:-80px;width:260px;height:260px;border-radius:50%;background:var(--accent);opacity:.18;filter:blur(40px)}
+.site .s-loyal-card .s-eyebrow{color:inherit;opacity:.7}.site .s-loyal-card .s-h2{margin:6px 0 0}
+.site .s-loyal-text{margin:10px 0 0;opacity:.75;max-width:46ch;line-height:1.6}
+.site .s-loyal-dots{display:flex;flex-wrap:wrap;gap:10px}
+.site .s-loyal-dots i{width:30px;height:30px;border-radius:50%;border:1.5px dashed currentColor;opacity:.45}
+.site .s-loyal-dots i.on{background:var(--accent);border:0;opacity:1}
 .site .s-review{margin:0;padding:28px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);display:grid;gap:14px}
 .site .s-review blockquote{margin:0;font-size:clamp(19px,2.2cqi,23px);line-height:1.35}
 .site .s-review figcaption{font-size:13px;color:var(--muted);letter-spacing:.06em}

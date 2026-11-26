@@ -134,6 +134,12 @@ export default async function Dashboard() {
             primary
           />
           <ActionCard
+            href="/tableau-de-bord/photo"
+            title="Créer avec une photo"
+            text="Photographiez votre vitrine ou votre carte : l'IA lit tout et crée votre site en une minute."
+            icon="camera"
+          />
+          <ActionCard
             href="/tableau-de-bord/importer"
             title="Importer mon site actuel"
             text="Collez l'adresse de votre site, l'IA en fait une version plus belle et plus moderne."
@@ -207,6 +213,7 @@ function SiteCard({ site: s }: { site: SiteRow }) {
 const ICONS = {
   spark: <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" />,
   import: <><path d="M12 4v11M7 10l5 5 5-5" /><path d="M5 19h14" /></>,
+  camera: <><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></>,
 };
 
 function ActionCard({ title, text, badge, primary, href, icon }: { title: string; text: string; badge?: string; primary?: boolean; href?: string; icon?: keyof typeof ICONS }) {

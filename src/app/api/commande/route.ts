@@ -15,7 +15,10 @@ const Body = z.object({
   phone: z.string().trim().min(6).max(30),
   pickup: z.string().regex(/^[0-2]\d:[0-5]\d$/),
   note: z.string().trim().max(300).default(""),
-  items: z.array(z.object({ key: z.string().regex(/^\d{1,2}-\d{1,3}$/), qty: z.number().int().min(1).max(20) })).min(1).max(40),
+  items: z.array(z.object({ key: z.string().regex(/^(p|\d{1,2})-\d{1,3}$/), qty: z.number().int().min(1).max(20) })).min(1).max(40),
+  /** Boutique : retrait ou livraison (avec adresse). */
+  delivery: z.boolean().default(false),
+  address: z.string().trim().max(200).default(""),
 });
 
 export async function POST(request: Request) {
@@ -23,12 +26,15 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Vérifiez votre nom, votre téléphone et l'heure de retrait." }, { status: 400 });
   const b = parsed.data;
   const site = await getPublishedSite(b.slug);
-  if (!site?.available || !site.content.order?.enabled) return NextResponse.json({ error: "La commande en ligne n'est pas disponible." }, { status: 404 });
+  const shop = site?.content.shop?.enabled ? site.content.shop : null;
+  const fromShop = b.items.some((i) => i.key.startsWith("p-"));
+  if (!site?.available || (fromShop ? !shop : !site.content.order?.enabled)) return NextResponse.json({ error: "La commande en ligne n'est pas disponible." }, { status: 404 });
+  if (b.delivery && (!shop?.delivery || b.address.length < 8)) return NextResponse.json({ error: "Indiquez l'adresse de livraison complète." }, { status: 400 });
 
   const lines: { name: string; qty: number; price: number }[] = [];
   for (const { key, qty } of b.items) {
-    const [ci, ii] = key.split("-").map(Number);
-    const it = site.content.offer.categories[ci]?.items[ii];
+    const [a, n] = key.split("-");
+    const it = a === "p" ? shop?.products[Number(n)] : site.content.offer.categories[Number(a)]?.items[Number(n)];
     const price = it ? priceCents(it.price) : null;
     if (!it || !price) return NextResponse.json({ error: "La carte a changé : rechargez la page." }, { status: 409 });
     lines.push({ name: it.name, qty, price });
@@ -37,7 +43,8 @@ export async function POST(request: Request) {
 
   const supabase = await createClient();
   const { data: orderId, error } = await supabase.rpc("place_order", {
-    p_slug: b.slug, p_name: b.name, p_phone: b.phone, p_pickup: b.pickup, p_items: lines, p_total: total, p_note: b.note,
+    p_slug: b.slug, p_name: b.name, p_phone: b.phone, p_pickup: b.pickup, p_items: lines, p_total: total,
+    p_note: (b.delivery ? `🚚 Livraison : ${b.address}${b.note ? ` · ${b.note}` : ""}` : b.note).slice(0, 300),
   });
   if (error || typeof orderId !== "string") {
     if (error?.message?.includes("commande_trop")) return NextResponse.json({ error: "Beaucoup de commandes aujourd'hui : merci d'appeler directement." }, { status: 429 });
@@ -46,7 +53,8 @@ export async function POST(request: Request) {
   }
 
   // Paiement en ligne si le restaurant l'a activé et que son compte Stripe est prêt.
-  const acct = site.content.order.online ? await shopAccount(site.content.order.account, site.ownerId).catch(() => null) : null;
+  const pay = fromShop ? { online: true, account: shop?.account } : site.content.order;
+  const acct = pay?.online ? await shopAccount(pay.account, site.ownerId).catch(() => null) : null;
   if (!acct) return NextResponse.json({ ok: true });
   try {
     const back = `${new URL(request.url).origin}/s/${b.slug}`;
@@ -56,8 +64,8 @@ export async function POST(request: Request) {
       line_items: lines.map((l) => ({ quantity: l.qty, price_data: { currency: "eur", unit_amount: l.price, product_data: { name: l.name } } })),
       payment_intent_data: { application_fee_amount: Math.round(total * BOOKING_FEE), description: `Commande à emporter · ${b.name} · ${b.pickup}` },
       metadata: { order: orderId, slug: b.slug },
-      success_url: `${back}?commande=ok#commander`,
-      cancel_url: `${back}?commande=annule#commander`,
+      success_url: `${back}?commande=ok${fromShop ? "#boutique" : "#commander"}`,
+      cancel_url: `${back}?commande=annule${fromShop ? "#boutique" : "#commander"}`,
     }, { stripeAccount: acct.id });
     await supabase.rpc("attach_order_payment", { p_order: orderId, p_session: session.id });
     return NextResponse.json({ ok: true, payUrl: session.url });

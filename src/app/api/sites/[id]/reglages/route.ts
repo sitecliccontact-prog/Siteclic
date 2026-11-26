@@ -30,6 +30,26 @@ const Body = z.object({
     items: z.array(z.object({ name: z.string().trim().min(1).max(60), text: z.string().trim().min(1).max(400), stars: z.number().int().min(1).max(5) })).max(12),
   }).optional(),
   order: z.object({ enabled: z.boolean(), online: z.boolean() }).optional(),
+  notice: z.object({ text: z.string().trim().min(1).max(200), until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }).nullable().optional(),
+  loyalty: z.object({ enabled: z.boolean(), goal: z.number().int().min(3).max(20), reward: z.string().trim().min(1).max(80) }).optional(),
+  appointments: z.object({
+    enabled: z.boolean(),
+    staff: z.array(z.string().trim().min(1).max(30)).max(10),
+    services: z.array(z.object({ name: z.string().trim().min(1).max(60), minutes: z.number().int().min(10).max(480), price: z.string().trim().max(20) })).max(30),
+    days: z.array(z.number().int().min(0).max(6)).max(7),
+    open: z.string().regex(/^[0-2]\d:[0-5]\d$/),
+    close: z.string().regex(/^[0-2]\d:[0-5]\d$/),
+  }).optional(),
+  waitlist: z.object({ fullDay: z.string().regex(/^(\d{4}-\d{2}-\d{2})?$/) }).optional(),
+  shop: z.object({
+    enabled: z.boolean(),
+    delivery: z.boolean(),
+    deliveryNote: z.string().trim().max(120),
+    products: z.array(z.object({
+      name: z.string().trim().min(1).max(60), price: z.string().trim().min(1).max(20), description: z.string().trim().max(200),
+      photo: z.string().max(400).refine((u) => !u || isOwnPhotoUrl(u)),
+    })).max(30),
+  }).optional(),
   gift: z.object({ enabled: z.boolean(), amounts: z.array(z.number().int().min(10).max(500)).min(1).max(5) }).optional(),
   video: z.object({
     enabled: z.boolean(),
@@ -37,6 +57,11 @@ const Body = z.object({
     clips: z.array(z.string().max(400).refine(isOwnVideo)).max(5).default([]),
   }).optional(),
 });
+
+/** Photos envoyées par le commerçant (hébergées chez SiteClic). */
+function isOwnPhotoUrl(url: string) {
+  return /^https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/public\/photos\//.test(url);
+}
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -80,6 +105,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (parsed.data.floor) patch.floor = parsed.data.floor;
   if (parsed.data.video) patch.video = parsed.data.video;
   if (parsed.data.reviews) patch.reviews = parsed.data.reviews;
+  if (parsed.data.notice !== undefined) patch.notice = parsed.data.notice;
+  if (parsed.data.loyalty) patch.loyalty = parsed.data.loyalty;
+  if (parsed.data.appointments) patch.appointments = parsed.data.appointments;
+  if (parsed.data.waitlist) patch.waitlist = parsed.data.waitlist;
+  if (parsed.data.shop) {
+    const acct = parsed.data.shop.enabled ? await ownAccount(user).catch(() => null) : null;
+    patch.shop = { ...parsed.data.shop, account: acct?.id };
+  }
   // Commande et cartes cadeaux : le compte Stripe vient du compte vérifié du commerçant, jamais du navigateur.
   if (parsed.data.order || parsed.data.gift) {
     const acct = (parsed.data.order?.online || parsed.data.gift?.enabled) ? await ownAccount(user).catch(() => null) : null;

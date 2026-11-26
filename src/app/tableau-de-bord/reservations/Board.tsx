@@ -5,7 +5,7 @@ import { celebrate } from "@/components/Celebration";
 
 export type Resa = {
   id: string; site_id: string; site: string; name: string; phone: string; day: string; time: string;
-  people: number; message: string; status: "nouvelle" | "confirmee" | "refusee"; created_at: string; table_label?: string;
+  people: number; message: string; status: "nouvelle" | "confirmee" | "refusee" | "attente"; kind?: string; service?: string; duration?: number; created_at: string; table_label?: string;
   pay_mode?: string; pay_amount?: number; pay_charged?: number; review?: string;
 };
 
@@ -44,6 +44,7 @@ export function Board({ initial, multiSite }: { initial: Resa[]; multiSite: bool
   const confirmed = upcoming.filter((r) => r.status === "confirmee");
   const past = list.filter((r) => r.day < today || r.status === "refusee").reverse();
   const reminders = confirmed.filter((r) => r.day === tomorrow);
+  const waiting = list.filter((r) => r.status === "attente" && r.day >= today);
 
   return (
     <div className="mt-8 space-y-10">
@@ -64,6 +65,26 @@ export function Board({ initial, multiSite }: { initial: Resa[]; multiSite: bool
               </a>
             ))}
           </div>
+        </div>
+      )}
+      {waiting.length > 0 && (
+        <div className="rounded-2xl border border-amber-400/40 bg-amber-400/5 p-4">
+          <p className="font-medium">⏳ Liste d&apos;attente ({waiting.length})</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">Une table se libère ? Touchez « Table libre » : le SMS est déjà écrit. Puis « Confirmer » si le client vient.</p>
+          <ul className="mt-3 space-y-2">
+            {waiting.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center gap-2 rounded-xl bg-card px-3 py-2.5 text-sm">
+                <span className="font-medium">{first(r.name)}</span>
+                <span className="text-muted">{r.people} pers. · {r.time.replace(":", "h")}{r.day !== today ? ` · ${fmtDay(r.day)}` : ""}</span>
+                <span className="ml-auto flex gap-1.5">
+                  <a href={smsLink(r.phone, `Bonjour ${first(r.name)}, bonne nouvelle : une table pour ${r.people} vient de se libérer${r.site ? ` chez ${r.site}` : ""} ! Elle vous attend à ${r.time.replace(":", "h")}. Répondez OUI pour la garder.`)}
+                    className="rounded-full bg-clic px-3 py-1.5 font-medium text-white">Table libre</a>
+                  <button onClick={() => setStatus(r, "confirmee")} className="rounded-full border border-line px-3 py-1.5">Confirmer</button>
+                  <button onClick={() => remove(r)} className="px-1.5 text-muted" aria-label="Retirer">✕</button>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
       <Group title="À traiter" empty="Aucune nouvelle demande. Elles arrivent ici dès qu'un client réserve." items={todo} multiSite={multiSite} onStatus={setStatus} onRemove={remove} />
@@ -108,6 +129,7 @@ function Group({ title, empty, items, multiSite, faded, onStatus, onRemove }: Gr
 }
 
 function reminderText(r: Resa) {
+  if (r.kind === "rdv") return `Bonjour ${first(r.name)}, petit rappel : votre rendez-vous${r.service ? ` (${r.service})` : ""} est demain à ${r.time.replace(":", "h")}${r.site ? ` chez ${r.site}` : ""}. En cas d'empêchement, merci de nous prévenir. À demain !`;
   return `Bonjour ${first(r.name)}, petit rappel : nous vous attendons demain à ${r.time.replace(":", "h")} pour ${r.people} ${r.people > 1 ? "personnes" : "personne"}${r.site ? ` chez ${r.site}` : ""}. En cas d'empêchement, merci de nous prévenir. À demain !`;
 }
 
@@ -117,16 +139,19 @@ function reviewText(r: Resa) {
 
 function Card({ r, multiSite, onStatus, onRemove }: { r: Resa; multiSite: boolean; onStatus: GroupProps["onStatus"]; onRemove: GroupProps["onRemove"] }) {
   const today = parisDay();
-  const sms = `Bonjour ${first(r.name)}, votre réservation du ${fmtDay(r.day)} à ${r.time.replace(":", "h")} pour ${r.people} ${r.people > 1 ? "personnes" : "personne"}${r.table_label ? ` (table ${r.table_label})` : ""}${r.site ? ` chez ${r.site}` : ""} est confirmée. À bientôt !`;
+  const sms = r.kind === "rdv"
+    ? `Bonjour ${first(r.name)}, votre rendez-vous${r.service ? ` (${r.service})` : ""} du ${fmtDay(r.day)} à ${r.time.replace(":", "h")}${r.table_label ? ` avec ${r.table_label}` : ""}${r.site ? ` chez ${r.site}` : ""} est confirmé. À bientôt !`
+    : `Bonjour ${first(r.name)}, votre réservation du ${fmtDay(r.day)} à ${r.time.replace(":", "h")} pour ${r.people} ${r.people > 1 ? "personnes" : "personne"}${r.table_label ? ` (table ${r.table_label})` : ""}${r.site ? ` chez ${r.site}` : ""} est confirmée. À bientôt !`;
   return (
     <li className="rounded-2xl border border-line bg-card p-4">
       <div className="flex items-start gap-4">
         <div className="grid h-14 w-16 shrink-0 place-items-center rounded-xl bg-white/5 text-center">
           <span className="font-display text-lg font-semibold leading-none">{r.time.replace(":", "h")}</span>
-          <span className="text-[11px] text-muted">{r.people} pers.</span>
+          <span className="text-[11px] text-muted">{r.kind === "rdv" ? "RDV" : `${r.people} pers.`}</span>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-medium">{r.name}{r.table_label && <span className="ml-2 rounded-full bg-clic/15 px-2 py-0.5 text-xs text-clic">Table {r.table_label}</span>}</p>
+          <p className="font-medium">{r.name}{r.table_label && <span className="ml-2 rounded-full bg-clic/15 px-2 py-0.5 text-xs text-clic">{r.kind === "rdv" ? `Avec ${r.table_label}` : `Table ${r.table_label}`}</span>}</p>
+          {r.kind === "rdv" && r.service && <p className="text-sm text-clic">✂ {r.service}{r.duration ? ` · ${r.duration} min` : ""}</p>}
           <a href={`tel:${tel(r.phone)}`} className="text-sm text-muted underline-offset-4 hover:underline">{r.phone}</a>
           {r.pay_mode === "empreinte" && (
             <p className="mt-1 text-xs text-emerald-300">🔒 Garantie par carte{r.pay_charged ? ` · absence facturée ${euros(r.pay_charged)}` : ""}</p>

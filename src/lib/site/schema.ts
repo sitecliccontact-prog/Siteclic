@@ -124,6 +124,29 @@ export const SiteExtrasSchema = z.object({
   order: z.object({ enabled: z.boolean(), online: z.boolean().default(false), account: z.string().max(60).optional() }).optional(),
   /** Cartes cadeaux à acheter en ligne. */
   gift: z.object({ enabled: z.boolean(), amounts: z.array(z.number().int().min(10).max(500)).max(5).default([30, 50, 100]), account: z.string().max(60).optional() }).optional(),
+  /** Fermeture exceptionnelle ou annonce : bandeau en haut du site (jusqu'à la date indiquée). */
+  notice: z.object({ text: z.string().max(200), until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }).nullable().optional(),
+  /** Carte de fidélité digitale (tampons gardés sur le téléphone du client, validés par le code du jour). */
+  loyalty: z.object({ enabled: z.boolean(), goal: z.number().int().min(3).max(20).default(10), reward: z.string().max(80).default("Un café offert") }).optional(),
+  /** Prise de rendez-vous (coiffeurs, instituts…). */
+  appointments: z.object({
+    enabled: z.boolean(),
+    staff: z.array(z.string().max(30)).max(10).default([]),
+    services: z.array(z.object({ name: z.string().max(60), minutes: z.number().int().min(10).max(480), price: z.string().max(20).default("") })).max(30).default([]),
+    days: z.array(z.number().int().min(0).max(6)).max(7).default([2, 3, 4, 5, 6]),
+    open: z.string().regex(/^[0-2]\d:[0-5]\d$/).default("09:00"),
+    close: z.string().regex(/^[0-2]\d:[0-5]\d$/).default("19:00"),
+  }).optional(),
+  /** Restaurant complet ce jour-là : la réservation devient une liste d'attente. */
+  waitlist: z.object({ fullDay: z.string().max(10).default("") }).optional(),
+  /** Mini-boutique : produits à commander (retrait ou livraison). */
+  shop: z.object({
+    enabled: z.boolean(),
+    delivery: z.boolean().default(false),
+    deliveryNote: z.string().max(120).default(""),
+    account: z.string().max(60).optional(),
+    products: z.array(z.object({ name: z.string().max(60), price: z.string().max(20), description: z.string().max(200).default(""), photo: z.string().max(400).default("") })).max(30).default([]),
+  }).optional(),
   /** Réseaux sociaux, affichés en bas du site. */
   links: z.object({ instagram: z.string().max(200), facebook: z.string().max(200) }).partial().optional(),
   /** Vidéo de présentation : celle du commerçant (url) ou, sans url, un petit film animé fait à partir de ses photos. */
@@ -143,7 +166,7 @@ export type SiteExtras = z.infer<typeof SiteExtrasSchema>;
 
 /** Garde les réglages du commerçant quand l'IA réécrit le site. */
 export function keepExtras(from: SiteContent, to: SiteContent): SiteContent {
-  return { ...to, special: from.special, booking: from.booking, assistant: from.assistant, links: from.links, video: from.video, floor: from.floor, look: from.look, reviews: from.reviews, translations: from.translations, order: from.order, gift: from.gift };
+  return { ...to, special: from.special, booking: from.booking, assistant: from.assistant, links: from.links, video: from.video, floor: from.floor, look: from.look, reviews: from.reviews, translations: from.translations, order: from.order, gift: from.gift, notice: from.notice, loyalty: from.loyalty, appointments: from.appointments, waitlist: from.waitlist, shop: from.shop };
 }
 
 /** Le formulaire de réservation est-il proposé ? (par défaut : oui si le bouton principal parle de réserver) */

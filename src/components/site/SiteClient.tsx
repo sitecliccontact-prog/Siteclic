@@ -96,7 +96,7 @@ function canTalk() {
 }
 
 /** Fenêtre « Réserver une table ». S'ouvre avec tout lien vers #reserver. */
-export function BookingDialog({ slug, brand, phone, phoneHref, floor = [], guarantee = null }: BookingProps) {
+export function BookingDialog({ slug, brand, phone, phoneHref, floor = [], guarantee: pay = null, fullDay = "" }: BookingProps & { fullDay?: string }) {
   const [open, setOpen] = useState(false);
   const [noVoice, setNoVoice] = useState(false);
   const aiOn = useAiOn(slug);
@@ -109,6 +109,9 @@ export function BookingDialog({ slug, brand, phone, phoneHref, floor = [], guara
   const [day, setDay] = useState(today);
   const [time, setTime] = useState("20:00");
   const [table, setTable] = useState("");
+  // Restaurant complet ce jour-là : la demande devient une inscription sur la liste d'attente.
+  const waiting = Boolean(fullDay) && day === fullDay;
+  const guarantee = waiting ? null : pay;
   const [taken, setTaken] = useState<{ time: string; table: string }[]>([]);
   const live = Boolean(slug && !slug.startsWith("exemple-"));
 
@@ -169,14 +172,16 @@ export function BookingDialog({ slug, brand, phone, phoneHref, floor = [], guara
     }
     setBusy(true);
     try {
-      const res = await fetch("/api/reservation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const res = await fetch(waiting ? "/api/attente" : "/api/reservation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "La demande n'est pas passée. Merci d'appeler directement.");
       if (typeof data.payUrl === "string" && data.payUrl.startsWith("https://")) {
         window.location.href = data.payUrl; // page de paiement sécurisée Stripe
         return;
       }
-      setDone(`Merci ${body.name.split(" ")[0]} ! Votre demande${table ? ` pour la table ${table}` : ""} est bien envoyée. ${brand} vous rappelle pour confirmer.`);
+      setDone(waiting
+        ? `Merci ${body.name.split(" ")[0]} ! Vous êtes sur la liste d'attente. ${brand} vous envoie un SMS dès qu'une table se libère.`
+        : `Merci ${body.name.split(" ")[0]} ! Votre demande${table ? ` pour la table ${table}` : ""} est bien envoyée. ${brand} vous rappelle pour confirmer.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "La demande n'est pas passée.");
     } finally {
@@ -228,6 +233,9 @@ export function BookingDialog({ slug, brand, phone, phoneHref, floor = [], guara
                 <label className="s-field"><span>Nom</span><input name="name" autoComplete="name" required maxLength={80} /></label>
                 <label className="s-field"><span>Téléphone</span><input name="phone" type="tel" autoComplete="tel" required minLength={6} maxLength={30} /></label>
                 <label className="s-field"><span>Message <em>(facultatif)</em></span><textarea name="message" rows={2} maxLength={500} placeholder="Terrasse, anniversaire, allergie…" /></label>
+                {waiting && (
+                  <p className="s-guarantee"><i aria-hidden>⏳</i><span><b>Complet ce jour-là.</b> Laissez votre nom et votre numéro : vous êtes prévenu par SMS dès qu&apos;une table se libère.</span></p>
+                )}
                 {error && <p className="s-modal-error" role="alert">{error}</p>}
                 {guarantee && (
                   <p className="s-guarantee">
@@ -237,7 +245,7 @@ export function BookingDialog({ slug, brand, phone, phoneHref, floor = [], guara
                       : <>Pour garantir la table, un <b>acompte de {guarantee.perPerson * people} €</b> ({guarantee.perPerson} € par personne) est demandé. Il est déduit de l&apos;addition.</>}</span>
                   </p>
                 )}
-                <button className="s-btn s-btn-full" disabled={busy}>{busy ? "Envoi…" : guarantee ? "Garantir ma table" : "Envoyer la demande"}</button>
+                <button className="s-btn s-btn-full" disabled={busy}>{busy ? "Envoi…" : waiting ? "Rejoindre la liste d'attente" : guarantee ? "Garantir ma table" : "Envoyer la demande"}</button>
                 <p className="s-modal-note">{guarantee ? "Paiement sécurisé par Stripe. " : ""}Le restaurant vous rappelle pour confirmer.</p>
               </form>
             )}

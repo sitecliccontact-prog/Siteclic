@@ -9,6 +9,7 @@ import { AiOfferCard } from "./AiOfferCard";
 import { GuaranteeCard } from "./GuaranteeCard";
 import { FloorEditor } from "./FloorEditor";
 import { ShopPanel } from "./ShopPanel";
+import { GrowPanel } from "./GrowPanel";
 import { SAMPLE_FLOOR } from "@/lib/site/floor";
 import { speakNatural } from "@/lib/hooks/voice";
 
@@ -261,6 +262,7 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
         <input ref={fileRef} type="file" accept="video/*" hidden onChange={(e) => { void sendVideo(e.target.files?.[0]); e.target.value = ""; }} />
         <input ref={clipRef} type="file" accept="video/*" multiple hidden onChange={(e) => { void sendClips(e.target.files); e.target.value = ""; }} />
       </div>
+      <GrowPanel id={id} content={content} busy={busy !== null} save={(body, ok) => run("notes", body, ok)} />
       <ShopPanel id={id} content={content} busy={busy !== null} onTranslated={onSaved}
         save={(body, ok) => run("notes", body, ok)} />
       {msg && <p className="px-1 text-xs text-muted" role="status">{msg}</p>}

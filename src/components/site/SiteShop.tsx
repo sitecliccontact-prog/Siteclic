@@ -42,8 +42,14 @@ function useOpener(hash: string) {
 }
 
 /** Commande à emporter : le client choisit ses plats, l'heure de retrait, et paie sur place ou en ligne. */
-export function OrderDialog({ slug, brand, items, online, lang }: { slug?: string; brand: string; items: MenuItem[]; online: boolean; lang?: Lang }) {
-  const [open, setOpen] = useOpener("#commander");
+export function OrderDialog({ slug, brand, items, online, lang, shop }: {
+  slug?: string; brand: string; items: MenuItem[]; online: boolean; lang?: Lang;
+  /** Mini-boutique : même fenêtre, ouverte par #boutique, avec retrait ou livraison. */
+  shop?: { delivery: boolean; deliveryNote: string };
+}) {
+  const hash = shop ? "#boutique" : "#commander";
+  const [open, setOpen] = useOpener(hash);
+  const [delivery, setDelivery] = useState(false);
   const [qty, setQty] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState("");
@@ -55,20 +61,33 @@ export function OrderDialog({ slug, brand, items, online, lang }: { slug?: strin
 
   useEffect(() => {
     const back = new URLSearchParams(window.location.search).get("commande");
-    if (!back) return;
+    if (!back || window.location.hash !== hash) return;
     setOpen(true);
     if (back === "ok") setDone(en ? "Thank you! Your order is paid and sent." : `Merci ! Votre commande est payée et envoyée à ${brand}.`);
     else setError(en ? "Payment was cancelled. Your order was not sent." : "Le paiement a été annulé : la commande n'est pas partie. Vous pouvez réessayer.");
-    window.history.replaceState(null, "", window.location.pathname + "#commander");
-  }, [brand, en, setOpen]);
+    window.history.replaceState(null, "", window.location.pathname + hash);
+  }, [brand, en, setOpen, hash]);
+
+  // Boutique : le bouton « Ajouter » d'un produit ouvre le panier avec ce produit.
+  useEffect(() => {
+    if (!shop) return;
+    const add = (e: Event) => {
+      const key = (e as CustomEvent<string>).detail;
+      setQty((q) => ({ ...q, [key]: Math.min(20, (q[key] ?? 0) + 1) }));
+      setOpen(true);
+    };
+    window.addEventListener("siteclic:panier", add);
+    return () => window.removeEventListener("siteclic:panier", add);
+  }, [shop, setOpen]);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!count) return setError(en ? "Choose at least one item." : "Choisissez au moins un plat.");
+    if (!count) return setError(en ? "Choose at least one item." : shop ? "Choisissez au moins un produit." : "Choisissez au moins un plat.");
     const f = new FormData(e.currentTarget);
     const body = {
       slug, name: String(f.get("name") ?? ""), phone: String(f.get("phone") ?? ""), pickup: String(f.get("pickup") ?? ""),
       note: String(f.get("note") ?? ""), items: items.filter((i) => qty[i.key]).map((i) => ({ key: i.key, qty: qty[i.key] })),
+      delivery: Boolean(shop && delivery), address: String(f.get("address") ?? ""),
     };
     setError("");
     if (!slug || slug.startsWith("exemple-")) return setDone(`Ceci est un aperçu : une fois le site en ligne, ${brand} recevra cette commande.`);
@@ -78,7 +97,9 @@ export function OrderDialog({ slug, brand, items, online, lang }: { slug?: strin
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error || "La commande n'est pas passée. Merci d'appeler directement.");
       if (typeof d.payUrl === "string" && d.payUrl.startsWith("https://")) { window.location.href = d.payUrl; return; }
-      setDone(en ? "Thank you! Your order has been sent. Pay when you pick it up." : `Merci ! Votre commande est envoyée. Vous payez sur place en la retirant chez ${brand}.`);
+      setDone(en ? "Thank you! Your order has been sent." : delivery
+        ? `Merci ! Votre commande est envoyée. ${brand} vous appelle pour la livraison.`
+        : `Merci ! Votre commande est envoyée. Vous payez sur place en la retirant chez ${brand}.`);
       setQty({});
     } catch (err) {
       setError(err instanceof Error ? err.message : "La commande n'est pas passée.");
@@ -99,8 +120,8 @@ export function OrderDialog({ slug, brand, items, online, lang }: { slug?: strin
           </div>
         ) : (
           <form onSubmit={submit}>
-            <p className="s-eyebrow">{en ? "Takeaway" : "À emporter"}</p>
-            <h2 className="s-display s-modal-title">{tr(lang, "Commander à emporter")}</h2>
+            <p className="s-eyebrow">{shop ? (en ? "Shop" : "La boutique") : en ? "Takeaway" : "À emporter"}</p>
+            <h2 className="s-display s-modal-title">{shop ? (en ? "Your basket" : "Votre panier") : tr(lang, "Commander à emporter")}</h2>
             <div className="s-order-list">
               {cats.map((c) => (
                 <div key={c}>
@@ -122,13 +143,23 @@ export function OrderDialog({ slug, brand, items, online, lang }: { slug?: strin
               <label className="s-field"><span>{tr(lang, "Nom")}</span><input name="name" autoComplete="name" required maxLength={80} /></label>
               <label className="s-field"><span>{tr(lang, "Téléphone")}</span><input name="phone" type="tel" autoComplete="tel" required minLength={6} maxLength={30} /></label>
             </div>
-            <label className="s-field"><span>{en ? "Pickup time" : "Heure de retrait"}</span><input name="pickup" type="time" required step={900} defaultValue="12:30" /></label>
+            {shop?.delivery && (
+              <div className="s-seg" role="radiogroup" aria-label="Retrait ou livraison">
+                <button type="button" role="radio" aria-checked={!delivery} className={!delivery ? "on" : ""} onClick={() => setDelivery(false)}>{en ? "Pickup" : "Retrait en boutique"}</button>
+                <button type="button" role="radio" aria-checked={delivery} className={delivery ? "on" : ""} onClick={() => setDelivery(true)}>{en ? "Delivery" : "Livraison"}</button>
+              </div>
+            )}
+            {delivery && (
+              <label className="s-field"><span>{en ? "Delivery address" : "Adresse de livraison"}</span><input name="address" required minLength={8} maxLength={200} autoComplete="street-address" />
+                {shop?.deliveryNote && <small className="s-modal-note">{shop.deliveryNote}</small>}</label>
+            )}
+            <label className="s-field"><span>{delivery ? (en ? "Preferred time" : "Heure souhaitée") : en ? "Pickup time" : "Heure de retrait"}</span><input name="pickup" type="time" required step={900} defaultValue={shop ? "17:00" : "12:30"} /></label>
             <label className="s-field"><span>{tr(lang, "Message")} <em>{tr(lang, "(facultatif)")}</em></span><textarea name="note" rows={2} maxLength={300} placeholder={en ? "Allergies, cutlery…" : "Allergies, couverts…"} /></label>
             {error && <p className="s-modal-error" role="alert">{error}</p>}
             <button className="s-btn s-btn-full" disabled={busy || !count}>
               {busy ? tr(lang, "Envoi…") : count ? `${online ? (en ? "Pay" : "Payer") : (en ? "Order" : "Commander")} · ${euro(total)}` : (en ? "Choose your items" : "Choisissez vos plats")}
             </button>
-            <p className="s-modal-note">{online ? (en ? "Secure payment by Stripe." : "Paiement sécurisé par Stripe.") : (en ? "Pay when you pick up your order." : "Vous payez sur place, en retirant votre commande.")}</p>
+            <p className="s-modal-note">{online ? (en ? "Secure payment by Stripe." : "Paiement sécurisé par Stripe.") : (en ? "Pay when you pick up your order." : delivery ? "Vous payez à la livraison." : "Vous payez sur place, en retirant votre commande.")}</p>
           </form>
         )}
       </div>
@@ -193,5 +224,14 @@ export function GiftDialog({ slug, brand, amounts, lang }: { slug?: string; bran
         </form>
       </div>
     </div>
+  );
+}
+
+/** Bouton « Ajouter au panier » d'un produit de la boutique. */
+export function AddToBasket({ itemKey, label }: { itemKey: string; label: string }) {
+  return (
+    <button type="button" className="s-btn s-btn-sm" onClick={() => window.dispatchEvent(new CustomEvent("siteclic:panier", { detail: itemKey }))}>
+      {label}
+    </button>
   );
 }
