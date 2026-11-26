@@ -97,7 +97,7 @@ ${facts(c, load)}
   const response = await client.beta.messages.parse({
     model: "claude-haiku-5-5",
     max_tokens: 3000,
-    output_config: { effort: "medium", format: betaZodOutputFormat(ReplySchema) },
+    output_config: { effort: "low", format: betaZodOutputFormat(ReplySchema) },
     system,
     // La conversation doit commencer par le visiteur.
     messages: history.slice(Math.max(0, history.findIndex((m) => m.role === "user"))).map((m) => ({ role: m.role, content: m.text })),

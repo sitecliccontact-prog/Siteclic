@@ -147,13 +147,16 @@ export async function listenOnce(onDone: (audio: Blob | null) => void, onLevel?:
 }
 
 /** Envoie l'audio à transcrire. Renvoie le texte, ou null si la transcription n'est pas disponible. */
-export async function transcribe(audio: Blob, where: { slug?: string; siteId?: string }): Promise<string | null> {
+/** Texte entendu ; null = transcription indisponible ; false = l'option IA du commerçant n'est plus active. */
+export async function transcribe(audio: Blob, where: { slug?: string; siteId?: string; conv?: string }): Promise<string | null | false> {
   const form = new FormData();
   form.append("audio", audio, "voix");
   if (where.slug) form.append("slug", where.slug);
   if (where.siteId) form.append("siteId", where.siteId);
+  if (where.conv) form.append("conv", where.conv);
   try {
     const res = await fetch("/api/voix/ecouter", { method: "POST", body: form });
+    if (res.status === 402) return false;
     if (!res.ok) return null;
     const d = await res.json();
     return typeof d.text === "string" ? d.text : null;

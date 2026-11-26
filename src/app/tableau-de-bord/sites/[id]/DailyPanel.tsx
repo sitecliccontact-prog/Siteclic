@@ -5,6 +5,7 @@ import { celebrate } from "@/components/Celebration";
 import { useDictation } from "@/lib/hooks/useDictation";
 import { bookingEnabled, specialIsFresh, type SiteContent } from "@/lib/site/schema";
 import { uploadVideo } from "@/lib/site/videos";
+import { AiOfferCard } from "./AiOfferCard";
 import { FloorEditor } from "./FloorEditor";
 import { speakNatural } from "@/lib/hooks/voice";
 
@@ -130,8 +131,9 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
         text="Un bouton « Réserver » sur votre site. Les demandes arrivent dans votre tableau des réservations."
         onToggle={() => run("booking", { booking: { enabled: !booking } }, booking ? "Réservation désactivée." : "Réservation activée ✓")} />
       <Switch title="Assistant IA pour vos clients" on={assistant} disabled={busy !== null}
-        text="Un bouton « Une question ? » sur votre site : l'IA répond à l'écrit ou à l'oral (horaires, carte) et prend les réservations."
+        text="Un bouton « Une question ? » sur votre site : l'IA répond à l'écrit ou à l'oral (horaires, carte) et prend les réservations. Avec l'option Essentiel ou Pro ci-dessous."
         onToggle={() => run("assistant", { assistant: { enabled: !assistant } }, assistant ? "Assistant désactivé." : "Assistant activé ✓ Essayez-le dans « Voir ».")} />
+      {(assistant || booking) && <AiOfferCard id={id} />}
       {(assistant || booking) && (
         <div className="rounded-2xl border border-line bg-card p-4">
           <p className="font-medium">Voix de l&apos;assistant</p>

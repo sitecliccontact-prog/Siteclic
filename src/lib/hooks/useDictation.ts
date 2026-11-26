@@ -89,6 +89,16 @@ export function useDictation(onText: (text: string) => void, onEnd?: (text: stri
     endCb.current?.(last.current);
   }
 
+  /** Fin du tour de parole (mode conversation) : on coupe le micro et on envoie ce qui a été dit. */
+  function endTurn() {
+    pause.current = null;
+    if (!active.current || rec.current === null) return;
+    const cur = rec.current;
+    rec.current = null;
+    cur.abort();
+    finish();
+  }
+
   function session() {
     const Ctor = getRecognition();
     if (!Ctor) return finish();
@@ -107,6 +117,9 @@ export function useDictation(onText: (text: string) => void, onEnd?: (text: stri
       clearPause(); // la personne reprend la parole
       last.current = join(prefix, said);
       cb.current(last.current);
+      // Conversation : le téléphone met parfois très longtemps à dire « fini ».
+      // Nous décidons nous-mêmes : 1,3 s sans nouveau mot = la phrase est finie.
+      if (mode.current === "conversation") pause.current = window.setTimeout(endTurn, 1300);
     };
     r.onerror = (e) => {
       if (e.error === "no-speech" || e.error === "aborted") return;
@@ -119,15 +132,9 @@ export function useDictation(onText: (text: string) => void, onEnd?: (text: stri
       silent.current = heard ? 0 : silent.current + 1;
       if (mode.current === "conversation" && active.current) {
         if (heard) {
-          // Petite pause : on réécoute, et si rien ne vient dans 1,5 s, la phrase est finie.
-          pause.current = window.setTimeout(() => {
-            pause.current = null;
-            if (!active.current || rec.current === null) return;
-            const cur = rec.current;
-            rec.current = null;
-            cur.abort();
-            finish();
-          }, 1500);
+          // Petite pause : on réécoute, et si rien ne vient dans 1,3 s, la phrase est finie.
+          clearPause();
+          pause.current = window.setTimeout(endTurn, 1300);
           window.setTimeout(() => (active.current && rec.current === r ? session() : undefined), 80);
           return;
         }

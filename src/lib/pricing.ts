@@ -25,3 +25,11 @@ export const OFFERS = [
 
 /** Hébergement pour garder le site en ligne. */
 export const HOSTING = { year: "30 €", yearMonthly: "2,50 €", month: "2,90 €" };
+
+/** Option « Assistant IA de réservation », payée au mois par le commerçant (décidée le 26/11).
+    Sans option, ou quand la limite du mois est atteinte, le site garde la réservation classique. */
+export const AI_PLANS = [
+  { id: "essentiel", name: "Essentiel", price: "15 €", quota: 300, note: "Pour un petit commerce" },
+  { id: "pro", name: "Pro", price: "39 €", quota: 1000, note: "Pour les maisons très demandées" },
+] as const;
+export type AiPlanId = (typeof AI_PLANS)[number]["id"];

@@ -59,6 +59,35 @@ export function startAssistantCall() {
   window.dispatchEvent(new Event("siteclic:appel"));
 }
 
+/* Option « Assistant IA » du commerçant : sans option (ou limite du mois atteinte), on garde le formulaire. */
+let aiState: Promise<boolean> | null = null;
+function aiAvailable(slug?: string): Promise<boolean> {
+  if (!slug) return Promise.resolve(true); // aperçu dans l'éditeur : le commerçant peut tester
+  aiState ??= fetch(`/api/assistant/statut?slug=${encodeURIComponent(slug)}`)
+    .then((r) => r.json())
+    .then((d) => d?.ok === true)
+    .catch(() => false);
+  return aiState;
+}
+function markAiOff() {
+  aiState = Promise.resolve(false);
+  window.dispatchEvent(new Event("siteclic:ia-off"));
+}
+function useAiOn(slug?: string) {
+  const [on, setOn] = useState(!slug);
+  useEffect(() => {
+    let alive = true;
+    void aiAvailable(slug).then((v) => alive && setOn(v));
+    const off = () => setOn(false);
+    window.addEventListener("siteclic:ia-off", off);
+    return () => { alive = false; window.removeEventListener("siteclic:ia-off", off); };
+  }, [slug]);
+  return on;
+}
+function newConv() {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 function canTalk() {
   const w = window as unknown as Record<string, unknown>;
   return Boolean((w.SpeechRecognition || w.webkitSpeechRecognition) && "speechSynthesis" in window);
@@ -68,6 +97,7 @@ function canTalk() {
 export function BookingDialog({ slug, brand, phone, phoneHref, floor = [] }: BookingProps) {
   const [open, setOpen] = useState(false);
   const [noVoice, setNoVoice] = useState(false);
+  const aiOn = useAiOn(slug);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState("");
   const [error, setError] = useState("");
@@ -101,8 +131,10 @@ export function BookingDialog({ slug, brand, phone, phoneHref, floor = [] }: Boo
       setOpen(true);
     };
     root.addEventListener("click", onClick);
+    const onOpen = () => setOpen(true);
+    window.addEventListener("siteclic:reserver", onOpen);
     if (window.location.hash === "#reserver") setOpen(true);
-    return () => root.removeEventListener("click", onClick);
+    return () => { root.removeEventListener("click", onClick); window.removeEventListener("siteclic:reserver", onOpen); };
   }, []);
 
   useEffect(() => {
@@ -155,12 +187,14 @@ export function BookingDialog({ slug, brand, phone, phoneHref, floor = [] }: Boo
               <form onSubmit={submit}>
                 <p className="s-eyebrow">Réservation</p>
                 <h2 className="s-display s-modal-title">Réserver une table</h2>
+                {aiOn && (<>
                 <button type="button" className="s-call-cta" onClick={() => { if (canTalk()) { setOpen(false); startAssistantCall(); } else setNoVoice(true); }}>
                   <span className="s-call-cta-icon" aria-hidden><PhoneIcon /></span>
                   <span><b>Réserver en parlant à l&apos;IA</b><small>Notre assistant vous répond à voix haute</small></span>
                 </button>
                 {noVoice && <p className="s-modal-error" role="alert">Votre navigateur ne permet pas de parler à l&apos;assistant. Ouvrez ce site dans Google Chrome, ou remplissez le formulaire ci-dessous.</p>}
                 <p className="s-modal-or"><span>ou remplissez le formulaire</span></p>
+                </>)}
                 <div className="s-field-row">
                   <label className="s-field"><span>Date</span><input name="day" type="date" min={today} value={day} onChange={(e) => { setDay(e.target.value); setTable(""); }} required /></label>
                   <label className="s-field"><span>Heure</span><input name="time" type="time" value={time} onChange={(e) => { setTime(e.target.value); setTable(""); }} step={900} required /></label>
@@ -206,6 +240,8 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
   const end = useRef<HTMLDivElement>(null);
   const voice = useDictation(setText);
   const usedVoice = useRef(false);
+  const aiOn = useAiOn(siteId ? undefined : slug);
+  const conv = useRef("");
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
@@ -253,8 +289,9 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
         return setCall("paused");
       }
       setCall("thinking");
-      const said = await transcribe(audio, { slug: siteId ? undefined : slug, siteId });
+      const said = await transcribe(audio, { slug: siteId ? undefined : slug, siteId, conv: conv.current });
       if (!callOn.current) return;
+      if (said === false) return giveUp("Notre assistant n'est pas disponible pour le moment. Je vous ouvre le formulaire de réservation.");
       if (said === null) { natural.current = false; return listen(); } // transcription indisponible : dictée du téléphone
       if (!said.trim()) return listen();
       misses.current = 0;
@@ -274,13 +311,26 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
     setCall("thinking");
     const next = [...history.current, { role: "user" as const, text: q }];
     setMsgs(next);
-    const { reply, sig } = await ask(next);
+    const { reply, sig, fallback } = await ask(next);
     if (!callOn.current) return;
+    if (fallback) return giveUp(reply);
     setMsgs((m) => [...m, { role: "assistant", text: reply }]);
     talk(reply, sig);
   }
 
+  /** Plus d'assistant (option du commerçant terminée ou limite atteinte) : on passe au formulaire. */
+  function giveUp(message: string) {
+    markAiOff();
+    setCall("speaking");
+    sayAloud(message, () => {
+      hangUp();
+      window.dispatchEvent(new Event("siteclic:reserver"));
+    }, voiceKind);
+  }
+
   async function startCall() {
+    if (!aiOn) return;
+    conv.current = newConv();
     callOn.current = true;
     misses.current = 0;
     setSeconds(0);
@@ -322,19 +372,25 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
 
   useEffect(() => () => { callOn.current = false; stopVoice(); releaseMic(); }, []);
 
-  async function ask(all: Msg[]): Promise<{ reply: string; sig?: string }> {
+  async function ask(all: Msg[]): Promise<{ reply: string; sig?: string; fallback?: boolean }> {
+    if (!conv.current) conv.current = newConv();
     // L'IA reçoit la conversation à partir de la première question du visiteur.
     const first = all.findIndex((m) => m.role === "user");
     try {
       const res = await fetch("/api/assistant", {
+        signal: AbortSignal.timeout?.(25000),
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug: siteId ? undefined : slug, siteId, messages: all.slice(Math.max(first, all.length - 16)) }),
+        body: JSON.stringify({ slug: siteId ? undefined : slug, siteId, conv: conv.current, messages: all.slice(Math.max(first, all.length - 16)) }),
       });
       const data = await res.json().catch(() => ({}));
-      return data.reply ? { reply: data.reply, sig: data.sig } : { reply: data.error || "Je n'ai pas pu répondre. Réessayez dans un instant." };
+      if (data.fallback) {
+        markAiOff();
+        if (booking) window.setTimeout(() => window.dispatchEvent(new Event("siteclic:reserver")), 2500);
+      }
+      return data.reply ? { reply: data.reply, sig: data.sig, fallback: data.fallback === true } : { reply: data.error || "Je n'ai pas pu répondre. Réessayez dans un instant." };
     } catch {
-      return { reply: "Pas de connexion. Réessayez dans un instant." };
+      return { reply: "Pardon, la connexion a coupé. Vous pouvez répéter ?" };
     }
   }
 
@@ -363,7 +419,7 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
 
   return (
     <>
-      {launcher && (
+      {launcher && aiOn && (
       <button type="button" className={`s-ai-launch ${siteId ? "is-preview" : ""}`} onClick={() => setOpen(true)} aria-label="Poser une question">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M4 5h16v11H9l-5 4z" /><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01" />

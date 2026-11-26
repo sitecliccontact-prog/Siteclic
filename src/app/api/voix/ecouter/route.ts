@@ -26,8 +26,16 @@ export async function POST(request: Request) {
   if (!slug.startsWith("exemple-")) {
     const ip = (request.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "inconnu";
     const visitor = createHash("sha256").update(`${ip}|${request.headers.get("user-agent") ?? ""}`).digest("hex").slice(0, 32);
-    const { data: ok, error } = await supabase.rpc("assistant_hit", { p_slug: `voix:${siteId ? `owner:${siteId}` : slug}`, p_visitor: visitor });
-    if (!error && ok === false) return NextResponse.json({ error: "limite" }, { status: 429 });
+    if (siteId) {
+      const { data: ok, error } = await supabase.rpc("assistant_hit", { p_slug: `voix:owner:${siteId}`, p_visitor: visitor });
+      if (!error && ok === false) return NextResponse.json({ error: "limite" }, { status: 429 });
+    } else {
+      // Compté dans la conversation (option payante du commerçant).
+      const conv = String(form?.get("conv") ?? "");
+      const { data: state, error } = await supabase.rpc("assistant_conv", { p_slug: slug, p_conv: conv, p_visitor: visitor, p_kind: "voix" });
+      if (error || state === "off" || state === "quota") return NextResponse.json({ error: "option", fallback: true }, { status: 402 });
+      if (state !== "ok") return NextResponse.json({ error: "limite" }, { status: 429 });
+    }
   }
 
   const type = audio.type || "audio/webm";
