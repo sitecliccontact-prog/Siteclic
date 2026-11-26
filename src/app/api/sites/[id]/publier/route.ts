@@ -5,6 +5,7 @@ import { publicPath, slugify } from "@/lib/site/slug";
 import { requireSubscription } from "@/lib/billing/guard";
 import { verifiedCustomerOf } from "@/lib/billing/stripe";
 import { createClient } from "@/lib/supabase/server";
+import { freePublishAllowed } from "@/lib/app-settings";
 
 type Row = { id: string; name: string; content: unknown; slug: string | null };
 
@@ -18,6 +19,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   // Réservé aux abonnés.
   const blocked = await requireSubscription(user);
   if (blocked) return blocked;
+  // Paiement pas encore ouvert : pas de mise en ligne gratuite (sauf comptes du propriétaire ou s'il l'autorise).
+  if (!(await freePublishAllowed(user))) {
+    return NextResponse.json({ error: "La mise en ligne ouvre très bientôt, avec le paiement en ligne. Votre site est bien enregistré : vous pouvez continuer à le préparer." }, { status: 403 });
+  }
 
   const { data } = await supabase.from("sites").select("id, name, content, slug").eq("id", id).maybeSingle();
   const site = data as Row | null;

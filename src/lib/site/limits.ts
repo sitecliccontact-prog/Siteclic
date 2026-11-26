@@ -1,6 +1,8 @@
 import "server-only";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { cookies, headers } from "next/headers";
 import { billingEnabled, getSubscription } from "@/lib/billing/stripe";
+import { isDisposable } from "@/lib/disposable";
 
 /* Limites d'utilisation de l'IA, pour protéger le crédit IA.
    Le compteur est dans la table ai_usage (supabase/05-limites-ia.sql) : les clients ne peuvent pas l'effacer. */
@@ -65,10 +67,38 @@ export async function consumeAi(supabase: SupabaseClient, user: User, kind: Kind
     const { count } = await supabase.from("sites").select("id", { count: "exact", head: true });
     if ((count ?? 0) >= FREE_SITES) return verdict(kind, false, { total: FREE_SITES + 1, last_day: 0, last_month: 0 });
   }
+  if (isDisposable(user.email ?? "")) return { message: "Les adresses e-mail jetables ne permettent pas l'essai gratuit. Inscrivez-vous avec votre vraie adresse.", subscribe: true };
+  return freeGate(supabase, kind);
+}
+
+/* Essai gratuit : une seule fois par personne (alias Gmail, même téléphone, même connexion Internet), e-mail confirmé,
+   et une dépense IA gratuite maximale par jour (réglable dans « Mes statistiques »). */
+const GATE_MESSAGES: Record<string, Blocked> = {
+  confirmer: { message: "Confirmez d'abord votre adresse e-mail (lien reçu par e-mail, regardez aussi dans les spams).", subscribe: false },
+  essai_ferme: { message: "L'essai gratuit est fermé pour le moment. Choisissez une offre pour continuer avec l'IA.", subscribe: true },
+  deja_utilise: { message: "Cette adresse e-mail a déjà profité de l'essai gratuit. Choisissez une offre pour continuer.", subscribe: true },
+  appareil: { message: "L'essai gratuit a déjà été utilisé sur cet appareil avec un autre compte. Choisissez une offre pour continuer.", subscribe: true },
+  internet: { message: "Trop d'essais gratuits depuis cette connexion aujourd'hui. Réessayez demain ou choisissez une offre.", subscribe: true },
+  budget: { message: "Beaucoup de monde essaie SiteClic aujourd'hui : les essais gratuits reprennent demain. Choisissez une offre pour continuer tout de suite.", subscribe: true },
+};
+
+async function freeGate(supabase: SupabaseClient, kind: Kind): Promise<Blocked | null> {
+  const h = await headers();
+  const ip = (h.get("x-real-ip") ?? h.get("x-forwarded-for")?.split(",")[0] ?? "").trim();
+  const device = (await cookies()).get("sc_dev")?.value ?? null;
+  const limit = kind === "modification" ? FREE_EDITS : FREE_SITES;
+  const gate = await supabase.rpc("free_ai_gate", { p_kind: kind, p_limit: limit, p_device: device, p_ip: ip || null })
+    .single<Counts & { verdict: string }>();
+  if (!gate.error && gate.data) {
+    if (gate.data.verdict === "ok") return null;
+    return GATE_MESSAGES[gate.data.verdict] ?? verdict(kind, false, { ...gate.data, total: limit + 1 });
+  }
+  // Texte SQL 14 pas encore exécuté : ancien compteur.
+  if (gate.error && gate.error.code !== "PGRST202" && gate.error.code !== "42883") console.error("Contrôle essai gratuit", gate.error);
   const { data, error } = await supabase.rpc("record_ai_use", { p_kind: kind }).single<Counts>();
   if (error || !data) {
     console.error("Compteur IA indisponible", error);
     return NOT_READY;
   }
-  return verdict(kind, paying, data);
+  return verdict(kind, false, data);
 }

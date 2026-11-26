@@ -18,6 +18,7 @@ export async function GET(request: Request) {
     voixNaturelle: Boolean(process.env.OPENAI_API_KEY),
     limitesIA: await limitsReady(),
     videosEtAide: await videosReady(),
+    antiAbus: await antiAbusReady(),
   };
   if (new URL(request.url).searchParams.get("test") !== "ia") return NextResponse.json(base);
 
@@ -55,6 +56,17 @@ async function videosReady() {
     const text = await res.text();
     if (/bucket not found/i.test(text)) return "PAS ENCORE FAIT";
     return "OK";
+  } catch {
+    return "inconnu";
+  }
+}
+
+/** Le texte SQL 14 (anti-abus + statistiques) a-t-il été lancé ? */
+async function antiAbusReady() {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("app_settings_get");
+    return error ? "PAS ENCORE FAIT" : "OK";
   } catch {
     return "inconnu";
   }

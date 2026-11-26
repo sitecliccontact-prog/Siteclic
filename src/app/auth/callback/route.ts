@@ -10,6 +10,7 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error) await supabase.rpc("claim_session").then(() => null, () => null);
     if (error && next === "/nouveau-mot-de-passe") {
       return NextResponse.redirect(`${origin}/mot-de-passe-oublie?lien=expire`);
     }

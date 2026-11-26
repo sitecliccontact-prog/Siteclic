@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { supabaseReady } from "@/lib/supabase/config";
+import { isDisposable } from "@/lib/disposable";
 
 type Mode = "connexion" | "inscription";
 
@@ -30,6 +31,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
     const supabase = createClient();
     try {
       if (isSignup) {
+        if (isDisposable(email)) throw new Error("jetable");
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -47,6 +49,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
+      // Cet appareil devient l'un des 2 appareils connectés du compte.
+      await supabase.rpc("claim_session").then(() => null, () => null);
       router.push("/tableau-de-bord");
       router.refresh();
     } catch (err) {
@@ -110,6 +114,7 @@ export function Field({ label, htmlFor, hint, children }: { label: string; htmlF
 }
 
 function translate(msg: string) {
+  if (msg === "jetable") return "Les adresses e-mail jetables ne sont pas acceptées. Utilisez votre vraie adresse.";
   if (/invalid login/i.test(msg)) return "E-mail ou mot de passe incorrect.";
   if (/already registered/i.test(msg)) return "Un compte existe déjà avec cet e-mail.";
   if (/password/i.test(msg)) return "Le mot de passe doit faire au moins 8 caractères.";

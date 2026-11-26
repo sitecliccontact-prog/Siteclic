@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { isTeam } from "@/lib/team";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ManageButton } from "@/components/BillingButtons";
@@ -111,6 +112,7 @@ export default async function Dashboard() {
           <div className="mt-10 flex flex-wrap gap-2 text-sm">
             <Link href="/tableau-de-bord/reservations" className="rounded-full border border-line bg-card/80 px-4 py-2 hover:border-ink/50">Réservations</Link>
             <Link href="/tableau-de-bord/commandes" className="rounded-full border border-line bg-card/80 px-4 py-2 hover:border-ink/50">Commandes et cartes cadeaux</Link>
+            {isTeam(user) && <Link href="/tableau-de-bord/statistiques" className="rounded-full border border-clic/60 bg-clic/10 px-4 py-2 text-ink">📊 Mes statistiques</Link>}
           </div>
         )}
 

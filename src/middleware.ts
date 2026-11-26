@@ -22,11 +22,34 @@ export async function middleware(request: NextRequest) {
   });
 
   const { data: { user } } = await supabase.auth.getUser();
+  const path = request.nextUrl.pathname;
 
-  if (!user && (request.nextUrl.pathname.startsWith("/tableau-de-bord") || request.nextUrl.pathname.startsWith("/abonnement"))) {
+  // Un compte = 2 appareils connectés au maximum : une 3e connexion déconnecte la plus ancienne (anti-partage de compte).
+  if (user && !path.startsWith("/connexion") && !path.startsWith("/auth/")) {
+    const { data: ok, error } = await supabase.rpc("session_ok");
+    if (!error && ok === false) {
+      await supabase.auth.signOut({ scope: "local" });
+      const out = path.startsWith("/api/")
+        ? NextResponse.json({ error: "Votre compte a été ouvert sur un autre appareil. Reconnectez-vous." }, { status: 401 })
+        : NextResponse.redirect(new URL("/connexion?raison=autre-appareil", request.url));
+      response.cookies.getAll().forEach((c) => out.cookies.set(c));
+      return withDevice(request, out);
+    }
+  }
+
+  if (!user && (path.startsWith("/tableau-de-bord") || path.startsWith("/abonnement"))) {
     const url = request.nextUrl.clone();
     url.pathname = "/connexion";
     return NextResponse.redirect(url);
+  }
+  return withDevice(request, response);
+}
+
+/** Petit repère anonyme de l'appareil (pour l'essai gratuit : un seul compte gratuit par appareil). */
+function withDevice(request: NextRequest, response: NextResponse) {
+  if (!request.cookies.get("sc_dev")) {
+    const id = crypto.randomUUID().replace(/-/g, "");
+    response.cookies.set("sc_dev", id, { httpOnly: true, sameSite: "lax", secure: true, maxAge: 60 * 60 * 24 * 730, path: "/" });
   }
   return response;
 }

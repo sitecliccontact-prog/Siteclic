@@ -1,7 +1,8 @@
 import "server-only";
 import { cache } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { ownerIsSubscribed } from "@/lib/billing/stripe";
+import { getAppSettings } from "@/lib/app-settings";
+import { billingEnabled, ownerIsSubscribed } from "@/lib/billing/stripe";
 import { supabaseAnonKey, supabaseUrl } from "@/lib/supabase/config";
 import { SAMPLE_SITES } from "./samples";
 import { parseStoredContent, type SiteContent } from "./schema";
@@ -24,7 +25,8 @@ export const getPublishedSite = cache(async (slug: string): Promise<Published | 
   // Si l'abonnement du commerçant est terminé, le site n'est plus affiché.
   let available = true;
   try {
-    available = await ownerIsSubscribed(data[0].billing_customer, data[0].user_id);
+    // Paiement pas encore ouvert : un site d'un compte gratuit n'est pas affiché (sauf si le propriétaire l'autorise).
+    available = billingEnabled() ? await ownerIsSubscribed(data[0].billing_customer, data[0].user_id) : (await getAppSettings()).free_publish;
     // Sites de l'équipe SiteClic : toujours en ligne.
     if (!available) available = (await supabase.rpc("site_owner_is_team", { p_slug: slug })).data === true;
   } catch (err) {
