@@ -2,18 +2,23 @@ import type { CSSProperties } from "react";
 import { bookingEnabled, socialUrl, specialIsFresh, type SiteContent } from "@/lib/site/schema";
 import { AssistantWidget, AutoFilm, BookingDialog, SiteMotion, SiteVideo } from "./SiteClient";
 import { THEMES } from "./themes";
+import { applyLook, isDark, isHex } from "@/lib/site/colors";
 
 /** Affiche le site d'un client à partir de son contenu. */
 export function SiteRenderer({ content, credit = false, slug, siteId }: { content: SiteContent; credit?: boolean; slug?: string; siteId?: string }) {
   const t = THEMES[content.theme] ?? THEMES.bistrot;
-  const c = t.colors;
+  const c = applyLook(t.colors, content.look);
+  const accent2 = isHex(content.look?.accent2) ? content.look.accent2 : "";
+  const relief = content.look?.relief ?? "aucun";
   const style = {
+    "--accent2": accent2 || c.accent,
+    "--btn-bg": accent2 ? `linear-gradient(120deg, ${c.accent}, ${accent2})` : c.accent,
     "--bg": c.bg, "--surface": c.surface, "--ink": c.ink, "--muted": c.muted, "--line": c.line,
     "--accent": c.accent, "--on-accent": c.onAccent, "--band": c.band, "--on-band": c.onBand,
     "--display": t.display, "--body": t.body,
     "--dw": t.displayWeight, "--dt": t.displayTracking,
     "--radius": t.radius, "--btn-radius": t.btnRadius,
-    background: c.bg, color: c.ink, fontFamily: `${t.body}, system-ui, sans-serif`,
+    backgroundColor: c.bg, color: c.ink, fontFamily: `${t.body}, system-ui, sans-serif`,
   } as CSSProperties;
 
   const { brand, hero, about, highlights, offer, hours, contact, closing } = content;
@@ -38,6 +43,9 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
     t.btnCaps ? "is-caps" : "", t.ornament ? "is-orn" : "",
     t.heroAlign === "center" ? "is-center" : "is-left",
     heroPhoto ? "has-photo" : "no-photo",
+    relief !== "aucun" ? `rl rl-${relief}` : "",
+    isDark(c.bg) ? "is-dark" : "is-light",
+    accent2 ? "has-grad" : "",
   ].join(" ");
 
   const ornament = t.ornament ? (
@@ -364,7 +372,7 @@ const SITE_CSS = `
 .site .s-eyebrow{font-size:11.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--accent);font-weight:600;margin:0 0 22px}
 
 /* Boutons et liens */
-.site .s-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border-radius:var(--btn-radius);background:var(--accent);color:var(--on-accent);font-weight:600;padding:16px 28px;font-size:15px;transition:transform .25s,filter .25s,background .25s,color .25s;white-space:nowrap;border:1px solid var(--accent)}
+.site .s-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border-radius:var(--btn-radius);background:var(--btn-bg,var(--accent));color:var(--on-accent);font-weight:600;padding:16px 28px;font-size:15px;transition:transform .25s,filter .25s,background .25s,color .25s;white-space:nowrap;border:1px solid var(--accent)}
 .site.is-caps .s-btn{text-transform:uppercase;letter-spacing:.16em;font-size:12px;padding:18px 30px}
 .site .s-btn:hover{transform:translateY(-1px);filter:brightness(1.07)}
 .site .s-btn-sm{padding:10px 18px;font-size:13px}
@@ -619,6 +627,18 @@ const SITE_CSS = `
 .site .s-tbl.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent);transform:translate(-50%,-50%) scale(1.08);box-shadow:0 8px 24px color-mix(in srgb,var(--accent) 45%,transparent)}
 .site .s-tbl.busy{cursor:not-allowed;background:repeating-linear-gradient(45deg,var(--surface) 0 5px,color-mix(in srgb,var(--ink) 12%,var(--surface)) 5px 10px);opacity:.7}
 .site .s-tbl.small{cursor:not-allowed;opacity:.35}
+/* Relief du fond (option du commerçant) */
+.site.rl{background-attachment:scroll}
+.site.rl-grain{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.site.rl-lueur{background-image:radial-gradient(60% 45% at 8% 6%,color-mix(in srgb,var(--accent) 22%,transparent),transparent 70%),radial-gradient(55% 45% at 95% 40%,color-mix(in srgb,var(--accent2) 18%,transparent),transparent 70%),radial-gradient(60% 50% at 20% 95%,color-mix(in srgb,var(--accent) 14%,transparent),transparent 70%)}
+.site.rl-points{background-image:radial-gradient(circle at 1px 1px,color-mix(in srgb,var(--ink) 16%,transparent) 1px,transparent 0);background-size:22px 22px}
+.site.rl-ondes{background-image:repeating-radial-gradient(circle at 85% -10%,transparent 0 38px,color-mix(in srgb,var(--accent) 12%,transparent) 38px 39px)}
+.site.rl-profondeur{background-image:radial-gradient(120% 70% at 50% -10%,color-mix(in srgb,var(--ink) 9%,transparent),transparent 60%),radial-gradient(140% 90% at 50% 120%,color-mix(in srgb,#000 35%,transparent),transparent 60%)}
+.site.rl-profondeur img,.site.rl-profondeur .s-card,.site.rl-profondeur iframe{box-shadow:0 30px 60px -30px rgba(0,0,0,.55),0 12px 24px -16px rgba(0,0,0,.35)}
+.site.rl-profondeur .s-btn{box-shadow:0 14px 30px -12px color-mix(in srgb,var(--accent) 70%,transparent),inset 0 1px 0 rgba(255,255,255,.25)}
+.site.rl-marbre{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='turbulence' baseFrequency='.004 .012' numOctaves='4' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 -1.6 1.05'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)' opacity='.16'/%3E%3C/svg%3E");background-size:700px 700px}
+.site.is-dark.rl-marbre{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='turbulence' baseFrequency='.004 .012' numOctaves='4' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 -1.6 1.05'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)' opacity='.16'/%3E%3C/svg%3E"),linear-gradient(transparent,transparent)}
+.site.has-grad .s-eyebrow{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
 .site .s-floor-zone{position:absolute;left:var(--zx);top:var(--zy);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);opacity:.8;pointer-events:none;white-space:nowrap}
 .site .s-floor-zone.is-out{left:0;right:0;bottom:0;padding:6px 10px;border-top:1px dashed var(--line);background:color-mix(in srgb,var(--accent) 6%,transparent);height:calc(100% - var(--zy))}
 .site .s-floor-legend{display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--muted);text-transform:none;letter-spacing:0}

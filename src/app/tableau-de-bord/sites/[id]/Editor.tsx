@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { ColorStudio } from "./ColorStudio";
+import { THEMES } from "@/components/site/themes";
 import { useEffect, useRef, useState } from "react";
 import { PublishButton, type PublishState } from "@/components/PublishButton";
 import { DailyPanel } from "./DailyPanel";
@@ -441,6 +443,11 @@ function ManualPanel({ id, content: c, edit, addPhotos, daily }: ManualProps) {
             </button>
           ))}
         </div>
+      </Block>
+
+      <Block title="Couleurs et relief">
+        <ColorStudio base={THEMES[c.theme]?.colors ?? THEMES.bistrot.colors} look={c.look}
+          onChange={(look) => edit((d) => { d.look = look; })} />
       </Block>
 
       <Block title="Nom et accroche" open>

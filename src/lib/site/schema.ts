@@ -93,6 +93,14 @@ export const SiteExtrasSchema = z.object({
       zone: z.string().max(30).default(""),
     })).max(60),
   }).optional(),
+  /** Couleurs choisies par le commerçant (par-dessus le style) et relief du fond. */
+  look: z.object({
+    bg: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    ink: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    accent2: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    relief: z.enum(["aucun", "grain", "lueur", "points", "ondes", "profondeur", "marbre"]).optional(),
+  }).optional(),
   /** Réseaux sociaux, affichés en bas du site. */
   links: z.object({ instagram: z.string().max(200), facebook: z.string().max(200) }).partial().optional(),
   /** Vidéo de présentation : celle du commerçant (url) ou, sans url, un petit film animé fait à partir de ses photos. */
@@ -112,7 +120,7 @@ export type SiteExtras = z.infer<typeof SiteExtrasSchema>;
 
 /** Garde les réglages du commerçant quand l'IA réécrit le site. */
 export function keepExtras(from: SiteContent, to: SiteContent): SiteContent {
-  return { ...to, special: from.special, booking: from.booking, assistant: from.assistant, links: from.links, video: from.video, floor: from.floor };
+  return { ...to, special: from.special, booking: from.booking, assistant: from.assistant, links: from.links, video: from.video, floor: from.floor, look: from.look };
 }
 
 /** Le formulaire de réservation est-il proposé ? (par défaut : oui si le bouton principal parle de réserver) */
