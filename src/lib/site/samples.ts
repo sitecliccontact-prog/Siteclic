@@ -1,3 +1,4 @@
+import { SAMPLE_FLOOR } from "./floor";
 import type { SiteContent } from "./schema";
 
 // Exemples fictifs, utilisés seulement pour tester l'affichage en développement.
@@ -6,14 +7,7 @@ const restaurant: SiteContent = {
   assistant: { enabled: true, notes: "", voice: "homme" },
   floor: {
     enabled: true,
-    tables: [
-      { id: "t1", label: "T1", seats: 2, x: 14, y: 22, shape: "rond", zone: "Fenêtre" },
-      { id: "t2", label: "T2", seats: 2, x: 14, y: 52, shape: "rond", zone: "Fenêtre" },
-      { id: "t3", label: "T3", seats: 4, x: 40, y: 24, shape: "carre", zone: "" },
-      { id: "t4", label: "T4", seats: 4, x: 40, y: 60, shape: "carre", zone: "" },
-      { id: "t5", label: "T5", seats: 6, x: 70, y: 40, shape: "long", zone: "" },
-      { id: "t6", label: "T6", seats: 2, x: 88, y: 80, shape: "rond", zone: "Terrasse" },
-    ],
+    tables: SAMPLE_FLOOR,
   },
   special: {
     title: "Menu du jour",

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDictation } from "@/lib/hooks/useDictation";
 import { speak as sayAloud, stopSpeaking } from "@/lib/hooks/speak";
 import { listenOnce, naturalVoiceAvailable, releaseMic, speakNatural, stopVoice, transcribe, type Listening } from "@/lib/hooks/voice";
+import { floorZones } from "@/lib/site/floor";
 import type { FloorTable } from "@/lib/site/schema";
 
 /* Parties interactives des sites clients : animations au défilement et formulaire de réservation. */
@@ -623,6 +624,10 @@ function FloorPicker({ tables, people, taken, value, onChange }: { tables: Floor
     <div className="s-field">
       <span>Votre table <em>(facultatif)</em></span>
       <div className="s-floor" role="radiogroup" aria-label="Plan de salle">
+        {floorZones(tables).map((z) => (
+          <span key={z.name} aria-hidden className={`s-floor-zone${z.outside ? " is-out" : ""}`}
+            style={{ "--zx": `${Math.max(2, z.x - 8)}%`, "--zy": `${Math.max(1, z.y - 19)}%` } as React.CSSProperties}>{z.name}</span>
+        ))}
         {tables.map((t) => {
           const busy = taken.includes(t.label);
           const small = t.seats < people;

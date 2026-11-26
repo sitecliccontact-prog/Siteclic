@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isOwnVideo, parseStoredContent, type SiteContent } from "@/lib/site/schema";
+import { SAMPLE_FLOOR } from "@/lib/site/floor";
 import { publicPath } from "@/lib/site/slug";
 import { createClient } from "@/lib/supabase/server";
 
@@ -45,7 +46,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const s = parsed.data.special;
     patch.special = s && s.text ? { title: s.title || "Menu du jour", text: s.text, date: new Date().toISOString() } : null;
   }
-  if (parsed.data.booking) patch.booking = parsed.data.booking;
+  if (parsed.data.booking) {
+    patch.booking = parsed.data.booking;
+    // Première activation : un plan de salle d'exemple, prêt à l'emploi (modifiable ensuite).
+    if (parsed.data.booking.enabled && !content.floor && !parsed.data.floor) patch.floor = { enabled: true, tables: SAMPLE_FLOOR };
+  }
   if (parsed.data.assistant) {
     const a = parsed.data.assistant;
     patch.assistant = {

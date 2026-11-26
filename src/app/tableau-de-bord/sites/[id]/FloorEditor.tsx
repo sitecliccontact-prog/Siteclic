@@ -1,5 +1,7 @@
 "use client";
 
+import { SAMPLE_FLOOR } from "@/lib/site/floor";
+
 import { useRef, useState } from "react";
 import type { FloorTable } from "@/lib/site/schema";
 
@@ -13,14 +15,7 @@ type Props = {
   onSave: (floor: { enabled: boolean; tables: FloorTable[] }) => Promise<void>;
 };
 
-const SAMPLE: FloorTable[] = [
-  { id: "a", label: "T1", seats: 2, x: 14, y: 22, shape: "rond", zone: "Fenêtre" },
-  { id: "b", label: "T2", seats: 2, x: 14, y: 55, shape: "rond", zone: "Fenêtre" },
-  { id: "c", label: "T3", seats: 4, x: 42, y: 25, shape: "carre", zone: "" },
-  { id: "d", label: "T4", seats: 4, x: 42, y: 62, shape: "carre", zone: "" },
-  { id: "e", label: "T5", seats: 6, x: 74, y: 42, shape: "long", zone: "" },
-  { id: "f", label: "T6", seats: 2, x: 86, y: 82, shape: "rond", zone: "Terrasse" },
-];
+const SAMPLE = SAMPLE_FLOOR;
 
 const SIZE: Record<FloorTable["shape"], string> = {
   rond: "w-[15%] aspect-square rounded-full",

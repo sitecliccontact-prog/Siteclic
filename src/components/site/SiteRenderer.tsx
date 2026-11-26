@@ -619,6 +619,8 @@ const SITE_CSS = `
 .site .s-tbl.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent);transform:translate(-50%,-50%) scale(1.08);box-shadow:0 8px 24px color-mix(in srgb,var(--accent) 45%,transparent)}
 .site .s-tbl.busy{cursor:not-allowed;background:repeating-linear-gradient(45deg,var(--surface) 0 5px,color-mix(in srgb,var(--ink) 12%,var(--surface)) 5px 10px);opacity:.7}
 .site .s-tbl.small{cursor:not-allowed;opacity:.35}
+.site .s-floor-zone{position:absolute;left:var(--zx);top:var(--zy);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);opacity:.8;pointer-events:none;white-space:nowrap}
+.site .s-floor-zone.is-out{left:0;right:0;bottom:0;padding:6px 10px;border-top:1px dashed var(--line);background:color-mix(in srgb,var(--accent) 6%,transparent);height:calc(100% - var(--zy))}
 .site .s-floor-legend{display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--muted);text-transform:none;letter-spacing:0}
 .site .s-floor-legend span{display:inline-flex;align-items:center;gap:6px}
 .site .s-floor-legend i{width:10px;height:10px;border-radius:3px;border:1px solid var(--line);background:var(--bg)}

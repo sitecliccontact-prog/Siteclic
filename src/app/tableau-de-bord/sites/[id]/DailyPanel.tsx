@@ -1,12 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { celebrate } from "@/components/Celebration";
 import { useDictation } from "@/lib/hooks/useDictation";
 import { bookingEnabled, specialIsFresh, type SiteContent } from "@/lib/site/schema";
 import { uploadVideo } from "@/lib/site/videos";
 import { AiOfferCard } from "./AiOfferCard";
 import { FloorEditor } from "./FloorEditor";
+import { SAMPLE_FLOOR } from "@/lib/site/floor";
 import { speakNatural } from "@/lib/hooks/voice";
 
 /* Menu du jour + réservations : mis en ligne tout de suite, sans IA (gratuit). */
@@ -74,6 +75,14 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
 
   const [notes, setNotes] = useState(content.assistant?.notes ?? "");
   const notesVoice = useDictation(setNotes);
+  // Réservation déjà active mais jamais de plan de salle : on met un plan d'exemple (modifiable).
+  const autoFloor = useRef(false);
+  useEffect(() => {
+    if (autoFloor.current || !booking || content.floor) return;
+    autoFloor.current = true;
+    void run("floor", { floor: { enabled: true, tables: SAMPLE_FLOOR } }, "Plan de salle d'exemple ajouté ✓ Modifiez-le plus bas.");
+  }); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function run(kind: "menu" | "booking" | "assistant" | "video" | "floor" | "notes", body: object, ok: string) {
     setBusy(kind);
     setMsg("");
@@ -185,7 +194,7 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
         </div>
       )}
       {booking && (
-        <FloorEditor enabled={content.floor?.enabled ?? false} tables={content.floor?.tables ?? []} busy={busy !== null}
+        <FloorEditor key={content.floor?.tables.length ?? 0} enabled={content.floor?.enabled ?? false} tables={content.floor?.tables ?? []} busy={busy !== null}
           onSave={(floor) => run("floor", { floor }, floor.enabled ? "Plan de salle en ligne ✓" : "Plan de salle retiré.")} />
       )}
       <div className="rounded-2xl border border-line bg-card p-4">
