@@ -53,7 +53,8 @@ export function SiteMotion() {
   return <span ref={ref} hidden />;
 }
 
-type BookingProps = { slug?: string; brand: string; phone?: string; phoneHref?: string; floor?: FloorTable[] };
+type Guarantee = { mode: "empreinte" | "acompte"; perPerson: number } | null;
+type BookingProps = { slug?: string; brand: string; phone?: string; phoneHref?: string; floor?: FloorTable[]; guarantee?: Guarantee };
 
 /** Ouvre l'appel vocal avec l'assistant (écouté par AssistantWidget). */
 export function startAssistantCall() {
@@ -95,7 +96,7 @@ function canTalk() {
 }
 
 /** Fenêtre « Réserver une table ». S'ouvre avec tout lien vers #reserver. */
-export function BookingDialog({ slug, brand, phone, phoneHref, floor = [] }: BookingProps) {
+export function BookingDialog({ slug, brand, phone, phoneHref, floor = [], guarantee = null }: BookingProps) {
   const [open, setOpen] = useState(false);
   const [noVoice, setNoVoice] = useState(false);
   const aiOn = useAiOn(slug);
@@ -135,6 +136,14 @@ export function BookingDialog({ slug, brand, phone, phoneHref, floor = [] }: Boo
     const onOpen = () => setOpen(true);
     window.addEventListener("siteclic:reserver", onOpen);
     if (window.location.hash === "#reserver") setOpen(true);
+    // Retour de la page de paiement sécurisée (Stripe).
+    const back = new URLSearchParams(window.location.search).get("paiement");
+    if (back === "ok") setDone(`Merci ! Votre réservation est enregistrée et garantie. ${brand} vous rappelle pour confirmer.`);
+    if (back === "annule") setError("La carte n'a pas été enregistrée : votre demande est envoyée, mais elle n'est pas garantie. Vous pouvez aussi appeler le restaurant.");
+    if (back) {
+      setOpen(true);
+      window.history.replaceState(null, "", window.location.pathname + "#reserver");
+    }
     return () => { root.removeEventListener("click", onClick); window.removeEventListener("siteclic:reserver", onOpen); };
   }, []);
 
@@ -163,6 +172,10 @@ export function BookingDialog({ slug, brand, phone, phoneHref, floor = [] }: Boo
       const res = await fetch("/api/reservation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "La demande n'est pas passée. Merci d'appeler directement.");
+      if (typeof data.payUrl === "string" && data.payUrl.startsWith("https://")) {
+        window.location.href = data.payUrl; // page de paiement sécurisée Stripe
+        return;
+      }
       setDone(`Merci ${body.name.split(" ")[0]} ! Votre demande${table ? ` pour la table ${table}` : ""} est bien envoyée. ${brand} vous rappelle pour confirmer.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "La demande n'est pas passée.");
@@ -216,8 +229,16 @@ export function BookingDialog({ slug, brand, phone, phoneHref, floor = [] }: Boo
                 <label className="s-field"><span>Téléphone</span><input name="phone" type="tel" autoComplete="tel" required minLength={6} maxLength={30} /></label>
                 <label className="s-field"><span>Message <em>(facultatif)</em></span><textarea name="message" rows={2} maxLength={500} placeholder="Terrasse, anniversaire, allergie…" /></label>
                 {error && <p className="s-modal-error" role="alert">{error}</p>}
-                <button className="s-btn s-btn-full" disabled={busy}>{busy ? "Envoi…" : "Envoyer la demande"}</button>
-                <p className="s-modal-note">Le restaurant vous rappelle pour confirmer.</p>
+                {guarantee && (
+                  <p className="s-guarantee">
+                    <span aria-hidden>🔒</span>
+                    <span>{guarantee.mode === "empreinte"
+                      ? <>Pour garantir la table, une <b>empreinte bancaire</b> est demandée : rien n&apos;est débité. En cas d&apos;absence sans prévenir, {guarantee.perPerson} € par personne peuvent être prélevés.</>
+                      : <>Pour garantir la table, un <b>acompte de {guarantee.perPerson * people} €</b> ({guarantee.perPerson} € par personne) est demandé. Il est déduit de l&apos;addition.</>}</span>
+                  </p>
+                )}
+                <button className="s-btn s-btn-full" disabled={busy}>{busy ? "Envoi…" : guarantee ? "Garantir ma table" : "Envoyer la demande"}</button>
+                <p className="s-modal-note">{guarantee ? "Paiement sécurisé par Stripe. " : ""}Le restaurant vous rappelle pour confirmer.</p>
               </form>
             )}
           </div>

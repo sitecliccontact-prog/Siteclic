@@ -6,6 +6,7 @@ import { celebrate } from "@/components/Celebration";
 export type Resa = {
   id: string; site_id: string; site: string; name: string; phone: string; day: string; time: string;
   people: number; message: string; status: "nouvelle" | "confirmee" | "refusee"; created_at: string; table_label?: string;
+  pay_mode?: string; pay_amount?: number; pay_charged?: number;
 };
 
 const fmtDay = (d: string) =>
@@ -100,6 +101,10 @@ function Card({ r, multiSite, onStatus, onRemove }: { r: Resa; multiSite: boolea
         <div className="min-w-0 flex-1">
           <p className="font-medium">{r.name}{r.table_label && <span className="ml-2 rounded-full bg-clic/15 px-2 py-0.5 text-xs text-clic">Table {r.table_label}</span>}</p>
           <a href={`tel:${tel(r.phone)}`} className="text-sm text-muted underline-offset-4 hover:underline">{r.phone}</a>
+          {r.pay_mode === "empreinte" && (
+            <p className="mt-1 text-xs text-emerald-300">🔒 Garantie par carte{r.pay_charged ? ` · absence facturée ${euros(r.pay_charged)}` : ""}</p>
+          )}
+          {r.pay_mode === "acompte" && <p className="mt-1 text-xs text-emerald-300">🔒 Acompte de {euros(r.pay_amount ?? 0)} demandé</p>}
           {(r.message || (multiSite && r.site)) && (
             <p className="mt-1 text-sm text-ink/70">{[multiSite ? r.site : "", r.message].filter(Boolean).join(" · ")}</p>
           )}
@@ -118,8 +123,38 @@ function Card({ r, multiSite, onStatus, onRemove }: { r: Resa; multiSite: boolea
           <a href={`sms:${tel(r.phone)}?&body=${encodeURIComponent(sms)}`} className="rounded-full bg-emerald-500/90 px-4 py-2 font-medium text-white">Prévenir par SMS</a>
         )}
         <a href={`tel:${tel(r.phone)}`} className="rounded-full border border-line px-4 py-2">Appeler</a>
+        {r.pay_mode === "empreinte" && !r.pay_charged && r.status !== "refusee" && <NoShow r={r} />}
         {r.status !== "nouvelle" && <button onClick={() => onRemove(r)} className="ml-auto px-2 py-2 text-muted hover:text-red-400">Supprimer</button>}
       </div>
     </li>
+  );
+}
+
+const euros = (cents: number) => `${(cents / 100).toLocaleString("fr-FR", { maximumFractionDigits: 2 })} €`;
+
+/** Le client n'est pas venu : prélever le montant prévu sur sa carte (2 étapes pour éviter une erreur). */
+function NoShow({ r }: { r: Resa }) {
+  const [step, setStep] = useState<"idle" | "ask" | "busy" | "done">("idle");
+  const [msg, setMsg] = useState("");
+  async function charge() {
+    setStep("busy");
+    setMsg("");
+    const res = await fetch(`/api/reservations/${r.id}/absence`, { method: "POST" }).catch(() => null);
+    const d = await res?.json().catch(() => ({}));
+    if (res?.ok) { setStep("done"); setMsg(`${euros(d.amount)} prélevés ✓`); celebrate("Absence facturée"); }
+    else { setStep("idle"); setMsg(d?.error || "Le prélèvement n'a pas pu être fait."); }
+  }
+  if (step === "done") return <span className="rounded-full bg-emerald-400/10 px-4 py-2 text-emerald-300">{msg}</span>;
+  return (
+    <>
+      {step === "idle" && <button onClick={() => setStep("ask")} className="rounded-full border border-red-400/50 px-4 py-2 text-red-300">Client absent ?</button>}
+      {step !== "idle" && (
+        <button onClick={charge} disabled={step === "busy"} className="rounded-full bg-red-500 px-4 py-2 font-medium text-white disabled:opacity-60">
+          {step === "busy" ? "Prélèvement…" : "Oui, facturer l'absence"}
+        </button>
+      )}
+      {step === "ask" && <button onClick={() => setStep("idle")} className="px-2 py-2 text-muted">Annuler</button>}
+      {msg && <span className="w-full text-xs text-red-400">{msg}</span>}
+    </>
   );
 }

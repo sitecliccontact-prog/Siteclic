@@ -72,7 +72,16 @@ export const SiteExtrasSchema = z.object({
     .nullable()
     .optional(),
   /** Bouton « Réserver une table » avec formulaire. */
-  booking: z.object({ enabled: z.boolean() }).optional(),
+  booking: z.object({
+    enabled: z.boolean(),
+    /** Garantie contre les absences : empreinte bancaire (rien n'est débité) ou acompte, montant par personne en euros.
+        account = compte Stripe du restaurant (vérifié par le serveur). */
+    pay: z.object({
+      mode: z.enum(["aucun", "empreinte", "acompte"]),
+      perPerson: z.number().min(0).max(500),
+      account: z.string().max(60).optional(),
+    }).optional(),
+  }).optional(),
   /** Assistant IA qui répond aux visiteurs (texte et voix). */
   assistant: z.object({
     enabled: z.boolean(),

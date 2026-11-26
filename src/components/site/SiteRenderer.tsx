@@ -5,6 +5,12 @@ import { THEMES } from "./themes";
 import { applyLook, isDark, isHex, reliefCss } from "@/lib/site/colors";
 import { siteFloor } from "@/lib/site/floor";
 
+/** Garantie de réservation affichée au visiteur (seulement si le restaurant a relié son compte Stripe). */
+function guaranteeOf(c: SiteContent) {
+  const p = c.booking?.pay;
+  return p && p.mode !== "aucun" && p.account && p.perPerson > 0 ? { mode: p.mode, perPerson: p.perPerson } : null;
+}
+
 /** Affiche le site d'un client à partir de son contenu. */
 export function SiteRenderer({ content, credit = false, slug, siteId }: { content: SiteContent; credit?: boolean; slug?: string; siteId?: string }) {
   const t = THEMES[content.theme] ?? THEMES.bistrot;
@@ -343,7 +349,7 @@ export function SiteRenderer({ content, credit = false, slug, siteId }: { conten
           launcher={content.assistant?.enabled ?? false} voiceKind={content.assistant?.voice ?? "femme"} />
       )}
       {booking && <BookingDialog slug={slug} brand={brand.name} phone={contact.phone} phoneHref={phoneHref}
-        floor={siteFloor(content)} />}
+        floor={siteFloor(content)} guarantee={guaranteeOf(content)} />}
     </div>
   );
 }
@@ -633,6 +639,8 @@ const SITE_CSS = `
 .site.rl-profondeur img,.site.rl-profondeur .s-card,.site.rl-profondeur iframe{box-shadow:0 30px 60px -30px rgba(0,0,0,.55),0 12px 24px -16px rgba(0,0,0,.35)}
 .site.rl-profondeur .s-btn{box-shadow:0 14px 30px -12px color-mix(in srgb,var(--accent) 70%,transparent),inset 0 1px 0 rgba(255,255,255,.25)}
 .site.has-grad .s-eyebrow{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.site .s-guarantee{display:flex;gap:10px;align-items:flex-start;margin:4px 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);font-size:13px;line-height:1.5;color:var(--muted);text-transform:none;letter-spacing:0}
+.site .s-guarantee b{color:var(--ink)}
 .site .s-floor-zone{position:absolute;left:var(--zx);top:var(--zy);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);opacity:.8;pointer-events:none;white-space:nowrap}
 .site .s-floor-zone.is-out{left:0;right:0;bottom:0;padding:6px 10px;border-top:1px dashed var(--line);background:color-mix(in srgb,var(--accent) 6%,transparent);height:calc(100% - var(--zy))}
 .site .s-floor-legend{display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--muted);text-transform:none;letter-spacing:0}

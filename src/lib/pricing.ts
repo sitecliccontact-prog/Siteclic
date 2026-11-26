@@ -23,6 +23,9 @@ export const OFFERS = [
   },
 ] as const;
 
+/** Commission SiteClic sur les paiements des réservations (empreinte prélevée ou acompte). */
+export const BOOKING_FEE = 0.02;
+
 /** Hébergement pour garder le site en ligne. */
 export const HOSTING = { year: "30 €", yearMonthly: "2,50 €", month: "2,90 €" };
 

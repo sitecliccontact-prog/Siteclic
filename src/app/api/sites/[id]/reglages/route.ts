@@ -1,7 +1,8 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { isOwnVideo, parseStoredContent, type SiteContent } from "@/lib/site/schema";
+import { bookingEnabled, isOwnVideo, parseStoredContent, type SiteContent } from "@/lib/site/schema";
+import { ownAccount } from "@/lib/billing/connect";
 import { SAMPLE_FLOOR } from "@/lib/site/floor";
 import { publicPath } from "@/lib/site/slug";
 import { createClient } from "@/lib/supabase/server";
@@ -11,7 +12,10 @@ import { createClient } from "@/lib/supabase/server";
 
 const Body = z.object({
   special: z.object({ title: z.string().trim().max(80), text: z.string().trim().max(1200) }).nullable().optional(),
-  booking: z.object({ enabled: z.boolean() }).optional(),
+  booking: z.object({
+    enabled: z.boolean().optional(),
+    pay: z.object({ mode: z.enum(["aucun", "empreinte", "acompte"]), perPerson: z.number().min(0).max(500) }).optional(),
+  }).optional(),
   assistant: z.object({ enabled: z.boolean().optional(), notes: z.string().max(3000).optional(), voice: z.enum(["homme", "femme"]).optional() }).optional(),
   floor: z.object({
     enabled: z.boolean(),
@@ -47,9 +51,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     patch.special = s && s.text ? { title: s.title || "Menu du jour", text: s.text, date: new Date().toISOString() } : null;
   }
   if (parsed.data.booking) {
-    patch.booking = parsed.data.booking;
+    const b = parsed.data.booking;
+    const enabled = b.enabled ?? content.booking?.enabled ?? bookingEnabled(content);
+    let pay = content.booking?.pay;
+    if (b.pay) {
+      // Le compte Stripe vient du compte vérifié du commerçant, jamais du navigateur.
+      const acct = b.pay.mode === "aucun" ? null : await ownAccount(user).catch(() => null);
+      pay = { mode: b.pay.mode, perPerson: Math.round(b.pay.perPerson), account: acct?.id };
+    }
+    patch.booking = { enabled, ...(pay ? { pay } : {}) };
     // Première activation : un plan de salle d'exemple, prêt à l'emploi (modifiable ensuite).
-    if (parsed.data.booking.enabled && !content.floor && !parsed.data.floor) patch.floor = { enabled: true, tables: SAMPLE_FLOOR };
+    if (b.enabled && !content.floor && !parsed.data.floor) patch.floor = { enabled: true, tables: SAMPLE_FLOOR };
   }
   if (parsed.data.assistant) {
     const a = parsed.data.assistant;

@@ -6,7 +6,7 @@ import { supabaseAnonKey, supabaseUrl } from "@/lib/supabase/config";
 import { SAMPLE_SITES } from "./samples";
 import { parseStoredContent, type SiteContent } from "./schema";
 
-export type Published = { content: SiteContent; available: boolean };
+export type Published = { content: SiteContent; available: boolean; ownerId?: string };
 
 /** Lit la version publiée d'un site (accessible à tous les visiteurs). */
 export const getPublishedSite = cache(async (slug: string): Promise<Published | null> => {
@@ -30,5 +30,5 @@ export const getPublishedSite = cache(async (slug: string): Promise<Published | 
   } catch (err) {
     console.error("Vérification de l'abonnement impossible", err); // en cas de panne Stripe, on laisse le site visible
   }
-  return { content, available };
+  return { content, available, ownerId: typeof data[0].user_id === "string" ? data[0].user_id : undefined };
 });

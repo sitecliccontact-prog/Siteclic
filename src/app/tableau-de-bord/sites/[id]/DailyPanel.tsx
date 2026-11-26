@@ -6,6 +6,7 @@ import { useDictation } from "@/lib/hooks/useDictation";
 import { bookingEnabled, specialIsFresh, type SiteContent } from "@/lib/site/schema";
 import { uploadVideo } from "@/lib/site/videos";
 import { AiOfferCard } from "./AiOfferCard";
+import { GuaranteeCard } from "./GuaranteeCard";
 import { FloorEditor } from "./FloorEditor";
 import { SAMPLE_FLOOR } from "@/lib/site/floor";
 import { speakNatural } from "@/lib/hooks/voice";
@@ -192,6 +193,10 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
             {busy === "notes" ? "Enregistrement…" : "Enregistrer"}
           </button>
         </div>
+      )}
+      {booking && (
+        <GuaranteeCard id={id} content={content} busy={busy !== null}
+          onSave={(pay) => run("booking", { booking: { pay } }, pay.mode === "aucun" ? "Garantie retirée." : "Garantie des réservations enregistrée ✓")} />
       )}
       {booking && (
         <FloorEditor key={content.floor?.tables.length ?? 0} enabled={content.floor?.enabled ?? false} tables={content.floor?.tables ?? []} busy={busy !== null}
