@@ -30,7 +30,10 @@ function loadVoices(): Promise<SpeechSynthesisVoice[]> {
 function pickVoice(voices: SpeechSynthesisVoice[], kind: VoiceKind) {
   const fr = voices.filter((v) => v.lang.toLowerCase().startsWith("fr"));
   const best = (list: SpeechSynthesisVoice[]) =>
-    list.find((v) => /fr-FR/i.test(v.lang) && /google|natural|premium|enhanced|neural/i.test(v.name)) ??
+    // Les voix en ligne (Google, « Natural », « Premium ») sont bien plus naturelles que les voix intégrées.
+    list.find((v) => /fr-FR/i.test(v.lang) && /natural|neural|premium|enhanced/i.test(v.name)) ??
+    list.find((v) => /fr-FR/i.test(v.lang) && /google/i.test(v.name)) ??
+    list.find((v) => /fr-FR/i.test(v.lang) && !v.localService) ??
     list.find((v) => /fr-FR/i.test(v.lang)) ?? list[0];
   const wanted = kind === "homme" ? fr.filter((v) => MALE.test(v.name) && !FEMALE.test(v.name)) : fr.filter((v) => !MALE.test(v.name));
   const voice = best(wanted) ?? best(fr);
@@ -82,7 +85,7 @@ export function speak(text: string, onDone?: () => void, kind: VoiceKind = "femm
       // Voix d'homme : grave et posée. Si le téléphone n'a qu'une voix de femme, on la rend plus grave.
       // Voix naturelle, sans la rendre artificiellement grave (sinon elle sonne enrouée).
       u.pitch = 1;
-      u.rate = 1.02;
+      u.rate = 1.06;
       let moved = false;
       const go = () => { if (!moved) { moved = true; window.clearTimeout(watch); next(k + 1); } };
       // Minuteur de secours : environ 90 ms par caractère + 2,5 s.

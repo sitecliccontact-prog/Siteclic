@@ -322,9 +322,13 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
     }, (v) => orb.current?.style.setProperty("--lvl", v.toFixed(2))).then((h) => { mic.current = h; });
   }
 
+  // Petites phrases d'attente (« Je regarde ça. ») quand la réponse tarde, comme une vraie personne.
+  const fillers = useRef<{ text: string; sig?: string }[]>([]);
+  const filling = useRef<Promise<void> | null>(null);
+
   function talk(t: string, sig?: string) {
     setCall("speaking");
-    const next = () => { if (callOn.current) window.setTimeout(listen, 300); };
+    const next = () => { if (callOn.current) window.setTimeout(listen, 150); };
     if (natural.current) void speakNatural(t, sig, voiceKind, next);
     else sayAloud(t, next, voiceKind);
   }
@@ -333,7 +337,19 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
     setCall("thinking");
     const next = [...history.current, { role: "user" as const, text: q }];
     setMsgs(next);
-    const { reply, sig, fallback } = await ask(next);
+    filling.current = null;
+    const timer = window.setTimeout(() => {
+      const f = fillers.current[Math.floor(Math.random() * fillers.current.length)];
+      if (!f || !callOn.current) return;
+      filling.current = new Promise<void>((done) => {
+        if (natural.current) void speakNatural(f.text, f.sig, voiceKind, done);
+        else sayAloud(f.text, done, voiceKind);
+      });
+    }, 1600);
+    const { reply, sig, fallback } = await ask(next, true);
+    window.clearTimeout(timer);
+    if (filling.current) await Promise.race([filling.current, new Promise((r) => window.setTimeout(r, 2500))]);
+    filling.current = null;
     if (!callOn.current) return;
     if (fallback) return giveUp(reply);
     setMsgs((m) => [...m, { role: "assistant", text: reply }]);
@@ -362,7 +378,11 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
     let hello = { text: `Bonjour, ${brand}, je vous écoute !`, sig: "" };
     try {
       const r = await fetch("/api/voix/bonjour", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brand: brand.slice(0, 60), booking }) });
-      if (r.ok) hello = await r.json();
+      if (r.ok) {
+        const d = await r.json();
+        hello = { text: d.text, sig: d.sig };
+        fillers.current = Array.isArray(d.fillers) ? d.fillers : [];
+      }
     } catch { /* phrase par défaut */ }
     if (!callOn.current) return;
     setMsgs((m) => [...m, { role: "assistant", text: hello.text }]);
@@ -394,7 +414,7 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
 
   useEffect(() => () => { callOn.current = false; stopVoice(); releaseMic(); }, []);
 
-  async function ask(all: Msg[]): Promise<{ reply: string; sig?: string; fallback?: boolean }> {
+  async function ask(all: Msg[], voiceCall = false): Promise<{ reply: string; sig?: string; fallback?: boolean }> {
     if (!conv.current) conv.current = newConv();
     // L'IA reçoit la conversation à partir de la première question du visiteur.
     const first = all.findIndex((m) => m.role === "user");
@@ -403,7 +423,7 @@ export function AssistantWidget({ slug, siteId, brand, booking, special, launche
         signal: AbortSignal.timeout?.(25000),
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug: siteId ? undefined : slug, siteId, conv: conv.current, messages: all.slice(Math.max(first, all.length - 16)) }),
+        body: JSON.stringify({ slug: siteId ? undefined : slug, siteId, conv: conv.current, voice: voiceCall || undefined, messages: all.slice(Math.max(first, all.length - 16)) }),
       });
       const data = await res.json().catch(() => ({}));
       if (data.fallback) {

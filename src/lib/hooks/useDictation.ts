@@ -119,7 +119,7 @@ export function useDictation(onText: (text: string) => void, onEnd?: (text: stri
       cb.current(last.current);
       // Conversation : le téléphone met parfois très longtemps à dire « fini ».
       // Nous décidons nous-mêmes : 1,3 s sans nouveau mot = la phrase est finie.
-      if (mode.current === "conversation") pause.current = window.setTimeout(endTurn, 1300);
+      if (mode.current === "conversation") pause.current = window.setTimeout(endTurn, 1000);
     };
     r.onerror = (e) => {
       if (e.error === "no-speech" || e.error === "aborted") return;
@@ -134,7 +134,7 @@ export function useDictation(onText: (text: string) => void, onEnd?: (text: stri
         if (heard) {
           // Petite pause : on réécoute, et si rien ne vient dans 1,3 s, la phrase est finie.
           clearPause();
-          pause.current = window.setTimeout(endTurn, 1300);
+          pause.current = window.setTimeout(endTurn, 1000);
           window.setTimeout(() => (active.current && rec.current === r ? session() : undefined), 80);
           return;
         }

@@ -16,5 +16,7 @@ export async function POST(request: Request) {
     ? [`${salut}, ${brand}, je vous écoute !`, `${brand}, ${salut.toLowerCase()} ! C'est pour une réservation ?`, `${salut} et bienvenue chez ${brand} ! Qu'est-ce que je peux faire pour vous ?`]
     : [`${salut}, ${brand}, je vous écoute !`, `${brand}, ${salut.toLowerCase()} ! Qu'est-ce que je peux faire pour vous ?`];
   const text = list[Math.floor(Math.random() * list.length)];
-  return NextResponse.json({ text, sig: signVoice(text), voice: voiceEnabled() });
+  // Petites phrases d'attente, dites si la réponse met plus d'une seconde et demie (comme au téléphone).
+  const fillers = ["Je regarde ça.", "Un instant, je vérifie.", "D'accord, je regarde.", "Très bien, une seconde."].map((t) => ({ text: t, sig: signVoice(t) }));
+  return NextResponse.json({ text, sig: signVoice(text), voice: voiceEnabled(), fillers });
 }

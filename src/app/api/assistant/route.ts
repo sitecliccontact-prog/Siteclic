@@ -22,6 +22,8 @@ const Body = z.object({
   siteId: z.string().uuid().optional(),
   /** Identifiant de la conversation (compté une fois par mois dans l'option du commerçant). */
   conv: z.string().min(8).max(64).optional(),
+  /** Appel vocal : réponses très courtes. */
+  voice: z.boolean().optional(),
   messages: z.array(z.object({ role: z.enum(["user", "assistant"]), text: z.string().trim().min(1).max(1200) })).min(1).max(16),
 });
 
@@ -33,7 +35,7 @@ export async function POST(request: Request) {
   if (!parsed.success || parsed.data.messages.at(-1)?.role !== "user") {
     return out({ error: "Message invalide." }, { status: 400 });
   }
-  const { slug, siteId, conv, messages } = parsed.data;
+  const { slug, siteId, conv, messages, voice } = parsed.data;
   const supabase = await createClient();
 
   let content: SiteContent | null = null;
@@ -85,7 +87,7 @@ export async function POST(request: Request) {
 
   try {
     const load = liveSlug ? await upcomingLoad(supabase, liveSlug) : [];
-    const { reply, reservation } = await assistantReply(content, messages, load);
+    const { reply, reservation } = await assistantReply(content, messages, load, voice === true);
     if (!reservation) return out({ reply, booked: false });
     if (!liveSlug) {
       return out({ reply: `${reply} (Aperçu : sur votre site en ligne, cette réservation arrivera dans votre tableau.)`, booked: false });

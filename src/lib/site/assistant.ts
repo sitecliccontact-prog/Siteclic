@@ -54,7 +54,7 @@ function facts(c: SiteContent, load: Load[]) {
   });
 }
 
-export async function assistantReply(c: SiteContent, history: ChatMessage[], load: Load[] = []) {
+export async function assistantReply(c: SiteContent, history: ChatMessage[], load: Load[] = [], voice = false) {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error("no-key");
   const today = parisToday();
   const booking = bookingEnabled(c);
@@ -89,6 +89,11 @@ ${floor ? "- Il y a un plan de salle : propose une table libre qui convient au n
   : `
 - Il n'y a pas de réservation en ligne : pour réserver ou commander, propose d'appeler${phone}.`}
 
+${voice ? `Appel vocal (le visiteur t'entend, comme au téléphone) :
+- Réponds en 1 ou 2 phrases courtes maximum, naturelles, sans liste, sans emoji, sans abréviation.
+- Dis les heures et les prix comme on les prononce (« vingt heures trente », « dix-huit euros »).
+- Une seule question à la fois.
+` : ""}
 <informations_de_la_maison>
 ${facts(c, load)}
 </informations_de_la_maison>`;
@@ -96,7 +101,7 @@ ${facts(c, load)}
   const client = new Anthropic();
   const response = await client.beta.messages.parse({
     model: "claude-haiku-5-5",
-    max_tokens: 3000,
+    max_tokens: voice ? 900 : 3000,
     output_config: { effort: "low", format: betaZodOutputFormat(ReplySchema) },
     system,
     // La conversation doit commencer par le visiteur.
