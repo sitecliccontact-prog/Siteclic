@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { HtmlLang } from "@/components/site/HtmlLang";
 import { SiteRenderer } from "@/components/site/SiteRenderer";
 import { getPublishedSite } from "@/lib/site/published";
 import { englishContent } from "@/lib/site/translate";
@@ -26,5 +27,5 @@ export default async function EnglishSite({ params }: Props) {
   const site = await getPublishedSite(slug);
   const en = site?.available ? englishContent(site.content) : null;
   if (!en) notFound();
-  return <SiteRenderer content={en} credit slug={slug} lang="en" />;
+  return <><HtmlLang lang="en" /><SiteRenderer content={en} credit slug={slug} lang="en" /></>;
 }

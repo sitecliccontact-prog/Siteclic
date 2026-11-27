@@ -7,6 +7,7 @@ export const OFFERS = [
     id: "site",
     name: "Un site",
     price: "20 €",
+    cents: 2000,
     unit: "paiement unique",
     note: "",
     features: ["Créé ou repris de votre site actuel par l'IA", `${EDITS_PER_SITE} modifications par l'IA incluses`, "Mise en ligne en un clic"],
@@ -16,6 +17,7 @@ export const OFFERS = [
     id: "pack5",
     name: "Pack 5 sites",
     price: "50 €",
+    cents: 5000,
     unit: "paiement unique",
     note: "soit 10 € le site",
     features: ["5 sites, pour vous ou vos commerces", `${EDITS_PER_SITE} modifications par l'IA par site`, "Mise en ligne en un clic"],
@@ -30,7 +32,8 @@ export const BOOKING_FEE = 0.02;
 export const RELIEF_PACK = { price: "1 €", cents: 100, tries: 5 };
 
 /** Hébergement pour garder le site en ligne. */
-export const HOSTING = { year: "30 €", yearMonthly: "2,50 €", month: "2,90 €" };
+export const HOSTING = { year: "30 €", yearMonthly: "2,50 €", month: "2,90 €", yearCents: 3000, monthCents: 290 };
+export type OfferId = (typeof OFFERS)[number]["id"];
 
 /** Option « Assistant IA de réservation », payée au mois par le commerçant (décidée le 26/11).
     Sans option, ou quand la limite du mois est atteinte, le site garde la réservation classique. */

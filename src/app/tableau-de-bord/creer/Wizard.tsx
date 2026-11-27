@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { friendlyError, NeedsOffer } from "@/lib/errors";
 import { useEffect, useRef, useState } from "react";
 import { THEMES } from "@/components/site/themes";
 import { MOODS } from "@/lib/site/moods";
@@ -33,6 +34,8 @@ const EMPTY: Brief = {
   video: "auto", videoUrl: "", videoClips: [],
 };
 
+const DRAFT_KEY = "sc_brief_draft";
+
 const STEPS = ["Votre métier", "Votre commerce", "Ce que vous proposez", "Plus de détails", "Horaires et contact", "Vidéo", "L'ambiance"];
 
 const LOADING = [
@@ -49,6 +52,23 @@ export function Wizard({ defaultName }: { defaultName: string }) {
   const [b, setB] = useState<Brief>({ ...EMPTY, name: defaultName });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsOffer, setNeedsOffer] = useState(false);
+  // Brouillon gardé sur le téléphone : si la page se ferme, les réponses sont toujours là au retour.
+  const restored = useRef(false);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "null");
+      if (saved?.b && typeof saved.step === "number") {
+        setB({ ...EMPTY, ...saved.b });
+        setStep(Math.min(Math.max(0, saved.step), STEPS.length - 1));
+      }
+    } catch {}
+    restored.current = true;
+  }, []);
+  useEffect(() => {
+    if (!restored.current) return;
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ b, step })); } catch {}
+  }, [b, step]);
   const set = (k: TextKey) => (v: string) => setB((p) => ({ ...p, [k]: v }));
   const toggle = (k: "services" | "payments", v: string) =>
     setB((p) => ({ ...p, [k]: p[k].includes(v) ? p[k].filter((x) => x !== v) : [...p[k], v] }));
@@ -73,10 +93,13 @@ export function Wizard({ defaultName }: { defaultName: string }) {
         body: JSON.stringify(b),
       });
       const data = await res.json().catch(() => ({}));
+      if (!res.ok && data.needsSubscription) throw new NeedsOffer(data.error);
       if (!res.ok) throw new Error(data.error || (res.status === 504 ? "L'IA a mis trop de temps à répondre. Réessayez. (code 504)" : "La création a échoué. Réessayez dans un instant. (code HTTP " + res.status + ")"));
+      try { localStorage.removeItem(DRAFT_KEY); } catch {}
       router.push(`/apercu/${data.id}?nouveau=1`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "La création a échoué.");
+      setNeedsOffer(e instanceof NeedsOffer);
+      setError(friendlyError(e, "La création a échoué."));
       setLoading(false);
     }
   }
@@ -193,6 +216,9 @@ export function Wizard({ defaultName }: { defaultName: string }) {
       </div>
 
       {error && <p role="alert" className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</p>}
+      {error && needsOffer && (
+        <a href="/abonnement?retour=/tableau-de-bord/creer" className="mt-3 block rounded-full bg-clic px-5 py-3 text-center font-medium text-white">Voir les tarifs</a>
+      )}
 
       <div className="mt-10 flex items-center justify-between gap-3">
         <button
@@ -326,7 +352,7 @@ function VideoChoice({ b, setB }: { b: Brief; setB: React.Dispatch<React.SetStat
       }
       setStatus("Clips reçus ✓ Nous en ferons un film.");
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Envoi impossible.");
+      setStatus(friendlyError(e, "Envoi impossible."));
     }
   }
   async function pick(file: File | undefined) {
@@ -337,7 +363,7 @@ function VideoChoice({ b, setB }: { b: Brief; setB: React.Dispatch<React.SetStat
       setB((p) => ({ ...p, video: "perso", videoUrl: url }));
       setStatus("Vidéo reçue ✓");
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Envoi impossible.");
+      setStatus(friendlyError(e, "Envoi impossible."));
     }
   }
   return (

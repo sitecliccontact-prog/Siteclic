@@ -1,5 +1,6 @@
 "use client";
 
+import { friendlyError } from "@/lib/errors";
 import { useEffect, useRef, useState } from "react";
 import { uploadPhoto } from "@/lib/site/photos";
 import { THEMES } from "@/components/site/themes";
@@ -217,7 +218,7 @@ function ShopCard({ id, content, busy, save }: P) {
     if (!f || k < 0) return;
     setUp(k);
     setErr("");
-    try { set(k, { photo: await uploadPhoto(f, id) }); } catch (e) { setErr(e instanceof Error ? e.message : "Envoi impossible."); }
+    try { set(k, { photo: await uploadPhoto(f, id) }); } catch (e) { setErr(friendlyError(e, "Envoi impossible.")); }
     setUp(-1);
   }
 

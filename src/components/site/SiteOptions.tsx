@@ -1,5 +1,6 @@
 "use client";
 
+import { friendlyError } from "@/lib/errors";
 import { useEffect, useState } from "react";
 import type { SiteContent } from "@/lib/site/schema";
 import { dateLong } from "@/lib/site/dates";
@@ -71,7 +72,7 @@ export function EventDialog({ slug, brand, events }: { slug?: string; brand: str
       if (!res.ok) throw new Error(d.error || "La réservation n'est pas passée.");
       setDone(`C'est réservé, ${name.split(" ")[0]} ! ${people} place${people > 1 ? "s" : ""} pour « ${ev.title} ». À très vite chez ${brand}.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "La réservation n'est pas passée.");
+      setError(friendlyError(err, "La réservation n'est pas passée."));
     } finally {
       setBusy(false);
     }
@@ -134,7 +135,7 @@ export function JobDialog({ slug, brand, jobs }: { slug?: string; brand: string;
       if (!res.ok) throw new Error(d.error || "La candidature n'est pas passée.");
       setDone(`Merci ${String(f.get("name")).split(" ")[0]} ! Votre candidature est bien arrivée chez ${brand}. Nous vous recontactons très vite.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "La candidature n'est pas passée.");
+      setError(friendlyError(err, "La candidature n'est pas passée."));
     } finally {
       setBusy(false);
     }
@@ -191,7 +192,7 @@ export function NewsletterForm({ slug, brand, perk }: { slug?: string; brand: st
       if (!res.ok) throw new Error(d.error || "Inscription impossible.");
       setDone(d.kind === "sms" ? `C'est noté ! Vous recevrez les nouvelles de ${brand} par SMS.` : `C'est noté ! Vous recevrez les nouvelles de ${brand} par e-mail.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Inscription impossible.");
+      setError(friendlyError(err, "Inscription impossible."));
     } finally {
       setBusy(false);
     }

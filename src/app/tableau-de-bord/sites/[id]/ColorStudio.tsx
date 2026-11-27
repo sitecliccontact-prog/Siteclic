@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CURATED, RELIEFS, RELIEF_STYLES, applyLook, harmony, hsl, isHex, readability, toHsl, type Look, type Palette, type Relief } from "@/lib/site/colors";
+import { CURATED, RELIEFS, RELIEF_STYLES, applyLook, harmony, hsl, isHex, readability, toHsl, type Look, type Palette } from "@/lib/site/colors";
 
 /* Atelier des couleurs : spectre complet (des millions de teintes), nuancier de 264 couleurs,
    palettes de créateur, « Propose-moi des couleurs », dégradés et relief du fond.

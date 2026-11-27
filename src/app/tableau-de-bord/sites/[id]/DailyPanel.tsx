@@ -1,5 +1,6 @@
 "use client";
 
+import { friendlyError } from "@/lib/errors";
 import { useEffect, useRef, useState } from "react";
 import { celebrate } from "@/components/Celebration";
 import { useDictation } from "@/lib/hooks/useDictation";
@@ -51,7 +52,7 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
       setBusy(null);
       await run("video", { video: { ...video, enabled: true, url } }, "Vidéo en ligne ✓");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Envoi impossible.");
+      setMsg(friendlyError(e, "Envoi impossible."));
       setBusy(null);
     }
   }
@@ -68,7 +69,7 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
         added.push(await uploadVideo(f, id));
       }
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Envoi impossible.");
+      setMsg(friendlyError(e, "Envoi impossible."));
     }
     setBusy(null);
     if (added.length) {
@@ -85,7 +86,7 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
     if (autoFloor.current || !booking || content.floor?.tables.length) return;
     autoFloor.current = true;
     void run("floor", { floor: { enabled: true, tables: SAMPLE_FLOOR } }, "Plan de salle d'exemple ajouté ✓ Modifiez-le plus bas.");
-  }); // eslint-disable-line react-hooks/exhaustive-deps
+  });
 
   async function run(kind: "menu" | "booking" | "assistant" | "video" | "floor" | "notes", body: object, ok: string) {
     setBusy(kind);
@@ -96,7 +97,7 @@ export function DailyPanel({ id, content, onSaved, beforeSave }: Props) {
       setMsg(ok);
       if (ok.includes("✓")) celebrate(ok.split(" ✓")[0].replace("C'est sur votre site", "Menu du jour en ligne"));
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Enregistrement impossible.");
+      setMsg(friendlyError(e, "Enregistrement impossible."));
     } finally {
       setBusy(null);
     }

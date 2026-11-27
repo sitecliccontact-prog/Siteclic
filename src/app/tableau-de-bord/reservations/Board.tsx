@@ -80,7 +80,7 @@ export function Board({ initial, multiSite }: { initial: Resa[]; multiSite: bool
                   <a href={smsLink(r.phone, `Bonjour ${first(r.name)}, bonne nouvelle : une table pour ${r.people} vient de se libérer${r.site ? ` chez ${r.site}` : ""} ! Elle vous attend à ${r.time.replace(":", "h")}. Répondez OUI pour la garder.`)}
                     className="rounded-full bg-clic px-3 py-1.5 font-medium text-white">Table libre</a>
                   <button onClick={() => setStatus(r, "confirmee")} className="rounded-full border border-line px-3 py-1.5">Confirmer</button>
-                  <button onClick={() => remove(r)} className="px-1.5 text-muted" aria-label="Retirer">✕</button>
+                  <button onClick={() => remove(r)} className="grid h-8 w-8 place-items-center text-muted" aria-label={`Retirer ${first(r.name)} de la liste d'attente`}>✕</button>
                 </span>
               </li>
             ))}
@@ -134,11 +134,12 @@ function reminderText(r: Resa) {
 }
 
 function reviewText(r: Resa) {
-  return `Bonjour ${first(r.name)}, merci d'être venu${r.site ? ` chez ${r.site}` : ""} ! Si vous avez passé un bon moment, un petit avis nous aiderait beaucoup : ${r.review} Merci et à bientôt !`;
+  return `Bonjour ${first(r.name)}, merci pour votre visite${r.site ? ` chez ${r.site}` : ""} ! Si vous avez passé un bon moment, un petit avis nous aiderait beaucoup : ${r.review} Merci et à bientôt !`;
 }
 
 function Card({ r, multiSite, onStatus, onRemove }: { r: Resa; multiSite: boolean; onStatus: GroupProps["onStatus"]; onRemove: GroupProps["onRemove"] }) {
   const today = parisDay();
+  const [sure, setSure] = useState(false);
   const sms = r.kind === "rdv"
     ? `Bonjour ${first(r.name)}, votre rendez-vous${r.service ? ` (${r.service})` : ""} du ${fmtDay(r.day)} à ${r.time.replace(":", "h")}${r.table_label ? ` avec ${r.table_label}` : ""}${r.site ? ` chez ${r.site}` : ""} est confirmé. À bientôt !`
     : `Bonjour ${first(r.name)}, votre réservation du ${fmtDay(r.day)} à ${r.time.replace(":", "h")} pour ${r.people} ${r.people > 1 ? "personnes" : "personne"}${r.table_label ? ` (table ${r.table_label})` : ""}${r.site ? ` chez ${r.site}` : ""} est confirmée. À bientôt !`;
@@ -182,7 +183,14 @@ function Card({ r, multiSite, onStatus, onRemove }: { r: Resa; multiSite: boolea
         )}
         <a href={`tel:${tel(r.phone)}`} className="rounded-full border border-line px-4 py-2">Appeler</a>
         {r.pay_mode === "empreinte" && !r.pay_charged && r.status !== "refusee" && <NoShow r={r} />}
-        {r.status !== "nouvelle" && <button onClick={() => onRemove(r)} className="ml-auto px-2 py-2 text-muted hover:text-red-400">Supprimer</button>}
+        {r.status !== "nouvelle" && (sure ? (
+          <span className="ml-auto flex items-center gap-1">
+            <button onClick={() => onRemove(r)} className="rounded-full bg-red-500/90 px-3 py-2 font-medium text-white">Oui, supprimer</button>
+            <button onClick={() => setSure(false)} className="px-2 py-2 text-muted">Non</button>
+          </span>
+        ) : (
+          <button onClick={() => setSure(true)} className="ml-auto px-2 py-2 text-muted hover:text-red-400">Supprimer</button>
+        ))}
       </div>
     </li>
   );

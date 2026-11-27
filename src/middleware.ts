@@ -67,6 +67,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Déjà connecté : pas besoin de repasser par la connexion ou l'inscription.
+  if (user && (path === "/connexion" || path === "/inscription")) {
+    const out = NextResponse.redirect(new URL("/tableau-de-bord", request.url));
+    response.cookies.getAll().forEach((c) => out.cookies.set(c));
+    return out;
+  }
+
   if (!user && (path.startsWith("/tableau-de-bord") || path.startsWith("/abonnement"))) {
     const url = request.nextUrl.clone();
     url.pathname = "/connexion";

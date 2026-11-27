@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { friendlyError, NeedsOffer } from "@/lib/errors";
 import { useRef, useState } from "react";
 import { uploadPhoto } from "@/lib/site/photos";
 import { Generating } from "../creer/Wizard";
@@ -23,6 +24,7 @@ export function PhotoForm() {
   const [note, setNote] = useState("");
   const [step, setStep] = useState<"choose" | "upload" | "ai">("choose");
   const [error, setError] = useState("");
+  const [needsOffer, setNeedsOffer] = useState(false);
 
   function add(list: FileList | null) {
     const next = [...files, ...Array.from(list ?? []).filter((f) => f.type.startsWith("image/")).map((file) => ({ file, url: URL.createObjectURL(file) }))].slice(0, 4);
@@ -40,11 +42,12 @@ export function PhotoForm() {
       setStep("ai");
       const res = await fetch("/api/sites/photo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ photos: urls, note }) });
       const data = await res.json().catch(() => ({}));
-      if (res.status === 402) { window.location.href = "/abonnement?retour=/tableau-de-bord/photo"; return; }
+      if (!res.ok && data.needsSubscription) throw new NeedsOffer(data.error);
       if (!res.ok) throw new Error(data.error || "La création a échoué. Réessayez.");
       router.push(`/apercu/${data.id}?nouveau=1`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "La création a échoué.");
+      setNeedsOffer(e instanceof NeedsOffer);
+      setError(friendlyError(e, "La création a échoué."));
       setStep("choose");
     }
   }
@@ -90,6 +93,9 @@ export function PhotoForm() {
       </label>
 
       {error && <p role="alert" className="mt-5 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</p>}
+      {error && needsOffer && (
+        <a href="/abonnement?retour=/tableau-de-bord/photo" className="mt-3 block rounded-full bg-clic px-5 py-3 text-center font-medium text-white">Voir les tarifs</a>
+      )}
       <div className="mt-8 flex items-center justify-between gap-3">
         <button type="button" onClick={() => router.push("/tableau-de-bord")} className="rounded-full px-5 py-3 text-sm font-medium text-muted hover:text-ink">← Annuler</button>
         <button type="button" disabled={!files.length || step !== "choose"} onClick={go}

@@ -7,7 +7,8 @@ export function SignOutButton() {
   return (
     <button
       onClick={async () => {
-        await createClient().auth.signOut();
+        // Déconnecte seulement ce téléphone (l'autre appareil du compte reste connecté).
+        await createClient().auth.signOut({ scope: "local" });
         router.push("/");
         router.refresh();
       }}

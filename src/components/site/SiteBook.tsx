@@ -1,5 +1,6 @@
 "use client";
 
+import { friendlyError } from "@/lib/errors";
 import { useEffect, useMemo, useState } from "react";
 import type { SiteContent } from "@/lib/site/schema";
 
@@ -91,7 +92,7 @@ export function AppointmentDialog({ slug, brand, appts }: { slug?: string; brand
       setDone(`C'est noté, ${body.name.split(" ")[0]} ! ${svc?.name} le ${c.wd} ${c.n} ${c.m} à ${time.replace(":", "h")}${staff ? ` avec ${staff}` : ""}. À bientôt chez ${brand}.`);
       setTime("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Le rendez-vous n'est pas passé.");
+      setError(friendlyError(err, "Le rendez-vous n'est pas passé."));
     } finally {
       setSending(false);
     }

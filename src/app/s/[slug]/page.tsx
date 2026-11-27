@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SiteRenderer } from "@/components/site/SiteRenderer";
 import { getPublishedSite } from "@/lib/site/published";
+import { socialUrl } from "@/lib/site/schema";
 
 // La page est gardée en mémoire et rafraîchie dès que le client publie une modification.
 export const revalidate = 3600;
@@ -44,6 +45,9 @@ export default async function PublishedSite({ params }: Props) {
     telephone: content.contact.phone || undefined,
     email: content.contact.email || undefined,
     image: content.photos[0] || undefined,
+    url: `https://siteclic.vercel.app/s/${slug}`,
+    sameAs: [socialUrl("instagram", content.links?.instagram), socialUrl("facebook", content.links?.facebook)].filter(Boolean),
+    openingHours: content.hours.length ? content.hours.map((h) => `${h.days} ${h.time}`).join(" ; ") : undefined,
   };
 
   return (

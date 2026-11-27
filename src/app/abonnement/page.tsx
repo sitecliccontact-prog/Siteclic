@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ManageButton, SubscribeButton } from "@/components/BillingButtons";
+import { ManageButton, PlanPicker } from "@/components/BillingButtons";
 import { Logo } from "@/components/Logo";
 import { PriceCards } from "@/components/PriceCards";
 import { billingEnabled, getSubscription, safeReturn } from "@/lib/billing/stripe";
@@ -29,12 +29,12 @@ export default async function SubscriptionPage({ searchParams }: { searchParams:
       <section className="rise mx-auto mt-12 max-w-md pb-16">
         <p className="text-sm font-medium uppercase tracking-[0.18em] text-clic">Tarifs</p>
         <h1 className="mt-2 font-display text-4xl font-bold tracking-tight sm:text-5xl">
-          {sub?.active ? "Vous êtes abonné." : "Votre site, en ligne. Toujours à jour."}
+          {sub?.active ? "Votre site est actif." : "Votre site, en ligne. Toujours à jour."}
         </h1>
 
         {sub?.active ? (
           <div className="mt-8 rounded-3xl border border-line bg-card p-7">
-            <p className="flex items-center gap-2 font-medium"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Abonnement actif</p>
+            <p className="flex items-center gap-2 font-medium"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Hébergement actif</p>
             {sub.periodEnd && (
               <p className="mt-2 text-sm text-muted">
                 {sub.cancelAtPeriodEnd ? "Se termine le " : "Prochain paiement le "}
@@ -57,7 +57,7 @@ export default async function SubscriptionPage({ searchParams }: { searchParams:
             </div>
             <div className="mt-6">
               {enabled ? (
-                <SubscribeButton retour={retour} />
+                <PlanPicker retour={retour} />
               ) : (
                 <p className="rounded-2xl bg-sand px-4 py-3 text-center text-sm text-muted">Le paiement ouvre très bientôt. En attendant, tout est inclus.</p>
               )}

@@ -1,5 +1,6 @@
 "use client";
 
+import { friendlyError } from "@/lib/errors";
 import { useEffect, useMemo, useState } from "react";
 import { tr, type Lang } from "@/lib/site/i18n";
 
@@ -102,7 +103,7 @@ export function OrderDialog({ slug, brand, items, online, lang, shop }: {
         : `Merci ! Votre commande est envoyée. Vous payez sur place en la retirant chez ${brand}.`);
       setQty({});
     } catch (err) {
-      setError(err instanceof Error ? err.message : "La commande n'est pas passée.");
+      setError(friendlyError(err, "La commande n'est pas passée."));
     } finally {
       setBusy(false);
     }
@@ -190,7 +191,7 @@ export function GiftDialog({ slug, brand, amounts, lang }: { slug?: string; bran
       if (!res.ok || typeof d.payUrl !== "string") throw new Error(d.error || "Le paiement n'est pas disponible pour le moment.");
       window.location.href = d.payUrl;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Le paiement n'est pas disponible.");
+      setError(friendlyError(err, "Le paiement n'est pas disponible."));
       setBusy(false);
     }
   }

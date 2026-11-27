@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ColorStudio } from "./ColorStudio";
 import { THEMES } from "@/components/site/themes";
 import { useEffect, useRef, useState } from "react";
 import { PublishButton, type PublishState } from "@/components/PublishButton";
 import { DailyPanel } from "./DailyPanel";
 import { celebrate } from "@/components/Celebration";
+import { friendlyError } from "@/lib/errors";
 import { SiteRenderer } from "@/components/site/SiteRenderer";
 import { useDictation } from "@/lib/hooks/useDictation";
 import { speak, stopSpeaking } from "@/lib/hooks/speak";
@@ -50,9 +52,18 @@ export function Editor({ id, initial, publish }: { id: string; initial: SiteCont
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: next }),
     }).catch(() => null);
-    if (unsaved.current === next) unsaved.current = null;
+    if (res?.ok && unsaved.current === next) unsaved.current = null;
+    if (!res?.ok) unsaved.current ??= next;
     setSave(res?.ok ? "ok" : "error");
   }
+
+  // Fermer la page pendant un enregistrement : le navigateur prévient d'abord.
+  useEffect(() => {
+    if (save === "ok") return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [save]);
 
   // Enregistrement automatique, une seconde après la dernière modification à la main.
   function queueSave(next: SiteContent) {
@@ -109,9 +120,18 @@ export function Editor({ id, initial, publish }: { id: string; initial: SiteCont
       <header className="flex items-center gap-3 border-b border-line px-4 py-3">
         <Link href="/tableau-de-bord" className="shrink-0 whitespace-nowrap text-sm text-muted hover:text-ink">← Mes sites</Link>
         <p className="min-w-0 flex-1 truncate text-center font-display font-bold">{content.brand.name}</p>
-        <span className="hidden text-xs text-muted sm:inline">
-          {save === "saving" ? "Enregistrement…" : save === "error" ? "Non enregistré" : "Enregistré ✓"}
-        </span>
+        {save === "error" ? (
+          <button onClick={() => unsaved.current && saveNow(unsaved.current)} role="alert"
+            className="shrink-0 rounded-full bg-red-500/15 px-3 py-1.5 text-xs font-medium text-red-300">
+            Non enregistré · Réessayer
+          </button>
+        ) : (
+          <span className="shrink-0 text-xs text-muted" aria-live="polite">
+            <span className={`inline-block h-2 w-2 rounded-full sm:hidden ${save === "saving" ? "animate-pulse bg-amber-400" : "bg-emerald-400"}`}
+              title={save === "saving" ? "Enregistrement…" : "Enregistré"} />
+            <span className="hidden sm:inline">{save === "saving" ? "Enregistrement…" : "Enregistré ✓"}</span>
+          </span>
+        )}
         <button onClick={undo} disabled={!history.length}
           className="rounded-full border border-line px-3 py-1.5 text-xs font-medium disabled:opacity-30">
           Annuler
@@ -125,7 +145,7 @@ export function Editor({ id, initial, publish }: { id: string; initial: SiteCont
       <nav className="grid grid-cols-3 border-b border-line text-sm lg:hidden">
         {([["ia", "Écrire à l'IA"], ["main", "Modifier moi-même"], ["apercu", "Voir"]] as [Tab, string][]).map(([t, l]) => (
           <button key={t} onClick={() => setTab(t)}
-            className={`py-3 font-medium transition ${tab === t ? "border-b-2 border-clic text-ink" : "text-muted"}`}>
+            className={`whitespace-nowrap px-1 py-3 text-[13px] font-medium transition sm:text-sm ${tab === t ? "border-b-2 border-clic text-ink" : "text-muted"}`}>
             {l}
           </button>
         ))}
@@ -142,14 +162,16 @@ export function Editor({ id, initial, publish }: { id: string; initial: SiteCont
               </button>
             ))}
           </div>
-          {tab === "main" ? (
+          {/* Les deux panneaux restent ouverts : la discussion avec l'IA n'est pas perdue en changeant d'onglet. */}
+          <div className={`${tab === "main" ? "flex" : "hidden"} min-h-0 flex-1 flex-col`}>
             <ManualPanel id={id} content={content} edit={(fn) => { remember(); edit(fn); }} addPhotos={addPhotos}
               daily={<DailyPanel id={id} content={content} beforeSave={flush}
                 onSaved={(c) => setContent((prev) => ({ ...prev, special: c.special, booking: c.booking }))} />} />
-          ) : (
+          </div>
+          <div className={`${tab === "main" ? "hidden" : "flex"} min-h-0 flex-1 flex-col`}>
             <AiPanel id={id} photoCount={content.photos.length} beforeSend={flush} addPhotos={addPhotos}
               onResult={(c) => { remember(true); setContent(c); setChanged(true); }} />
-          )}
+          </div>
         </aside>
 
         {/* Aperçu en direct */}
@@ -250,7 +272,7 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
         { from: "ia", text: "Photo ajoutée à votre site. Où voulez-vous la mettre ? Par exemple : « Mets-la en grand en haut du site »." },
       ]);
     } catch (e) {
-      setMsgs((m) => [...m, { from: "ia", text: e instanceof Error ? e.message : "L'envoi de la photo a échoué." }]);
+      setMsgs((m) => [...m, { from: "ia", text: friendlyError(e, "L'envoi de la photo a échoué.") }]);
     } finally {
       setBusy(false);
       if (fileInput.current) fileInput.current.value = "";
@@ -281,13 +303,18 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
         setMsgs((m) => [...m, { from: "ia", subscribe: true, text: "Les modifications par l'IA sont incluses avec votre site (20 €, 50 modifications). Vous pouvez aussi modifier vos textes vous-même, gratuitement." }]);
         return;
       }
+      if (!res.ok && data.needsSubscription) {
+        answer(data.error);
+        setMsgs((m) => [...m, { from: "ia", subscribe: true, text: data.error }]);
+        return;
+      }
       if (!res.ok) throw new Error(data.error || "La modification a échoué.");
       onResult(data.content);
       setMsgs((m) => [...m, { from: "ia", text: data.reply }]);
       celebrate("Site mis à jour");
       answer(data.reply);
     } catch (e) {
-      const t = e instanceof Error ? e.message : "La modification a échoué.";
+      const t = friendlyError(e, "La modification a échoué.");
       setMsgs((m) => [...m, { from: "ia", text: t }]);
       answer(t);
     } finally {
@@ -416,7 +443,7 @@ function ManualPanel({ id, content: c, edit, addPhotos, daily }: ManualProps) {
       try {
         urls.push(await uploadPhoto(f, id));
       } catch (e) {
-        setPhotoError(e instanceof Error ? e.message : "L'envoi d'une photo a échoué.");
+        setPhotoError(friendlyError(e, "L'envoi d'une photo a échoué."));
       }
       setUpload({ done: urls.length, total: list.length });
     }
@@ -487,7 +514,7 @@ function ManualPanel({ id, content: c, edit, addPhotos, daily }: ManualProps) {
                   <button title="Mettre en photo de fond" aria-label="Mettre en photo de fond" onClick={() => edit((d) => { d.photos.splice(i, 1); d.photos.unshift(src); })}
                     className="rounded-full bg-black/60 px-2 py-0.5 text-[11px] text-white">★</button>
                 )}
-                <button title="Retirer" onClick={() => edit((d) => { d.photos.splice(i, 1); })}
+                <button title="Retirer" aria-label="Retirer cette photo" onClick={() => edit((d) => { d.photos.splice(i, 1); })}
                   className="rounded-full bg-black/60 px-2 py-0.5 text-[11px] text-white">✕</button>
               </div>
             </div>
@@ -571,8 +598,8 @@ function ManualPanel({ id, content: c, edit, addPhotos, daily }: ManualProps) {
 
       <Block title="Contact">
         <Field label="Adresse" value={c.contact.address} onChange={(v) => edit((d) => { d.contact.address = v; })} />
-        <Field label="Téléphone" value={c.contact.phone} onChange={(v) => edit((d) => { d.contact.phone = v; })} />
-        <Field label="E-mail" value={c.contact.email} onChange={(v) => edit((d) => { d.contact.email = v; })} />
+        <Field label="Téléphone" type="tel" value={c.contact.phone} onChange={(v) => edit((d) => { d.contact.phone = v; })} />
+        <Field label="E-mail" type="email" value={c.contact.email} onChange={(v) => edit((d) => { d.contact.email = v; })} />
         <Field label="Instagram" value={c.links?.instagram ?? ""} onChange={(v) => edit((d) => { d.links = { ...d.links, instagram: v }; })} />
         <Field label="Facebook" value={c.links?.facebook ?? ""} onChange={(v) => edit((d) => { d.links = { ...d.links, facebook: v }; })} />
       </Block>
@@ -581,6 +608,47 @@ function ManualPanel({ id, content: c, edit, addPhotos, daily }: ManualProps) {
         <Field label="Titre" value={c.closing.title} onChange={(v) => edit((d) => { d.closing.title = v; })} />
         <Field label="Texte" area value={c.closing.text} onChange={(v) => edit((d) => { d.closing.text = v; })} />
       </Block>
+
+      <DeleteSite id={id} name={c.brand.name} />
+    </div>
+  );
+}
+
+/** Supprimer le site (deux gestes, pour éviter une fausse manip). */
+function DeleteSite({ id, name }: { id: string; name: string }) {
+  const router = useRouter();
+  const [step, setStep] = useState<"idle" | "ask" | "busy">("idle");
+  const [error, setError] = useState("");
+  async function remove() {
+    setStep("busy");
+    setError("");
+    const res = await fetch(`/api/sites/${id}`, { method: "DELETE" }).catch(() => null);
+    if (res?.ok) {
+      router.push("/tableau-de-bord");
+      router.refresh();
+      return;
+    }
+    const d = await res?.json().catch(() => ({}));
+    setError(d?.error || "Suppression impossible. Vérifiez votre connexion.");
+    setStep("ask");
+  }
+  return (
+    <div className="pt-6 text-center text-sm">
+      {step === "idle" ? (
+        <button onClick={() => setStep("ask")} className="text-muted underline underline-offset-4 hover:text-red-400">Supprimer ce site</button>
+      ) : (
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-4 text-left">
+          <p className="font-medium">Supprimer « {name} » ?</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">Le site, ses photos, ses réservations et ses commandes seront effacés pour toujours. S&apos;il est en ligne, il disparaît d&apos;Internet.</p>
+          <div className="mt-3 flex gap-2">
+            <button onClick={remove} disabled={step === "busy"} className="rounded-full bg-red-500 px-4 py-2 font-medium text-white disabled:opacity-60">
+              {step === "busy" ? "Suppression…" : "Oui, supprimer"}
+            </button>
+            <button onClick={() => setStep("idle")} className="rounded-full border border-line px-4 py-2">Non, garder</button>
+          </div>
+          {error && <p role="alert" className="mt-2 text-xs text-red-400">{error}</p>}
+        </div>
+      )}
     </div>
   );
 }
@@ -599,14 +667,14 @@ function Block({ title, open, children }: { title: string; open?: boolean; child
 
 const inputCls = "w-full rounded-xl border border-line bg-cream px-3 py-2.5 text-[15px] outline-none focus:border-ink/60";
 
-function Field({ label, value, onChange, area }: { label: string; value: string; onChange: (v: string) => void; area?: boolean }) {
+function Field({ label, value, onChange, area, type = "text" }: { label: string; value: string; onChange: (v: string) => void; area?: boolean; type?: "text" | "tel" | "email" }) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs text-muted">{label}</span>
       {area ? (
         <textarea rows={3} value={value} onChange={(e) => onChange(e.target.value)} className={`${inputCls} resize-y leading-relaxed`} />
       ) : (
-        <input value={value} onChange={(e) => onChange(e.target.value)} className={inputCls} />
+        <input type={type} inputMode={type === "text" ? undefined : type} autoComplete="off" value={value} onChange={(e) => onChange(e.target.value)} className={inputCls} />
       )}
     </label>
   );
