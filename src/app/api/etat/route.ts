@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ask, explainError } from "@/lib/site/generate";
 import { supabaseUrl } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
+import { isTeam } from "@/lib/team";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -25,6 +26,8 @@ export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ ...base, testIA: "Connectez-vous d'abord à SiteClic." });
+  // Chaque essai coûte un peu de crédit IA : réservé au compte propriétaire.
+  if (!isTeam(user)) return NextResponse.json({ ...base, testIA: "Réservé au compte SiteClic." });
   const start = Date.now();
   try {
     const r = await ask(z.object({ ok: z.boolean() }), "Réponds simplement.", "Réponds ok = true.");

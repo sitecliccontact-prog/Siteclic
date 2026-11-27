@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { friendlyError, NeedsOffer } from "@/lib/errors";
 import { useState } from "react";
 import { Generating } from "../creer/Wizard";
 
@@ -17,6 +18,7 @@ export function ImportForm() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsOffer, setNeedsOffer] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,14 +31,12 @@ export function ImportForm() {
         body: JSON.stringify({ url }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.status === 402) {
-        window.location.href = "/abonnement?retour=/tableau-de-bord/importer";
-        return;
-      }
+      if (!res.ok && data.needsSubscription) throw new NeedsOffer(data.error);
       if (!res.ok) throw new Error(data.error || (res.status === 504 ? "L'IA a mis trop de temps à répondre. Réessayez. (code 504)" : "L'import a échoué. Réessayez dans un instant. (code HTTP " + res.status + ")"));
       router.push(`/apercu/${data.id}?nouveau=1`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "L'import a échoué.");
+      setNeedsOffer(err instanceof NeedsOffer);
+      setError(friendlyError(err, "L'import a échoué."));
       setLoading(false);
     }
   }
@@ -64,6 +64,9 @@ export function ImportForm() {
         />
       </label>
       {error && <p role="alert" className="mt-5 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</p>}
+      {error && needsOffer && (
+        <a href="/abonnement?retour=/tableau-de-bord/importer" className="mt-3 block rounded-full bg-clic px-5 py-3 text-center font-medium text-white">Voir les tarifs</a>
+      )}
       <div className="mt-8 flex items-center justify-between gap-3">
         <button type="button" onClick={() => router.push("/tableau-de-bord")} className="rounded-full px-5 py-3 text-sm font-medium text-muted hover:text-ink">
           ← Annuler

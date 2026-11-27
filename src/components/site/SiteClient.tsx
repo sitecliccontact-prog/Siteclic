@@ -1,5 +1,6 @@
 "use client";
 
+import { friendlyError } from "@/lib/errors";
 import { useEffect, useRef, useState } from "react";
 import { useDictation } from "@/lib/hooks/useDictation";
 import { speak as sayAloud, stopSpeaking } from "@/lib/hooks/speak";
@@ -148,7 +149,7 @@ export function BookingDialog({ slug, brand, phone, phoneHref, floor = [], guara
       window.history.replaceState(null, "", window.location.pathname + "#reserver");
     }
     return () => { root.removeEventListener("click", onClick); window.removeEventListener("siteclic:reserver", onOpen); };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- une seule fois, au chargement
 
   useEffect(() => {
     if (!open) return;
@@ -183,7 +184,7 @@ export function BookingDialog({ slug, brand, phone, phoneHref, floor = [], guara
         ? `Merci ${body.name.split(" ")[0]} ! Vous êtes sur la liste d'attente. ${brand} vous envoie un SMS dès qu'une table se libère.`
         : `Merci ${body.name.split(" ")[0]} ! Votre demande${table ? ` pour la table ${table}` : ""} est bien envoyée. ${brand} vous rappelle pour confirmer.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "La demande n'est pas passée.");
+      setError(friendlyError(err, "La demande n'est pas passée."));
     } finally {
       setBusy(false);
     }

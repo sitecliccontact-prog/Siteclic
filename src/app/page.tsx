@@ -29,7 +29,7 @@ function Nav() {
         <Logo />
         <nav className="hidden items-center gap-8 text-sm text-muted md:flex">
           <a href="#comment" className="hover:text-ink">Comment ça marche</a>
-          <a href="#tarif" className="hover:text-ink">Tarif</a>
+          <a href="#tarif" className="hover:text-ink">Tarifs</a>
           <a href="#questions" className="hover:text-ink">Questions</a>
         </nav>
         <div className="flex items-center gap-2">
@@ -83,9 +83,9 @@ function PhoneMockup() {
     <div className="relative mx-auto w-full max-w-[340px] rise rise-2">
       <div className="absolute -inset-10 -z-10 rounded-full bg-clic/15 blur-3xl" />
       <div className="rounded-[2.6rem] bg-[#0a0a0b] p-2.5 shadow-[0_40px_80px_-30px_rgba(18,19,26,.55)]">
-        <div className="overflow-hidden rounded-[2.1rem] bg-[#fbf6ee]">
+        <div className="overflow-hidden rounded-[2.1rem] bg-[#121110]">
           {/* Site généré (exemple fictif) */}
-          <div className="flex items-center justify-between px-5 pt-5 text-[11px] text-[#3b2a20]">
+          <div className="flex items-center justify-between px-5 pt-5 text-[11px] text-[#efe6d8]">
             <span className="font-display text-base font-semibold">Maison Lumière</span>
             <span className="space-x-3 opacity-70"><span>Carte</span><span>Réserver</span></span>
           </div>
@@ -100,10 +100,10 @@ function PhoneMockup() {
               <div key={c} className="h-16 rounded-xl" style={{ background: `linear-gradient(140deg, ${c}, #2b1a12)` }} />
             ))}
           </div>
-          <div className="px-5 py-4 text-[11px] leading-relaxed text-[#3b2a20]">
-            <p className="font-semibold uppercase tracking-[0.16em] text-[#b0552a]">Horaires</p>
+          <div className="px-5 py-4 text-[11px] leading-relaxed text-[#efe6d8]">
+            <p className="font-semibold uppercase tracking-[0.16em] text-[#d9a066]">Horaires</p>
             <p className="mt-1 opacity-80">Mar. – Sam. · 12h – 14h30 · 19h – 22h</p>
-            <div className="mt-3 rounded-full bg-[#3b2a20] py-2 text-center text-[11px] font-medium text-[#fbf6ee]">Réserver une table</div>
+            <div className="mt-3 rounded-full bg-[#d9a066] py-2 text-center text-[11px] font-medium text-[#121110]">Réserver une table</div>
           </div>
         </div>
       </div>
@@ -269,6 +269,8 @@ function Faq() {
     ["Faut-il savoir utiliser un ordinateur ?", "Non. Si vous savez envoyer un message sur votre téléphone, vous savez utiliser SiteClic."],
     ["Qu'est-ce qui est gratuit ?", "Créer votre site et le voir en aperçu. Vous payez seulement quand vous le mettez en ligne : 20 € le site, puis 30 € par an d'hébergement."],
     ["Mon site actuel peut-il être repris ?", "Oui. Donnez son adresse, l'IA récupère vos textes et vos photos et les met en valeur dans un nouveau design."],
+    ["Je n'ai pas de belles photos, c'est grave ?", "Non. Votre site est déjà élégant sans photo, et vous pouvez en ajouter plus tard, directement depuis votre téléphone."],
+    ["Mes clients peuvent-ils réserver ou commander ?", "Oui. Réservation de table avec plan de salle, prise de rendez-vous, commande à emporter, cartes cadeaux : vous activez ce dont vous avez besoin."],
     ["Puis-je arrêter quand je veux ?", "Oui, l'hébergement est sans engagement. Vous l'arrêtez en un clic depuis votre espace."],
   ];
   return (
@@ -311,7 +313,12 @@ function Footer() {
     <footer className="border-t border-line">
       <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-5 py-10 text-sm text-muted sm:flex-row sm:items-center">
         <Logo />
-        <a href="mailto:siteclic.contact@gmail.com" className="hover:text-ink">siteclic.contact@gmail.com</a>
+        <nav className="flex flex-wrap gap-x-5 gap-y-2">
+          <a href="mailto:siteclic.contact@gmail.com" className="hover:text-ink">siteclic.contact@gmail.com</a>
+          <Link href="/mentions-legales" className="hover:text-ink">Mentions légales</Link>
+          <Link href="/confidentialite" className="hover:text-ink">Confidentialité</Link>
+          <Link href="/cgv" className="hover:text-ink">Conditions de vente</Link>
+        </nav>
         <p>© {new Date().getFullYear()} SiteClic · Ton site en un clic</p>
       </div>
     </footer>

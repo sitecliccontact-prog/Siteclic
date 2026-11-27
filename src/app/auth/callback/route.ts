@@ -14,6 +14,7 @@ export async function GET(request: Request) {
     if (error && next === "/nouveau-mot-de-passe") {
       return NextResponse.redirect(`${origin}/mot-de-passe-oublie?lien=expire`);
     }
+    if (error) return NextResponse.redirect(`${origin}/connexion?raison=lien-expire`);
   }
   return NextResponse.redirect(`${origin}${next}`);
 }

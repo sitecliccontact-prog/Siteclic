@@ -1,5 +1,6 @@
 "use client";
 
+import { friendlyError } from "@/lib/errors";
 import { useEffect, useState } from "react";
 import { celebrate } from "./Celebration";
 
@@ -50,7 +51,7 @@ export function PublishButton({ id, initial, beforePublish, onPublished, compact
       setTimeout(() => setOpen(true), first ? 2300 : 0);
       onPublished?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "La mise en ligne n'a pas fonctionné.");
+      setError(friendlyError(e, "La mise en ligne n'a pas fonctionné."));
       setOpen(true);
     } finally {
       setBusy(null);

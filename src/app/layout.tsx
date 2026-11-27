@@ -14,11 +14,21 @@ const interTight = Inter_Tight({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://siteclic.vercel.app"),
   title: "SiteClic · Ton site en un clic",
   description:
     "Créez le site de votre commerce avec l'IA, ou améliorez celui que vous avez déjà. Modifiez-le simplement en écrivant.",
   applicationName: "SiteClic",
   appleWebApp: { capable: true, title: "SiteClic", statusBarStyle: "black-translucent" },
+  openGraph: {
+    type: "website",
+    locale: "fr_FR",
+    siteName: "SiteClic",
+    title: "SiteClic · L'élégance d'une agence. La simplicité d'un clic.",
+    description: "Le site de votre commerce, créé en quelques minutes avec l'IA. Modifiez-le simplement en écrivant ou en parlant.",
+    images: ["/icon-512.png"],
+  },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {

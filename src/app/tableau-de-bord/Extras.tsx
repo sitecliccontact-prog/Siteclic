@@ -1,5 +1,6 @@
 "use client";
 
+import { friendlyError } from "@/lib/errors";
 import { useEffect, useState } from "react";
 
 /* Tableau de bord : notifications sur le téléphone, parrainage. */
@@ -44,7 +45,7 @@ export function NotifyCard() {
       setState("on");
       setMsg("C'est activé : une notification d'essai vient d'arriver.");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Activation impossible.");
+      setMsg(friendlyError(e, "Activation impossible."));
     } finally {
       setBusy(false);
     }

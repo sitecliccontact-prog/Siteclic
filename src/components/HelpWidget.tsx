@@ -14,6 +14,10 @@ const PAGES: [RegExp, string][] = [
   [/^\/tableau-de-bord\/creer/, "Créer un site (questionnaire)"],
   [/^\/tableau-de-bord\/importer/, "Importer mon site actuel"],
   [/^\/tableau-de-bord\/reservations/, "Tableau des réservations"],
+  [/^\/tableau-de-bord\/commandes/, "Commandes et cartes cadeaux"],
+  [/^\/tableau-de-bord\/clients/, "Inscrits et candidatures"],
+  [/^\/tableau-de-bord\/photo/, "Créer un site avec une photo"],
+  [/^\/tableau-de-bord\/statistiques/, "Mes statistiques (propriétaire)"],
   [/^\/tableau-de-bord/, "Mes sites"],
   [/^\/apercu\//, "Aperçu du site"],
   [/^\/abonnement/, "Tarifs et paiement"],
@@ -73,9 +77,9 @@ export function HelpWidget() {
   }
 
   const launcherPos = editor
-    ? "right-3 top-[118px] lg:top-auto lg:bottom-5 lg:right-5"
+    ? "right-3 top-[128px] lg:top-auto lg:bottom-5 lg:right-5"
     : preview
-      ? "left-4 bottom-5"
+      ? "left-4 bottom-[88px] lg:bottom-5"
       : "right-4 bottom-5";
 
   return (

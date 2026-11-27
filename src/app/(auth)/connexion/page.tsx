@@ -14,6 +14,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ r
           Votre compte a été ouvert sur un autre appareil, vous avez donc été déconnecté ici. Un compte s&apos;utilise sur 2 appareils au maximum.
         </p>
       )}
+      {raison === "lien-expire" && (
+        <p role="status" className="mb-6 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
+          Ce lien de confirmation a déjà servi ou n&apos;est plus valable. Connectez-vous simplement avec votre e-mail et votre mot de passe.
+        </p>
+      )}
       <AuthForm mode="connexion" />
     </div>
   );

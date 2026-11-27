@@ -3,10 +3,6 @@ import Stripe from "stripe";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { isTeam } from "@/lib/team";
 
-/** Prix de l'abonnement (en centimes) : 29 €/mois. */
-export const PRICE_CENTS = 2900;
-export const PRICE_LABEL = "29 €/mois";
-
 let client: Stripe | null = null;
 
 /** Vrai quand la clé Stripe est réglée dans Vercel (STRIPE_SECRET_KEY). */
@@ -97,7 +93,7 @@ const ACTIVE: string[] = ["active", "trialing", "past_due"];
 
 /** Réponse envoyée quand une action est réservée aux abonnés. */
 export const SUBSCRIPTION_REQUIRED = {
-  error: "Cette action est réservée aux abonnés SiteClic.",
+  error: "Cette action est disponible une fois votre site payé (à partir de 20 €).",
   needsSubscription: true,
 } as const;
 

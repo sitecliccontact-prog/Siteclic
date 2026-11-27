@@ -16,7 +16,7 @@ import { serverKeyHash } from "@/lib/push";
 export const metadata: Metadata = { title: "Mes sites · SiteClic" };
 export const dynamic = "force-dynamic";
 
-type Reservation = { id: string; site_id: string; name: string; phone: string; day: string; time: string; people: number; message: string; created_at: string };
+type Reservation = { id: string; site_id: string; name: string; phone: string; day: string; time: string; people: number; message: string; created_at: string; status?: string; kind?: string; service?: string };
 
 type SiteRow = { id: string; name: string; trade: string | null; status: string; created_at: string; photos?: unknown; theme?: unknown };
 
@@ -49,8 +49,9 @@ export default async function Dashboard() {
   // Demandes de réservation (si le texte SQL 06 a été lancé ; sinon rien ne s'affiche).
   const { data: resa } = await supabase
     .from("reservations")
-    .select("id, site_id, name, phone, day, time, people, message, created_at")
-    .gte("day", new Date().toISOString().slice(0, 10))
+    .select("id, site_id, name, phone, day, time, people, message, created_at, status, kind, service")
+    .gte("day", new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(new Date()))
+    .in("status", ["nouvelle", "confirmee"])
     .order("day", { ascending: true })
     .order("time", { ascending: true })
     .limit(30);
@@ -81,7 +82,7 @@ export default async function Dashboard() {
         <p className="rise rise-3 mt-3 text-xs text-muted/70">Connecté avec {user.email}</p>
         {error && (
           <p role="alert" className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-            Impossible d&apos;afficher vos sites pour le moment. (code BDD-{error.code} : {error.message.slice(0, 120)})
+            Impossible d&apos;afficher vos sites pour le moment. Rechargez la page dans un instant. <span className="opacity-60">(code BDD-{error.code})</span>
           </p>
         )}
 
@@ -89,7 +90,7 @@ export default async function Dashboard() {
           <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-line bg-card/80 px-5 py-4 text-sm backdrop-blur">
             {sub?.active ? (
               <>
-                <span className="flex items-center gap-2 font-medium"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Abonnement actif</span>
+                <span className="flex items-center gap-2 font-medium"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Hébergement actif</span>
                 <ManageButton className="ml-auto text-muted underline underline-offset-4 hover:text-ink" />
               </>
             ) : (
@@ -175,18 +176,22 @@ export default async function Dashboard() {
 function ReservationCard({ r, site }: { r: Reservation; site?: string }) {
   const day = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${r.day}T12:00:00Z`));
   const isNew = Date.now() - Date.parse(r.created_at) < 24 * 3600 * 1000;
+  const confirmed = r.status === "confirmee";
   return (
     <li className="min-w-0 rounded-3xl border border-line bg-card/80 p-5 backdrop-blur">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-display text-lg font-semibold first-letter:uppercase">{day} · {r.time.replace(":", "h")}</p>
-          <p className="mt-0.5 text-sm text-muted">{r.people} {r.people > 1 ? "personnes" : "personne"} · {r.name}{site ? ` · ${site}` : ""}</p>
+          <p className="mt-0.5 text-sm text-muted">{r.kind === "rdv" ? r.service || "Rendez-vous" : `${r.people} ${r.people > 1 ? "personnes" : "personne"}`} · {r.name}{site ? ` · ${site}` : ""}</p>
         </div>
-        {isNew && <span className="shrink-0 rounded-full bg-clic/15 px-2.5 py-1 text-xs font-medium text-clic">Nouveau</span>}
+        {confirmed
+          ? <span className="shrink-0 rounded-full bg-emerald-400/10 px-2.5 py-1 text-xs font-medium text-emerald-300">Confirmée</span>
+          : isNew && <span className="shrink-0 rounded-full bg-clic/15 px-2.5 py-1 text-xs font-medium text-clic">Nouveau</span>}
       </div>
       {r.message && <p className="mt-3 rounded-2xl bg-white/5 px-3 py-2 text-sm text-ink/80">{r.message}</p>}
-      <a href={`tel:${r.phone.replace(/[^\d+]/g, "")}`} className="mt-4 inline-flex rounded-full bg-clic px-4 py-2 text-sm font-medium text-white">
-        Appeler pour confirmer · {r.phone}
+      <a href={`tel:${r.phone.replace(/[^\d+]/g, "")}`}
+        className={`mt-4 inline-flex rounded-full px-4 py-2 text-sm font-medium ${confirmed ? "border border-line" : "bg-clic text-white"}`}>
+        {confirmed ? "Appeler" : "Appeler pour confirmer"} · {r.phone}
       </a>
     </li>
   );
