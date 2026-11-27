@@ -1,4 +1,6 @@
 import type { CSSProperties } from "react";
+import { EventDialog, EventSeats, JobDialog, NewsletterForm } from "./SiteOptions";
+import { dateLong } from "@/lib/site/dates";
 import { bookingEnabled, priceCents, socialUrl, specialIsFresh, type SiteContent } from "@/lib/site/schema";
 import { AssistantWidget, AutoFilm, BookingDialog, SiteMotion, SiteVideo } from "./SiteClient";
 import { AddToBasket, GiftDialog, OrderDialog, VisitBeacon, type MenuItem } from "./SiteShop";
@@ -50,6 +52,10 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
     return price ? [{ key: `p-${i}`, cat: "", name: p.name, price }] : [];
   });
   const loyalty = content.loyalty?.enabled ? content.loyalty : null;
+  const events = (content.events ?? []).filter((e) => e.date >= todayParis);
+  const jobs = content.jobs?.enabled && content.jobs.items.length ? content.jobs.items : null;
+  const newsletter = content.newsletter?.enabled ? content.newsletter : null;
+  const allergens = content.allergens ?? {};
   const special = specialIsFresh(content) ? content.special : null;
   const instagram = socialUrl("instagram", content.links?.instagram);
   const facebook = socialUrl("facebook", content.links?.facebook);
@@ -104,6 +110,9 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
 
       {notice && (
         <div className="s-notice" role="status"><span className="s-live" aria-hidden />{notice.text}</div>
+      )}
+      {jobs && (
+        <a href="#recrutement" className="s-hiring"><b>{T("On recrute")}</b> {jobs.map((j) => j.title).join(" · ")} <span aria-hidden>→</span></a>
       )}
 
       {/* Accroche */}
@@ -277,12 +286,14 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
                           {it.price && <><span className="s-dots" /><span className="s-price">{it.price}</span></>}
                         </div>
                         {it.description && <p className="s-item-desc">{it.description}</p>}
+                        {allergens[it.name]?.length ? <p className="s-allergens">{T("Allergènes")} : {allergens[it.name].join(", ")}</p> : null}
                       </li>
                     ))}
                   </ul>
                 </div>
               ))}
             </div>
+            {Object.keys(allergens).length > 0 && <p className="s-allergen-note">{T("Allergènes indiqués à titre d'information. En cas d'allergie, parlez-en à notre équipe.")}</p>}
             {ordering && (
               <div className="s-order-cta" data-r>
                 <a href="#commander" className="s-btn">{T("Commander à emporter")}</a>
@@ -337,6 +348,39 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
         </section>
       )}
 
+      {/* Événements et soirées */}
+      {events.length > 0 && (
+        <section id="evenements" className="s-section s-events">
+          <div className="s-wrap">
+            <div className="s-head" data-r>
+              {ornament}
+              <p className="s-eyebrow">{T("À l'agenda")}</p>
+              <h2 className="s-display s-h2">{T("Nos soirées et événements")}</h2>
+            </div>
+            <div className="s-event-list">
+              {events.map((ev, i) => {
+                const d = new Date(`${ev.date}T12:00:00Z`);
+                return (
+                  <article key={ev.id} className="s-event" data-r style={{ "--d": `${i * 90}ms` } as CSSProperties}>
+                    <div className="s-event-date" aria-label={dateLong(ev.date)}>
+                      <small>{new Intl.DateTimeFormat("fr-FR", { weekday: "short", timeZone: "UTC" }).format(d).replace(".", "")}</small>
+                      <b className="s-display">{d.getUTCDate()}</b>
+                      <small>{new Intl.DateTimeFormat("fr-FR", { month: "short", timeZone: "UTC" }).format(d).replace(".", "")}</small>
+                    </div>
+                    <div className="s-event-body">
+                      <h3 className="s-display">{ev.title}</h3>
+                      <p className="s-event-meta">{ev.time.replace(":", "h")}{ev.price ? ` · ${ev.price}` : ""}{ev.seats ? <> · <span data-seats={ev.id}>{T("Places limitées")}</span></> : null}</p>
+                      {ev.description && <p className="s-event-desc">{ev.description}</p>}
+                    </div>
+                    <a href={`#evenement-${ev.id}`} className="s-btn s-btn-sm">{T("Réserver ma place")}</a>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Mini-boutique */}
       {shop && shopItems.length > 0 && (
         <section id="la-boutique" className="s-section s-shop">
@@ -377,6 +421,46 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
               </div>
               <div className="s-loyal-dots" aria-hidden>{Array.from({ length: loyalty.goal }, (_, k) => <i key={k} className={k < 3 ? "on" : ""} />)}</div>
               <a href={`/s/${slug}/fidelite`} className="s-btn">{T("Ouvrir ma carte")}</a>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Offres d'emploi */}
+      {jobs && (
+        <section id="recrutement" className="s-section s-jobs">
+          <div className="s-wrap">
+            <div className="s-head" data-r>
+              {ornament}
+              <p className="s-eyebrow">{T("On recrute")}</p>
+              <h2 className="s-display s-h2">{T("Rejoignez l'équipe")}</h2>
+            </div>
+            <div className="s-job-list">
+              {jobs.map((j, i) => (
+                <article key={i} className="s-job" data-r>
+                  <div>
+                    <h3 className="s-display">{j.title}{j.kind && <small>{j.kind}</small>}</h3>
+                    {j.text && <p>{j.text}</p>}
+                  </div>
+                  <a href={`#postuler-${i}`} className="s-btn s-btn-sm">{T("Postuler")}</a>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Newsletter / SMS */}
+      {newsletter && (
+        <section className="s-section s-news">
+          <div className="s-wrap">
+            <div className="s-news-card" data-r>
+              <div>
+                <p className="s-eyebrow">{T("Restez informé")}</p>
+                <h2 className="s-display s-h2">{T("Nos nouvelles, en avant-première")}</h2>
+                <p className="s-news-text">{T("Nouveaux plats, soirées, offres réservées aux habitués. Rarement, jamais trop.")}</p>
+              </div>
+              <NewsletterForm slug={slug} brand={brand.name} perk={newsletter.perk} />
             </div>
           </div>
         </section>
@@ -474,6 +558,8 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
       <VisitBeacon slug={slug} />
       {ordering && <OrderDialog slug={slug} brand={brand.name} items={menuItems} online={orderOnline} lang={lang} />}
       {shop && shopItems.length > 0 && <OrderDialog slug={slug} brand={brand.name} items={shopItems} online={Boolean(shop.account)} lang={lang} shop={{ delivery: shop.delivery, deliveryNote: shop.deliveryNote }} />}
+      {events.length > 0 && <><EventSeats slug={slug} events={events} /><EventDialog slug={slug} brand={brand.name} events={events} /></>}
+      {jobs && <JobDialog slug={slug} brand={brand.name} jobs={jobs} />}
       {appts && <AppointmentDialog slug={slug} brand={brand.name} appts={appts} />}
       {gift && <GiftDialog slug={slug} brand={brand.name} amounts={gift.amounts} lang={lang} />}
       {(content.assistant?.enabled || booking) && (
@@ -776,6 +862,38 @@ const SITE_CSS = `
 .site .s-lang{font-size:12px;letter-spacing:.14em;font-weight:600;padding:6px 10px;border:1px solid var(--line);border-radius:999px;margin-left:auto;margin-right:10px}
 .site .s-order-cta{display:flex;justify-content:center;margin-top:clamp(32px,5cqi,56px)}
 .site .s-reviews .s-review-grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));margin-top:clamp(32px,5cqi,56px)}
+.site .s-hiring{display:flex;align-items:center;justify-content:center;gap:8px;padding:9px 20px;border-bottom:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:13px;text-decoration:none;text-align:center}
+.site .s-hiring b{white-space:nowrap;color:var(--accent);text-transform:uppercase;letter-spacing:.12em;font-size:11px}
+.site .s-allergens{margin:4px 0 0;font-size:12px;color:var(--muted);letter-spacing:.02em}
+.site .s-allergen-note{margin:36px auto 0;max-width:640px;text-align:center;font-size:12px;color:var(--muted)}
+.site .s-event-list{display:grid;gap:14px;max-width:860px;margin:clamp(28px,5cqi,48px) auto 0}
+.site .s-event{display:grid;grid-template-columns:auto 1fr;gap:14px 20px;align-items:center;padding:clamp(16px,3cqi,24px);border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}
+.site .s-event .s-btn{grid-column:1/-1;justify-self:stretch;text-align:center}
+@container (min-width:640px){.site .s-event{grid-template-columns:auto 1fr auto}.site .s-event .s-btn{grid-column:auto;justify-self:end}}
+.site .s-event-date{display:grid;justify-items:center;min-width:64px;padding:10px 8px;border-radius:calc(var(--radius) - 2px);background:var(--accent);color:var(--on-accent);line-height:1.05}
+.site .s-event-date b{font-size:30px}.site .s-event-date small{font-size:11px;text-transform:uppercase;letter-spacing:.1em;opacity:.85}
+.site .s-event-body h3{margin:0;font-size:clamp(20px,2.6cqi,26px)}
+.site .s-event-meta{margin:4px 0 0;font-size:13px;color:var(--muted)}
+.site .s-event-meta span{color:var(--accent);font-weight:600}.site .s-event-meta span.is-full{color:var(--muted);text-decoration:line-through}
+.site .s-event-desc{margin:8px 0 0;font-size:15px;line-height:1.55}
+.site .s-job-list{display:grid;gap:12px;max-width:760px;margin:clamp(28px,5cqi,48px) auto 0}
+.site .s-job{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px 24px;padding:20px 0;border-bottom:1px solid var(--line)}
+.site .s-job h3{margin:0;font-size:clamp(20px,2.6cqi,26px);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.site .s-job h3 small{font-family:var(--body);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.site .s-job p{margin:6px 0 0;color:var(--muted);max-width:52ch;line-height:1.55}
+.site .s-news-card{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;padding:clamp(26px,5cqi,48px);border:1px solid var(--line);border-radius:calc(var(--radius) + 8px);background:var(--surface)}
+@container (min-width:820px){.site .s-news-card{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:48px}}
+.site .s-news-card .s-h2{margin:6px 0 0}
+.site .s-news-text{margin:10px 0 0;color:var(--muted);line-height:1.6}
+.site .s-news-row{display:flex;gap:8px;flex-wrap:wrap}
+.site .s-news-row .s-btn{flex:1 1 auto}
+.site .s-news-row input{flex:1 1 200px;min-width:0;padding:14px 16px;border:1px solid var(--line);border-radius:var(--btn-radius);background:var(--bg);color:var(--ink);font:inherit}
+.site .s-news-consent{display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:12px;color:var(--muted);line-height:1.5}
+.site .s-news-consent input{margin-top:2px;accent-color:var(--accent)}
+.site .s-news-perk{margin:10px 0 0;font-size:14px;font-weight:600;color:var(--accent)}
+.site .s-news-done{font-size:22px;margin:0}
+.site .s-file{display:block;margin:4px 0 14px;padding:14px 16px;border:1px dashed var(--line);border-radius:var(--radius);font-size:14px;color:var(--muted);cursor:pointer}
+.site .s-file input{position:absolute;opacity:0;width:1px;height:1px}
 .site .s-notice{display:flex;align-items:center;justify-content:center;gap:10px;padding:11px 20px;background:var(--accent);color:var(--on-accent);font-size:14px;font-weight:600;text-align:center;line-height:1.4}
 .site .s-notice .s-live{background:currentColor}
 .site .s-rdv-list{list-style:none;margin:clamp(28px,5cqi,48px) auto 0;padding:0;max-width:720px;display:grid}

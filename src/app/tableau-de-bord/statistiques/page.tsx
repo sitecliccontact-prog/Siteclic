@@ -7,6 +7,7 @@ import { billingEnabled, stripe } from "@/lib/billing/stripe";
 import { isTeam } from "@/lib/team";
 import { createClient } from "@/lib/supabase/server";
 import { OwnerSettings } from "./OwnerSettings";
+import { DomainsAdmin, type DomainRow } from "./DomainsAdmin";
 
 export const metadata: Metadata = { title: "Mes statistiques · SiteClic" };
 export const dynamic = "force-dynamic";
@@ -50,7 +51,7 @@ export default async function OwnerStatsPage() {
   if (!user) redirect("/connexion");
   if (!isTeam(user)) notFound();
 
-  const [{ data, error }, settings, cash] = await Promise.all([supabase.rpc("owner_stats"), getAppSettings(), money()]);
+  const [{ data, error }, settings, cash, domains] = await Promise.all([supabase.rpc("owner_stats"), getAppSettings(), money(), supabase.rpc("domain_list")]);
   const s = data as Stats | null;
 
   const days = Array.from({ length: 30 }, (_, k) => new Date(Date.now() - (29 - k) * 86400000).toISOString().slice(0, 10));
@@ -135,6 +136,7 @@ export default async function OwnerStatsPage() {
             <p className="text-sm text-muted">{s.reservations} réservations reçues par les restaurants ce mois-ci · {s.sites_30} sites créés ce mois-ci.</p>
           </>
         )}
+        <DomainsAdmin initial={(domains.data ?? []) as DomainRow[]} />
         <OwnerSettings initial={settings} />
       </section>
     </main>

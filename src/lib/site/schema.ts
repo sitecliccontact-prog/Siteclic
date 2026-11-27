@@ -147,6 +147,25 @@ export const SiteExtrasSchema = z.object({
     account: z.string().max(60).optional(),
     products: z.array(z.object({ name: z.string().max(60), price: z.string().max(20), description: z.string().max(200).default(""), photo: z.string().max(400).default("") })).max(30).default([]),
   }).optional(),
+  /** Option Événements et soirées : places limitées, réservées depuis le site. */
+  events: z.array(z.object({
+    id: z.string().max(20),
+    title: z.string().max(80),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    time: z.string().max(5).default("19:00"),
+    description: z.string().max(400).default(""),
+    price: z.string().max(20).default(""),
+    seats: z.number().int().min(0).max(2000).default(0),
+  })).max(12).optional(),
+  /** Option Offres d'emploi : bandeau « On recrute » + candidatures. */
+  jobs: z.object({
+    enabled: z.boolean(),
+    items: z.array(z.object({ title: z.string().max(60), kind: z.string().max(30).default(""), text: z.string().max(500).default("") })).max(6).default([]),
+  }).optional(),
+  /** Option Newsletter / SMS : les clients laissent leur e-mail ou téléphone. */
+  newsletter: z.object({ enabled: z.boolean(), perk: z.string().max(100).default("") }).optional(),
+  /** Option Allergènes : par nom de plat, les allergènes (14 allergènes officiels). */
+  allergens: z.record(z.string().max(120), z.array(z.string().max(30)).max(14)).optional(),
   /** Réseaux sociaux, affichés en bas du site. */
   links: z.object({ instagram: z.string().max(200), facebook: z.string().max(200) }).partial().optional(),
   /** Vidéo de présentation : celle du commerçant (url) ou, sans url, un petit film animé fait à partir de ses photos. */
@@ -166,7 +185,7 @@ export type SiteExtras = z.infer<typeof SiteExtrasSchema>;
 
 /** Garde les réglages du commerçant quand l'IA réécrit le site. */
 export function keepExtras(from: SiteContent, to: SiteContent): SiteContent {
-  return { ...to, special: from.special, booking: from.booking, assistant: from.assistant, links: from.links, video: from.video, floor: from.floor, look: from.look, reviews: from.reviews, translations: from.translations, order: from.order, gift: from.gift, notice: from.notice, loyalty: from.loyalty, appointments: from.appointments, waitlist: from.waitlist, shop: from.shop };
+  return { ...to, special: from.special, booking: from.booking, assistant: from.assistant, links: from.links, video: from.video, floor: from.floor, look: from.look, reviews: from.reviews, translations: from.translations, order: from.order, gift: from.gift, notice: from.notice, loyalty: from.loyalty, appointments: from.appointments, waitlist: from.waitlist, shop: from.shop, events: from.events, jobs: from.jobs, newsletter: from.newsletter, allergens: from.allergens };
 }
 
 /** Le formulaire de réservation est-il proposé ? (par défaut : oui si le bouton principal parle de réserver) */
@@ -241,3 +260,6 @@ export function priceCents(price: string): number | null {
   const v = Math.round(parseFloat(m[1].replace(",", ".")) * 100);
   return v > 0 && v < 100000 ? v : null;
 }
+
+/** Les 14 allergènes à déclarer (règlement européen INCO). */
+export const ALLERGENS = ["Gluten", "Crustacés", "Œufs", "Poissons", "Arachides", "Soja", "Lait", "Fruits à coque", "Céleri", "Moutarde", "Sésame", "Sulfites", "Lupin", "Mollusques"] as const;

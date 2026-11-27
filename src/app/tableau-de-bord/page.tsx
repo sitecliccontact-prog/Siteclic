@@ -9,6 +9,9 @@ import { createClient } from "@/lib/supabase/server";
 import { Backdrop } from "./Backdrop";
 import { greeting, todayLabel } from "./greeting";
 import { SignOutButton } from "./SignOutButton";
+import { NotifyCard, ReferralCard } from "./Extras";
+import { WeekCard, type WeekRow } from "./WeekCard";
+import { serverKeyHash } from "@/lib/push";
 
 export const metadata: Metadata = { title: "Mes sites · SiteClic" };
 export const dynamic = "force-dynamic";
@@ -53,6 +56,10 @@ export default async function Dashboard() {
     .limit(30);
   const reservations = (resa ?? []) as Reservation[];
   const siteName = new Map(sites.map((s) => [s.id, s.name]));
+  // Compte propriétaire : enregistre l'empreinte de la clé du serveur (pour les notifications et le rapport du lundi).
+  if (isTeam(user)) await supabase.rpc("server_key_set", { p_hash: serverKeyHash() }).then(() => null, () => null);
+  const { data: weekData } = sites.some((s) => s.status === "en_ligne") ? await supabase.rpc("my_week") : { data: null };
+  const week = (Array.isArray(weekData) ? weekData : []) as WeekRow[];
 
   return (
     <main className="relative isolate min-h-dvh overflow-x-clip px-5 py-6">
@@ -112,7 +119,17 @@ export default async function Dashboard() {
           <div className="mt-10 flex flex-wrap gap-2 text-sm">
             <Link href="/tableau-de-bord/reservations" className="rounded-full border border-line bg-card/80 px-4 py-2 hover:border-ink/50">Réservations</Link>
             <Link href="/tableau-de-bord/commandes" className="rounded-full border border-line bg-card/80 px-4 py-2 hover:border-ink/50">Commandes et cartes cadeaux</Link>
+            <Link href="/tableau-de-bord/clients" className="rounded-full border border-line bg-card/80 px-4 py-2 hover:border-ink/50">Inscrits et candidatures</Link>
             {isTeam(user) && <Link href="/tableau-de-bord/statistiques" className="rounded-full border border-clic/60 bg-clic/10 px-4 py-2 text-ink">📊 Mes statistiques</Link>}
+          </div>
+        )}
+
+        {week.length > 0 && <WeekCard week={week} />}
+
+        {sites.length > 0 && (
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <NotifyCard />
+            <ReferralCard />
           </div>
         )}
 

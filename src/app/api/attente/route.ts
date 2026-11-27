@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+import { notifyOwner, whenLabel } from "@/lib/push";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,7 +20,10 @@ export async function POST(request: Request) {
   const b = parsed.data;
   const supabase = await createClient();
   const { error } = await supabase.rpc("join_waitlist", { p_slug: b.slug, p_name: b.name, p_phone: b.phone, p_day: b.day, p_time: b.time, p_people: b.people });
-  if (!error) return NextResponse.json({ ok: true });
+  if (!error) {
+    after(() => notifyOwner(b.slug, { title: "Liste d'attente", body: `${b.name}, ${b.people} pers., ${whenLabel(b.day, b.time)}`, url: "/tableau-de-bord/reservations", tag: "attente" }));
+    return NextResponse.json({ ok: true });
+  }
   if (error.message?.includes("reservation_trop")) return NextResponse.json({ error: "Beaucoup de demandes aujourd'hui : merci d'appeler directement." }, { status: 429 });
   if (error.message?.includes("reservation_invalide")) return NextResponse.json({ error: "Vérifiez la date et votre téléphone." }, { status: 400 });
   console.error("Liste d'attente", error);

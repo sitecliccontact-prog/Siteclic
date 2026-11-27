@@ -6,6 +6,7 @@ import { Logo } from "@/components/Logo";
 import { PriceCards } from "@/components/PriceCards";
 import { billingEnabled, getSubscription, safeReturn } from "@/lib/billing/stripe";
 import { createClient } from "@/lib/supabase/server";
+import { OPTIONS } from "@/lib/pricing";
 
 export const metadata: Metadata = { title: "Tarifs · SiteClic", robots: { index: false } };
 
@@ -64,6 +65,15 @@ export default async function SubscriptionPage({ searchParams }: { searchParams:
             <p className="mt-4 text-center text-xs text-muted">Paiement sécurisé par Stripe. Carte bancaire, Apple Pay, Google Pay.</p>
           </>
         )}
+        <div className="mt-10 rounded-3xl border border-line bg-card p-6">
+          <p className="font-display text-xl font-semibold">Options en plus</p>
+          <p className="mt-1 text-sm text-muted">À activer seulement si vous en avez besoin, dans « Modifier moi-même ».</p>
+          <ul className="mt-4 divide-y divide-line text-sm">
+            {Object.values(OPTIONS).map((o) => (
+              <li key={o.name} className="flex justify-between gap-3 py-2.5"><span>{o.name}</span><span className={o.price === "Inclus" ? "text-emerald-300" : "font-semibold"}>{o.price}</span></li>
+            ))}
+          </ul>
+        </div>
       </section>
     </main>
   );

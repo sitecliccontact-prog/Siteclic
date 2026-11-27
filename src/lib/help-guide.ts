@@ -38,6 +38,14 @@ SiteClic : application pour créer le site internet de son commerce avec l'IA, s
 - Mini-boutique : carte « Mini-boutique » : produits (photo, nom, prix, description), livraison possible ou non, « Enregistrer la boutique ». Les commandes arrivent dans « Commandes et cartes cadeaux ».
 - Posts Instagram : carte « Posts Instagram » : une idée facultative, « Créer 3 posts » (compte comme 1 modification IA). Pour chaque post : « Enregistrer l'image » puis « Copier le texte », et le coller dans Instagram.
 - Fiche Google : carte « Fiche Google » : copier la description, les horaires ou le menu du jour, puis « Ouvrir ma fiche Google » et coller. Pas de mise à jour automatique (Google ne l'autorise pas encore).
+- Notifications : sur « Mes sites », carte « Notifications sur ce téléphone » → « Activer les notifications » puis « Autoriser ». Le téléphone sonne à chaque réservation, rendez-vous, commande ou candidature. Sur iPhone, ajouter d'abord SiteClic à l'écran d'accueil. Bloquées par erreur : cadenas à côté de l'adresse → Notifications → Autoriser.
+- Rapport du lundi : carte « Votre semaine » sur « Mes sites » (visites, réservations, commandes, ventes des 7 derniers jours, comparées à la semaine d'avant). Avec les notifications, le résumé arrive aussi chaque lundi vers 8 h.
+- Parrainage : carte « Parrainage » sur « Mes sites » : envoyer son lien par SMS ou WhatsApp. Un commerçant qui s'inscrit avec ce lien et met son site en ligne = 1 mois d'hébergement offert.
+- Événements et soirées (option) : dans « Modifier moi-même », carte « Événements et soirées » : titre, date, heure, prix, nombre de places (0 = sans limite), « Enregistrer ». Les clients réservent leur place sur le site, « Complet » s'affiche tout seul. Les réservations arrivent dans « Réservations ».
+- Allergènes (option) : carte « Allergènes sur la carte » → « L'IA ajoute les allergènes » (1 modification IA), vérifier en touchant les étiquettes, puis « Enregistrer les allergènes ». Ils s'affichent sous chaque plat.
+- Newsletter et SMS (option) : carte « Newsletter et SMS aux clients » : interrupteur pour afficher « Restez informé » sur le site. Écrire ce qu'on veut annoncer → « L'IA écrit le message » (1 modification IA) → « Envoyer les e-mails » ou « Envoyer les SMS » ouvre la messagerie avec tous les inscrits. Liste des inscrits : « Inscrits et candidatures ».
+- Offres d'emploi (option) : carte « Offres d'emploi » : poste, type de contrat, détails, « Publier les annonces ». Bandeau « On recrute » sur le site ; les candidats postulent avec leur CV. Les candidatures arrivent dans « Inscrits et candidatures » (Appeler, SMS entretien, Voir le CV).
+- Nom de domaine (option) : carte « Votre propre adresse » : écrire l'adresse voulue (ex. monresto.fr) → « Je veux cette adresse ». SiteClic l'achète et la branche sous 48 h.
 - Essai gratuit : une seule fois par personne (2 sites et 10 modifications par l'IA). Il faut confirmer son e-mail ; les adresses jetables, une 2e adresse sur le même téléphone ou trop de comptes depuis la même connexion ne donnent pas d'essai en plus. La mise en ligne n'est pas comprise dans l'essai.
 - Connexion : un compte s'utilise sur 2 appareils au maximum. Se connecter sur un 3e appareil déconnecte le plus ancien (message « Votre compte a été ouvert sur un autre appareil »).
 - Mot de passe oublié : sur l'écran de connexion, lien « Mot de passe oublié ? », recevoir un e-mail, cliquer sur le lien, choisir un nouveau mot de passe. Regarder aussi dans les spams.
@@ -46,6 +54,7 @@ SiteClic : application pour créer le site internet de son commerce avec l'IA, s
 TARIFS
 - Gratuit : créer et voir l'aperçu (2 sites créés par l'IA et 10 modifications par l'IA au maximum).
 - Un site : 20 € une fois (50 modifications par l'IA). Pack 5 sites : 50 €. Hébergement : 30 € par an ou 2,90 € par mois. Le paiement en ligne n'est pas encore ouvert.
+- Options : nom de domaine 15 €/an, newsletter/SMS 5 €/mois, événements 4 €/mois, allergènes par l'IA 3 € une fois, offres d'emploi 3 €/mois. Inclus pour tous : notifications, rapport du lundi, parrainage.
 
 PROBLÈMES FRÉQUENTS
 - Une modification ne se voit pas sur le site en ligne : toucher « Publier les modifications », puis recharger la page du site (attendre quelques secondes).

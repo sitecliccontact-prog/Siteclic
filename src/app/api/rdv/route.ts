@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+import { notifyOwner, whenLabel } from "@/lib/push";
 import { z } from "zod";
 import { getPublishedSite } from "@/lib/site/published";
 import { createClient } from "@/lib/supabase/server";
@@ -43,7 +44,10 @@ export async function POST(request: Request) {
     p_slug: b.slug, p_name: b.name, p_phone: b.phone, p_day: b.day, p_time: b.time,
     p_service: service.name, p_staff: b.staff, p_minutes: service.minutes, p_message: b.message,
   });
-  if (!error) return NextResponse.json({ ok: true });
+  if (!error) {
+    after(() => notifyOwner(b.slug, { title: "Nouveau rendez-vous", body: `${b.name} · ${service.name}, ${whenLabel(b.day, b.time)}${b.staff ? ` avec ${b.staff}` : ""}`, url: "/tableau-de-bord/reservations", tag: "rdv" }));
+    return NextResponse.json({ ok: true });
+  }
   const m = error.message ?? "";
   if (m.includes("creneau_pris")) return NextResponse.json({ error: "Ce créneau vient d'être pris. Choisissez-en un autre." }, { status: 409 });
   if (m.includes("reservation_trop")) return NextResponse.json({ error: "Beaucoup de demandes aujourd'hui : merci d'appeler directement." }, { status: 429 });

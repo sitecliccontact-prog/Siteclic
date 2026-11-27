@@ -39,3 +39,16 @@ export const AI_PLANS = [
   { id: "pro", name: "Pro", price: "39 €", quota: 1000, note: "Pour les maisons très demandées" },
 ] as const;
 export type AiPlanId = (typeof AI_PLANS)[number]["id"];
+
+/** Options en plus pour les commerçants (proposées le 27/11). Débloquées sur les comptes propriétaire SiteClic. */
+export const OPTIONS = {
+  domaine: { name: "Nom de domaine", price: "15 €/an" },
+  newsletter: { name: "Newsletter / SMS", price: "5 €/mois" },
+  evenements: { name: "Événements et soirées", price: "4 €/mois" },
+  allergenes: { name: "Allergènes par l'IA", price: "3 € une fois" },
+  emploi: { name: "Offres d'emploi", price: "3 €/mois" },
+  rapport: { name: "Rapport du lundi", price: "Inclus" },
+  parrainage: { name: "Parrainage", price: "Inclus" },
+  notifications: { name: "Notifications", price: "Inclus" },
+} as const;
+export type OptionId = keyof typeof OPTIONS;

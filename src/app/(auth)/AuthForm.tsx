@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { supabaseReady } from "@/lib/supabase/config";
 import { isDisposable } from "@/lib/disposable";
@@ -18,6 +18,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const isSignup = mode === "inscription";
+
+  // Lien de parrainage (…/inscription?parrain=CODE) : gardé jusqu'à l'ouverture du tableau de bord.
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("parrain");
+    if (code && /^[A-Za-z0-9]{6}$/.test(code)) try { localStorage.setItem("sc_parrain", code.toUpperCase()); } catch {}
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

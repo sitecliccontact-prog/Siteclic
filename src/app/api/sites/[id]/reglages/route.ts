@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bookingEnabled, isOwnVideo, parseStoredContent, type SiteContent } from "@/lib/site/schema";
+import { ALLERGENS, bookingEnabled, isOwnVideo, parseStoredContent, type SiteContent } from "@/lib/site/schema";
 import { ownAccount } from "@/lib/billing/connect";
 import { SAMPLE_FLOOR } from "@/lib/site/floor";
 import { publicPath } from "@/lib/site/slug";
@@ -50,6 +50,16 @@ const Body = z.object({
       photo: z.string().max(400).refine((u) => !u || isOwnPhotoUrl(u)),
     })).max(30),
   }).optional(),
+  events: z.array(z.object({
+    id: z.string().regex(/^[a-z0-9]{1,20}$/), title: z.string().trim().min(1).max(80), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    time: z.string().regex(/^[0-2]\d:[0-5]\d$/), description: z.string().trim().max(400), price: z.string().trim().max(20), seats: z.number().int().min(0).max(2000),
+  })).max(12).optional(),
+  jobs: z.object({
+    enabled: z.boolean(),
+    items: z.array(z.object({ title: z.string().trim().min(1).max(60), kind: z.string().trim().max(30), text: z.string().trim().max(500) })).max(6),
+  }).optional(),
+  newsletter: z.object({ enabled: z.boolean(), perk: z.string().trim().max(100) }).optional(),
+  allergens: z.record(z.string().max(120), z.array(z.enum(ALLERGENS)).max(14)).optional(),
   gift: z.object({ enabled: z.boolean(), amounts: z.array(z.number().int().min(10).max(500)).min(1).max(5) }).optional(),
   video: z.object({
     enabled: z.boolean(),
@@ -109,6 +119,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (parsed.data.loyalty) patch.loyalty = parsed.data.loyalty;
   if (parsed.data.appointments) patch.appointments = parsed.data.appointments;
   if (parsed.data.waitlist) patch.waitlist = parsed.data.waitlist;
+  if (parsed.data.events) patch.events = [...parsed.data.events].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  if (parsed.data.jobs) patch.jobs = parsed.data.jobs;
+  if (parsed.data.newsletter) patch.newsletter = parsed.data.newsletter;
+  if (parsed.data.allergens) patch.allergens = parsed.data.allergens;
   if (parsed.data.shop) {
     const acct = parsed.data.shop.enabled ? await ownAccount(user).catch(() => null) : null;
     patch.shop = { ...parsed.data.shop, account: acct?.id };

@@ -2,6 +2,18 @@
 export type Lang = "fr" | "en";
 
 const EN: Record<string, string> = {
+  "On recrute": "We're hiring",
+  "Allergènes": "Allergens",
+  "Allergènes indiqués à titre d'information. En cas d'allergie, parlez-en à notre équipe.": "Allergens are listed for information. If you have an allergy, please tell our team.",
+  "À l'agenda": "Coming up",
+  "Nos soirées et événements": "Evenings and events",
+  "Places limitées": "Limited seats",
+  "Réserver ma place": "Book my seat",
+  "Rejoignez l'équipe": "Join the team",
+  "Postuler": "Apply",
+  "Restez informé": "Stay in touch",
+  "Nos nouvelles, en avant-première": "Our news, first",
+  "Nouveaux plats, soirées, offres réservées aux habitués. Rarement, jamais trop.": "New dishes, evenings, offers for regulars. Rarely, never too much.",
   "La maison": "About us",
   "Infos pratiques": "Visit us",
   "Adresse": "Address",

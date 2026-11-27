@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+import { notifyOwner } from "@/lib/push";
 import { z } from "zod";
 import { shopAccount } from "@/lib/billing/shop";
 import { stripe } from "@/lib/billing/stripe";
@@ -51,6 +52,12 @@ export async function POST(request: Request) {
     console.error("Commande impossible", error);
     return NextResponse.json({ error: "La commande en ligne n'est pas disponible pour le moment. Merci d'appeler." }, { status: 503 });
   }
+
+  after(() => notifyOwner(b.slug, {
+    title: b.delivery ? "Nouvelle commande à livrer" : "Nouvelle commande",
+    body: `${b.name} · ${lines.map((l) => `${l.qty} ${l.name}`).join(", ").slice(0, 120)} · ${(total / 100).toFixed(2).replace(".", ",")} €`,
+    url: "/tableau-de-bord/commandes", tag: "commande",
+  }));
 
   // Paiement en ligne si le restaurant l'a activé et que son compte Stripe est prêt.
   const pay = fromShop ? { online: true, account: shop?.account } : site.content.order;
