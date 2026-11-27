@@ -166,8 +166,10 @@ export const SiteExtrasSchema = z.object({
   newsletter: z.object({ enabled: z.boolean(), perk: z.string().max(100).default("") }).optional(),
   /** Option Allergènes : par nom de plat, les allergènes (14 allergènes officiels). */
   allergens: z.record(z.string().max(120), z.array(z.string().max(30)).max(14)).optional(),
+  /** Questions fréquentes des clients (parking, animaux, groupes…), écrites par le commerçant. */
+  faq: z.array(z.object({ q: z.string().max(140), a: z.string().max(700) })).max(12).optional(),
   /** Réseaux sociaux, affichés en bas du site. */
-  links: z.object({ instagram: z.string().max(200), facebook: z.string().max(200) }).partial().optional(),
+  links: z.object({ instagram: z.string().max(200), facebook: z.string().max(200), whatsapp: z.string().max(30) }).partial().optional(),
   /** Vidéo de présentation : celle du commerçant (url) ou, sans url, un petit film animé fait à partir de ses photos. */
   video: z.object({
     enabled: z.boolean(),
@@ -185,7 +187,12 @@ export type SiteExtras = z.infer<typeof SiteExtrasSchema>;
 
 /** Garde les réglages du commerçant quand l'IA réécrit le site. */
 export function keepExtras(from: SiteContent, to: SiteContent): SiteContent {
-  return { ...to, special: from.special, booking: from.booking, assistant: from.assistant, links: from.links, video: from.video, floor: from.floor, look: from.look, reviews: from.reviews, translations: from.translations, order: from.order, gift: from.gift, notice: from.notice, loyalty: from.loyalty, appointments: from.appointments, waitlist: from.waitlist, shop: from.shop, events: from.events, jobs: from.jobs, newsletter: from.newsletter, allergens: from.allergens };
+  return { ...to, special: from.special, booking: from.booking, assistant: from.assistant, links: from.links, video: from.video, floor: from.floor, look: from.look, reviews: from.reviews, translations: from.translations, order: from.order, gift: from.gift, notice: from.notice, loyalty: from.loyalty, appointments: from.appointments, waitlist: from.waitlist, shop: from.shop, events: from.events, jobs: from.jobs, newsletter: from.newsletter, allergens: from.allergens, faq: from.faq };
+}
+
+/** Questions fréquentes complètes (question et réponse remplies). */
+export function faqItems(c: SiteContent) {
+  return (c.faq ?? []).filter((f) => f.q.trim() && f.a.trim());
 }
 
 /** Le formulaire de réservation est-il proposé ? (par défaut : oui si le bouton principal parle de réserver) */

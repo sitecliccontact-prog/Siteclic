@@ -1,6 +1,7 @@
 "use client";
 
 import { friendlyError } from "@/lib/errors";
+import { AddToCalendar, type CalEvent } from "./AddToCalendar";
 import { useEffect, useRef, useState } from "react";
 import { useDictation } from "@/lib/hooks/useDictation";
 import { speak as sayAloud, stopSpeaking } from "@/lib/hooks/speak";
@@ -103,6 +104,7 @@ export function BookingDialog({ slug, brand, phone, phoneHref, floor = [], guara
   const aiOn = useAiOn(slug);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState("");
+  const [cal, setCal] = useState<CalEvent | null>(null);
   const [error, setError] = useState("");
   const [people, setPeople] = useState(2);
   const ref = useRef<HTMLDivElement>(null);
@@ -180,6 +182,7 @@ export function BookingDialog({ slug, brand, phone, phoneHref, floor = [], guara
         window.location.href = data.payUrl; // page de paiement sécurisée Stripe
         return;
       }
+      if (!waiting) setCal({ title: `Table chez ${brand} (${people} pers.)`, day, time, minutes: 120, details: `Demande envoyée à ${brand}, en attente de confirmation.${phone ? ` Tél. ${phone}` : ""}` });
       setDone(waiting
         ? `Merci ${body.name.split(" ")[0]} ! Vous êtes sur la liste d'attente. ${brand} vous envoie un SMS dès qu'une table se libère.`
         : `Merci ${body.name.split(" ")[0]} ! Votre demande${table ? ` pour la table ${table}` : ""} est bien envoyée. ${brand} vous rappelle pour confirmer.`);
@@ -200,8 +203,9 @@ export function BookingDialog({ slug, brand, phone, phoneHref, floor = [], guara
               <div className="s-modal-done">
                 <p className="s-eyebrow">Demande envoyée</p>
                 <p className="s-display s-modal-title">{done}</p>
+                {cal && <AddToCalendar ev={cal} />}
                 {phoneHref && <a href={phoneHref} className="s-link">Appeler le {phone}</a>}
-                <button type="button" className="s-btn" onClick={() => { setOpen(false); setDone(""); }}>Fermer</button>
+                <button type="button" className="s-btn" onClick={() => { setOpen(false); setDone(""); setCal(null); }}>Fermer</button>
               </div>
             ) : (
               <form onSubmit={submit}>

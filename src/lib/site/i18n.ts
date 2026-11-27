@@ -3,6 +3,8 @@ export type Lang = "fr" | "en";
 
 const EN: Record<string, string> = {
   "On recrute": "We're hiring",
+  "Questions fréquentes": "Good to know",
+  "Écrire sur WhatsApp": "Message us on WhatsApp",
   "Allergènes": "Allergens",
   "Allergènes indiqués à titre d'information. En cas d'allergie, parlez-en à notre équipe.": "Allergens are listed for information. If you have an allergy, please tell our team.",
   "À l'agenda": "Coming up",

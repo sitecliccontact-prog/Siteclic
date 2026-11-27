@@ -51,7 +51,7 @@ export function PlanPicker({ retour }: { retour?: string }) {
           <button type="button" aria-pressed={hosting === "an"} onClick={() => setHosting("an")} className={pill(hosting === "an")}>
             <span className="block text-sm font-medium">À l&apos;année</span>
             <span className="font-display text-xl font-semibold">{HOSTING.year}</span>
-            <span className="block text-xs text-muted">soit {HOSTING.yearMonthly}/mois</span>
+            <span className="block text-xs text-muted">une fois par an</span>
           </button>
           <button type="button" aria-pressed={hosting === "mois"} onClick={() => setHosting("mois")} className={pill(hosting === "mois")}>
             <span className="block text-sm font-medium">Au mois</span>

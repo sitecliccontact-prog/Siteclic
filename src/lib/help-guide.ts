@@ -53,8 +53,16 @@ SiteClic : application pour créer le site internet de son commerce avec l'IA, s
 
 TARIFS
 - Gratuit : créer et voir l'aperçu (2 sites créés par l'IA et 10 modifications par l'IA au maximum).
-- Un site : 20 € une fois (50 modifications par l'IA). Pack 5 sites : 50 €. Hébergement : 30 € par an ou 2,90 € par mois. Le paiement en ligne n'est pas encore ouvert.
+- Un site : 20 € une fois (50 modifications par l'IA). Pack 5 sites : 50 €. Hébergement : 30 € par an ou 2,50 € par mois. Le paiement en ligne n'est pas encore ouvert.
 - Options : nom de domaine 15 €/an, newsletter/SMS 5 €/mois, événements 4 €/mois, allergènes par l'IA 3 € une fois, offres d'emploi 3 €/mois. Inclus pour tous : notifications, rapport du lundi, parrainage.
+
+AUTRES OUTILS (onglet « Modifier moi-même »)
+- Score « Votre site est complet à … % » tout en haut : il indique les 3 prochaines choses à ajouter (photos, horaires, avis…).
+- « Ouvert maintenant / Fermé · ouvre à 12h » s'affiche tout seul sur le site si les horaires sont écrits simplement (ex. « Mardi – Samedi » et « 12h – 14h · 19h – 22h »).
+- Bloc « Contact » : champ WhatsApp (numéro de portable) → bouton « Écrire sur WhatsApp » sur le site.
+- Bloc « Questions fréquentes » : questions/réponses affichées sur le site (parking, animaux, réservation…). Une question sans réponse n'apparaît pas.
+- Après une réservation, un rendez-vous ou un événement, le client peut l'ajouter à son agenda (Google ou iPhone).
+- Supprimer un site : tout en bas de « Modifier moi-même », « Supprimer ce site » (définitif).
 
 PROBLÈMES FRÉQUENTS
 - Une modification ne se voit pas sur le site en ligne : toucher « Publier les modifications », puis recharger la page du site (attendre quelques secondes).

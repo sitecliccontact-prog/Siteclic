@@ -1,10 +1,11 @@
 import type { CSSProperties } from "react";
 import { EventDialog, EventSeats, JobDialog, NewsletterForm } from "./SiteOptions";
 import { dateLong } from "@/lib/site/dates";
-import { bookingEnabled, priceCents, socialUrl, specialIsFresh, type SiteContent } from "@/lib/site/schema";
+import { bookingEnabled, faqItems, priceCents, socialUrl, specialIsFresh, type SiteContent } from "@/lib/site/schema";
 import { AssistantWidget, AutoFilm, BookingDialog, SiteMotion, SiteVideo } from "./SiteClient";
 import { AddToBasket, GiftDialog, OrderDialog, VisitBeacon, type MenuItem } from "./SiteShop";
 import { AppointmentDialog } from "./SiteBook";
+import { OpenBadge } from "./OpenBadge";
 import { THEMES } from "./themes";
 import { applyLook, isDark, isHex, reliefCss } from "@/lib/site/colors";
 import { siteFloor } from "@/lib/site/floor";
@@ -59,6 +60,7 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
   const special = specialIsFresh(content) ? content.special : null;
   const instagram = socialUrl("instagram", content.links?.instagram);
   const facebook = socialUrl("facebook", content.links?.facebook);
+  const whatsapp = whatsappUrl(content.links?.whatsapp, brand.name, lang);
   const query = encodeURIComponent(`${brand.name} ${contact.address}`);
   const mapsHref = contact.address ? `https://www.google.com/maps/search/?api=1&query=${query}` : undefined;
   const mapEmbed = contact.address ? `https://www.google.com/maps?q=${query}&output=embed` : undefined;
@@ -75,6 +77,7 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
   const gift = content.gift?.enabled && content.gift.account ? content.gift : null;
   const reviews = content.reviews && (content.reviews.items.length || content.reviews.googleUrl) ? content.reviews : null;
   const hasEn = Boolean(content.translations?.en);
+  const faq = faqItems(content);
   const cls = [
     "site", t.fontClasses,
     t.btnCaps ? "is-caps" : "", t.ornament ? "is-orn" : "",
@@ -158,7 +161,9 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
             )}
             {hours.length > 0 && (
               <a href="#infos" className="s-strip-item">
-                <span>{T("Horaires")}</span>{hours[0].days} · {hours[0].time}
+                <span>{T("Horaires")}</span>
+                <OpenBadge hours={hours} lang={lang} />
+                {hours[0].days} · {hours[0].time}
               </a>
             )}
             {contact.phone && (
@@ -466,6 +471,26 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
         </section>
       )}
 
+      {/* Questions fréquentes */}
+      {faq.length > 0 && (
+        <section className="s-section s-faq" aria-label={T("Questions fréquentes")}>
+          <div className="s-wrap">
+            <div className="s-head" data-r>
+              {ornament}
+              <h2 className="s-display s-h2">{T("Questions fréquentes")}</h2>
+            </div>
+            <div className="s-faq-list" data-r>
+              {faq.map((f, i) => (
+                <details key={i} className="s-faq-item">
+                  <summary className="s-display">{f.q}<span aria-hidden>+</span></summary>
+                  <p>{f.a}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Infos pratiques */}
       {hasInfos && (
         <section id="infos" className="s-section">
@@ -478,6 +503,7 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
               {hours.length > 0 && (
                 <div className="s-info">
                   <h3 className="s-info-title">{T("Horaires")}</h3>
+                  <OpenBadge hours={hours} lang={lang} />
                   <dl>
                     {hours.map((h, i) => (
                       <div key={i} className="s-hours-row">
@@ -495,11 +521,17 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
                   {mapsHref && <a href={mapsHref} target="_blank" rel="noreferrer" className="s-link">{T("Itinéraire")}</a>}
                 </div>
               )}
-              {(contact.phone || contact.email) && (
+              {(contact.phone || contact.email || whatsapp) && (
                 <div className="s-info">
                   <h3 className="s-info-title">{T("Contact")}</h3>
                   {contact.phone && <a href={phoneHref} className="s-info-big s-display">{contact.phone}</a>}
                   {contact.email && <a href={`mailto:${contact.email}`} className="s-info-mail">{contact.email}</a>}
+                  {whatsapp && (
+                    <a href={whatsapp} target="_blank" rel="noreferrer" className="s-wa">
+                      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2l-.4-.2Z" /></svg>
+                      {T("Écrire sur WhatsApp")}
+                    </a>
+                  )}
                 </div>
               )}
             </div>
@@ -531,8 +563,9 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
             <span>{brand.tagline}</span>
             <span>{[contact.address, contact.phone].filter(Boolean).join(" · ")}</span>
           </div>
-          {(instagram || facebook) && (
+          {(instagram || facebook || whatsapp) && (
             <div className="s-social">
+              {whatsapp && <a href={whatsapp} target="_blank" rel="noreferrer" className="s-link">WhatsApp</a>}
               {instagram && <a href={instagram} target="_blank" rel="noreferrer" className="s-link">Instagram</a>}
               {facebook && <a href={facebook} target="_blank" rel="noreferrer" className="s-link">Facebook</a>}
             </div>
@@ -570,6 +603,18 @@ export function SiteRenderer({ content, credit = false, slug, siteId, lang = "fr
         floor={siteFloor(content)} guarantee={guaranteeOf(content)} fullDay={content.waitlist?.fullDay || ""} />}
     </div>
   );
+}
+
+/** Lien WhatsApp à partir d'un numéro français (06…, +33 6…) ou international. */
+function whatsappUrl(raw: string | undefined, brand: string, lang: Lang) {
+  let n = (raw ?? "").replace(/[^\d+]/g, "");
+  if (!n) return null;
+  if (n.startsWith("+")) n = n.slice(1);
+  else if (n.startsWith("00")) n = n.slice(2);
+  else if (/^0[1-9]\d{8}$/.test(n)) n = `33${n.slice(1)}`;
+  if (!/^\d{8,15}$/.test(n)) return null;
+  const hello = lang === "en" ? `Hello ${brand}, ` : `Bonjour ${brand}, `;
+  return `https://wa.me/${n}?text=${encodeURIComponent(hello)}`;
 }
 
 function dayLabel(iso: string) {
@@ -663,6 +708,25 @@ const SITE_CSS = `
 @container (min-width:760px){.site .s-strip-grid{grid-template-columns:repeat(3,1fr)}}
 .site .s-strip-item{display:flex;flex-direction:column;gap:6px;padding:22px 0;font-size:15px;border-bottom:1px solid var(--line);transition:color .2s}
 .site .s-strip-item:last-child{border-bottom:0}
+.site .s-open{display:inline-flex;align-items:center;gap:8px;width:fit-content;font-weight:600;font-size:13px;letter-spacing:0;text-transform:none;padding:5px 11px 5px 9px;border-radius:999px;background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.site .s-faq-list{max-width:820px;margin:0 auto;border-top:1px solid var(--line)}
+.site .s-faq-item{border-bottom:1px solid var(--line)}
+.site .s-faq-item summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:22px 0;font-size:clamp(19px,2.4cqi,24px);line-height:1.25}
+.site .s-faq-item summary::-webkit-details-marker{display:none}
+.site .s-faq-item summary span{color:var(--accent);font-size:26px;font-weight:300;transition:transform .3s;flex-shrink:0}
+.site .s-faq-item[open] summary span{transform:rotate(45deg)}
+.site .s-faq-item p{margin:0 0 24px;color:var(--muted);max-width:680px}
+.site .s-cal{display:flex;flex-direction:column;gap:10px;margin:18px 0 6px;padding:14px 16px;border:1px solid var(--line);border-radius:calc(var(--radius) * .6)}
+.site .s-cal>span{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.site .s-cal>div{display:flex;flex-wrap:wrap;gap:8px}
+.site .s-info .s-open{margin:-4px 0 14px}
+.site .s-wa{display:inline-flex;align-items:center;gap:8px;margin-top:12px;font-weight:600;font-size:15px}
+.site .s-wa svg{width:18px;height:18px}
+.site .s-open i{width:8px;height:8px;border-radius:50%;background:#9a9a9a}
+.site .s-open.is-open i{background:#2fb36b;box-shadow:0 0 0 4px rgba(47,179,107,.18);animation:s-pulse 2.4s ease-in-out infinite}
+.site .s-open.is-soon i{background:#e0a21b;box-shadow:0 0 0 4px rgba(224,162,27,.18)}
+@keyframes s-pulse{50%{box-shadow:0 0 0 7px rgba(47,179,107,0)}}
+@media (prefers-reduced-motion:reduce){.site .s-open.is-open i{animation:none}}
 .site .s-strip-item:hover{color:var(--accent)}
 .site .s-strip-item span{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-weight:600}
 @container (min-width:760px){.site .s-strip-item{padding:26px 28px;border-bottom:0;border-left:1px solid var(--line)}.site .s-strip-item:first-child{border-left:0;padding-left:0}}

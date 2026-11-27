@@ -1,6 +1,7 @@
 "use client";
 
 import { friendlyError } from "@/lib/errors";
+import { AddToCalendar, type CalEvent } from "./AddToCalendar";
 import { useEffect, useMemo, useState } from "react";
 import type { SiteContent } from "@/lib/site/schema";
 
@@ -41,6 +42,7 @@ export function AppointmentDialog({ slug, brand, appts }: { slug?: string; brand
   const [busy, setBusy] = useState<Busy[]>([]);
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState("");
+  const [cal, setCal] = useState<CalEvent | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -89,6 +91,7 @@ export function AppointmentDialog({ slug, brand, appts }: { slug?: string; brand
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error || "Le rendez-vous n'est pas passé. Merci d'appeler.");
       const c = dayChip(day);
+      setCal({ title: `${svc?.name ?? "Rendez-vous"} chez ${brand}${staff ? ` avec ${staff}` : ""}`, day, time, minutes: svc?.minutes ?? 60 });
       setDone(`C'est noté, ${body.name.split(" ")[0]} ! ${svc?.name} le ${c.wd} ${c.n} ${c.m} à ${time.replace(":", "h")}${staff ? ` avec ${staff}` : ""}. À bientôt chez ${brand}.`);
       setTime("");
     } catch (err) {
@@ -106,7 +109,8 @@ export function AppointmentDialog({ slug, brand, appts }: { slug?: string; brand
         {done ? (
           <div className="s-modal-done">
             <p className="s-display s-modal-title">{done}</p>
-            <button type="button" className="s-btn" onClick={() => { setOpen(false); setDone(""); }}>Fermer</button>
+            {cal && <AddToCalendar ev={cal} />}
+            <button type="button" className="s-btn" onClick={() => { setOpen(false); setDone(""); setCal(null); }}>Fermer</button>
           </div>
         ) : (
           <form onSubmit={submit}>

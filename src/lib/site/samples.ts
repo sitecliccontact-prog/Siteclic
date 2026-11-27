@@ -3,6 +3,11 @@ import type { SiteContent } from "./schema";
 
 // Exemples fictifs, utilisés seulement pour tester l'affichage en développement.
 const restaurant: SiteContent = {
+  links: { whatsapp: "06 12 34 56 78" },
+  faq: [
+    { q: "Faut-il réserver ?", a: "Le midi, rarement. Le vendredi et le samedi soir, c'est plus prudent : la salle compte vingt-quatre couverts." },
+    { q: "Y a-t-il un parking à proximité ?", a: "Le parking Pasteur est à quatre minutes à pied, ouvert jour et nuit." },
+  ],
   theme: "bistrot",
   assistant: { enabled: true, notes: "", voice: "homme" },
   floor: {

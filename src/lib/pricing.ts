@@ -32,7 +32,7 @@ export const BOOKING_FEE = 0.02;
 export const RELIEF_PACK = { price: "1 €", cents: 100, tries: 5 };
 
 /** Hébergement pour garder le site en ligne. */
-export const HOSTING = { year: "30 €", yearMonthly: "2,50 €", month: "2,90 €", yearCents: 3000, monthCents: 290 };
+export const HOSTING = { year: "30 €", yearMonthly: "2,50 €", month: "2,50 €", yearCents: 3000, monthCents: 250 };
 export type OfferId = (typeof OFFERS)[number]["id"];
 
 /** Option « Assistant IA de réservation », payée au mois par le commerçant (décidée le 26/11).

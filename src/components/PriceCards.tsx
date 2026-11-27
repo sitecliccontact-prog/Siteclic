@@ -41,7 +41,7 @@ export function PriceCards({ compact }: { compact?: boolean }) {
             <span className="font-display text-3xl font-semibold tracking-tight">{HOSTING.year}</span>
             <span className="text-muted">/ an</span>
           </p>
-          <p className="text-sm text-muted">soit {HOSTING.yearMonthly}/mois · ou {HOSTING.month} au mois</p>
+          <p className="text-sm text-muted">ou {HOSTING.month} par mois, au choix</p>
         </div>
       </div>
 

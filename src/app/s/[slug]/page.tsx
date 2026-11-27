@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SiteRenderer } from "@/components/site/SiteRenderer";
 import { getPublishedSite } from "@/lib/site/published";
-import { socialUrl } from "@/lib/site/schema";
+import { faqItems, socialUrl } from "@/lib/site/schema";
 
 // La page est gardée en mémoire et rafraîchie dès que le client publie une modification.
 export const revalidate = 3600;
@@ -50,9 +50,17 @@ export default async function PublishedSite({ params }: Props) {
     openingHours: content.hours.length ? content.hours.map((h) => `${h.days} ${h.time}`).join(" ; ") : undefined,
   };
 
+  const faq = faqItems(content);
+  const faqLd = faq.length ? {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+  } : null;
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd).replace(/</g, "\\u003c") }} />}
       <SiteRenderer content={content} credit slug={slug} />
     </>
   );
