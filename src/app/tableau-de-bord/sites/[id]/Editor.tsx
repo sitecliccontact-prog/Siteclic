@@ -7,6 +7,7 @@ import { THEMES } from "@/components/site/themes";
 import { useEffect, useRef, useState } from "react";
 import { PublishButton, type PublishState } from "@/components/PublishButton";
 import { DailyPanel } from "./DailyPanel";
+import { SiteScore } from "./SiteScore";
 import { celebrate } from "@/components/Celebration";
 import { friendlyError } from "@/lib/errors";
 import { SiteRenderer } from "@/components/site/SiteRenderer";
@@ -26,6 +27,17 @@ const SUGGESTIONS = [
   "Passe à un style plus moderne",
 ];
 
+const FAQ_IDEAS = [
+  "Y a-t-il un parking à proximité ?",
+  "Faut-il réserver ?",
+  "Les animaux sont-ils acceptés ?",
+  "Proposez-vous des options végétariennes ?",
+  "Peut-on privatiser les lieux ?",
+  "Quels moyens de paiement acceptez-vous ?",
+  "Le lieu est-il accessible en fauteuil roulant ?",
+  "Faites-vous des cartes cadeaux ?",
+];
+
 const THEME_LABELS: { id: ThemeName; label: string; colors: [string, string] }[] = [
   { id: "bistrot", label: "Bistrot", colors: ["#13261f", "#c9a45c"] },
   { id: "atelier", label: "Atelier", colors: ["#ffffff", "#e63312"] },
@@ -43,6 +55,7 @@ export function Editor({ id, initial, publish }: { id: string; initial: SiteCont
   const [tab, setTab] = useState<Tab>("ia");
   const [save, setSave] = useState<SaveState>("ok");
   const [changed, setChanged] = useState(publish.hasChanges);
+  const [online, setOnline] = useState(publish.online);
   const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unsaved = useRef<SiteContent | null>(null);
 
@@ -138,7 +151,7 @@ export function Editor({ id, initial, publish }: { id: string; initial: SiteCont
         </button>
         <Link href={`/apercu/${id}`} className="hidden rounded-full border border-line px-3 py-1.5 text-xs font-medium sm:inline-block">Aperçu</Link>
         <PublishButton id={id} initial={{ ...publish, hasChanges: changed }}
-          beforePublish={flush} onPublished={() => setChanged(false)} compact />
+          beforePublish={flush} onPublished={() => { setChanged(false); setOnline(true); }} compact />
       </header>
 
       {/* Onglets (téléphone) */}
@@ -164,7 +177,7 @@ export function Editor({ id, initial, publish }: { id: string; initial: SiteCont
           </div>
           {/* Les deux panneaux restent ouverts : la discussion avec l'IA n'est pas perdue en changeant d'onglet. */}
           <div className={`${tab === "main" ? "flex" : "hidden"} min-h-0 flex-1 flex-col`}>
-            <ManualPanel id={id} content={content} edit={(fn) => { remember(); edit(fn); }} addPhotos={addPhotos}
+            <ManualPanel id={id} content={content} score={<SiteScore content={content} online={online} />} edit={(fn) => { remember(); edit(fn); }} addPhotos={addPhotos}
               daily={<DailyPanel id={id} content={content} beforeSave={flush}
                 onSaved={(c) => setContent((prev) => ({ ...prev, special: c.special, booking: c.booking }))} />} />
           </div>
@@ -422,13 +435,14 @@ function AiPanel({ id, photoCount, onResult, beforeSend, addPhotos }: AiProps) {
 
 type ManualProps = {
   id: string;
+  score: React.ReactNode;
   content: SiteContent;
   edit: (fn: (d: SiteContent) => void) => void;
   addPhotos: (urls: string[], asCover?: boolean) => Promise<void>;
   daily: React.ReactNode;
 };
 
-function ManualPanel({ id, content: c, edit, addPhotos, daily }: ManualProps) {
+function ManualPanel({ id, content: c, edit, addPhotos, daily, score }: ManualProps) {
   const [upload, setUpload] = useState<{ done: number; total: number } | null>(null);
   const [photoError, setPhotoError] = useState("");
 
@@ -456,6 +470,7 @@ function ManualPanel({ id, content: c, edit, addPhotos, daily }: ManualProps) {
 
   return (
     <div className="flex-1 space-y-2 overflow-y-auto p-4 pb-16">
+      {score}
       {daily}
       <Block title="Style" open>
         <div className="grid grid-cols-5 gap-2">
@@ -602,6 +617,32 @@ function ManualPanel({ id, content: c, edit, addPhotos, daily }: ManualProps) {
         <Field label="E-mail" type="email" value={c.contact.email} onChange={(v) => edit((d) => { d.contact.email = v; })} />
         <Field label="Instagram" value={c.links?.instagram ?? ""} onChange={(v) => edit((d) => { d.links = { ...d.links, instagram: v }; })} />
         <Field label="Facebook" value={c.links?.facebook ?? ""} onChange={(v) => edit((d) => { d.links = { ...d.links, facebook: v }; })} />
+        <Field label="WhatsApp (numéro de portable, facultatif)" type="tel" value={c.links?.whatsapp ?? ""} onChange={(v) => edit((d) => { d.links = { ...d.links, whatsapp: v.slice(0, 30) }; })} />
+      </Block>
+
+      <Block title="Questions fréquentes">
+        <p className="text-xs leading-relaxed text-muted">Les questions que vos clients posent souvent au téléphone. Elles s&apos;affichent sur votre site et aident aussi Google à mieux vous présenter.</p>
+        {(c.faq ?? []).map((f, i) => (
+          <div key={i} className="space-y-2 rounded-xl border border-line p-3">
+            <div className="flex items-end gap-2">
+              <div className="flex-1"><Field label={`Question ${i + 1}`} value={f.q} onChange={(v) => edit((d) => { d.faq![i].q = v.slice(0, 140); })} /></div>
+              <Remove onClick={() => edit((d) => { d.faq!.splice(i, 1); })} />
+            </div>
+            <Field label="Réponse" area value={f.a} onChange={(v) => edit((d) => { d.faq![i].a = v.slice(0, 700); })} />
+            {!f.a.trim() && <p className="text-xs text-amber-300">Écrivez la réponse : sans elle, la question ne s&apos;affiche pas.</p>}
+          </div>
+        ))}
+        {(c.faq ?? []).length < 12 && (
+          <>
+            <div className="flex flex-wrap gap-1.5">
+              {FAQ_IDEAS.filter((q) => !(c.faq ?? []).some((f) => f.q === q)).slice(0, 5).map((q) => (
+                <button key={q} type="button" onClick={() => edit((d) => { d.faq = [...(d.faq ?? []), { q, a: "" }]; })}
+                  className="rounded-full border border-line px-3 py-1.5 text-xs text-muted hover:border-clic hover:text-ink">+ {q}</button>
+              ))}
+            </div>
+            <Add onClick={() => edit((d) => { d.faq = [...(d.faq ?? []), { q: "", a: "" }]; })}>Ajouter une question</Add>
+          </>
+        )}
       </Block>
 
       <Block title="Fin de page">

@@ -1,6 +1,7 @@
 "use client";
 
 import { friendlyError } from "@/lib/errors";
+import { AddToCalendar } from "./AddToCalendar";
 import { useEffect, useState } from "react";
 import type { SiteContent } from "@/lib/site/schema";
 import { dateLong } from "@/lib/site/dates";
@@ -86,6 +87,7 @@ export function EventDialog({ slug, brand, events }: { slug?: string; brand: str
         {done ? (
           <div className="s-modal-done">
             <p className="s-display s-modal-title">{done}</p>
+            {!preview(slug) && <AddToCalendar ev={{ title: `${ev.title} · ${brand}`, day: ev.date, time: /^\d{2}:\d{2}$/.test(ev.time) ? ev.time : "19:00", minutes: 180 }} />}
             <button type="button" className="s-btn" onClick={close}>Fermer</button>
           </div>
         ) : (
